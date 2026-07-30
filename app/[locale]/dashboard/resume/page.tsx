@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   Upload,
   Sparkles,
@@ -14,10 +14,17 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  FilePlus2,
+  Copy,
+  Trash2,
+  Star,
+  PenSquare,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ResumePreview from "@/components/ResumePreview";
 import type { StructuredResume } from "@/lib/resume-types";
+import { emptyStructuredResume } from "@/lib/resume-types";
+import { downloadResumePdf } from "@/lib/resume-pdf";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -38,8 +45,18 @@ type ResumeContent = {
   aiEnhanceCount?: number;
 };
 
+type ResumeVersion = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  isPrimary: boolean;
+  fullName: string;
+  jobTitle: string;
+};
+
 export default function ResumeBuilderPage() {
   const t = useTranslations("dashboard.resume");
+  const router = useRouter();
 
   const [structured, setStructured] = useState<StructuredResume>(DEMO_STRUCTURED);
   const [originalText, setOriginalText] = useState<string | null>(null);
@@ -57,6 +74,10 @@ export default function ResumeBuilderPage() {
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [loadErrorMsg, setLoadErrorMsg] = useState<string | null>(null);
 
+  const [versions, setVersions] = useState<ResumeVersion[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionActionError, setVersionActionError] = useState<string | null>(null);
+
   const [uploadState, setUploadState] = useState<"idle" | "uploading" | "success" | "error">(
     "idle"
   );
@@ -68,6 +89,35 @@ export default function ResumeBuilderPage() {
   const [showPaywall, setShowPaywall] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function loadVersions(supabase: ReturnType<typeof createClient>, uid: string) {
+    setVersionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("resumes")
+        .select("id, title, updated_at, is_primary, content")
+        .eq("user_id", uid)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      setVersions(
+        (data ?? []).map((row) => {
+          const content = (row.content ?? {}) as ResumeContent;
+          return {
+            id: row.id,
+            title: row.title || t("untitledResume"),
+            updatedAt: row.updated_at,
+            isPrimary: !!row.is_primary,
+            fullName: content.structured?.fullName ?? "",
+            jobTitle: content.structured?.title ?? "",
+          };
+        })
+      );
+    } catch (err) {
+      console.error("[resume] failed to load resume versions:", err);
+    } finally {
+      setVersionsLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +166,7 @@ export default function ResumeBuilderPage() {
           if (!cancelled && profile?.plan === "pro") setPlan("pro");
 
           await loadExistingResume(supabase, uid);
+          if (!cancelled) await loadVersions(supabase, uid);
         })
         .catch((err: unknown) => {
           // A network/auth failure here (not just "unconfigured") should
@@ -291,6 +342,10 @@ export default function ResumeBuilderPage() {
     } finally {
       setParsing(false);
       setEnhancing(false);
+      if (userId) {
+        const supabase = createClient();
+        await loadVersions(supabase, userId);
+      }
     }
   }
 
@@ -325,6 +380,7 @@ export default function ResumeBuilderPage() {
       }
 
       setSaveState("success");
+      await loadVersions(supabase, userId);
     } catch (err) {
       console.error("[resume] save failed:", err);
       setSaveState("error");
@@ -337,133 +393,102 @@ export default function ResumeBuilderPage() {
       setShowPaywall(true);
       return;
     }
+    await downloadResumePdf(structured, "resume.pdf");
+  }
 
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const marginX = 56;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    let y = 64;
+  // --- Version management (My resumes) ---
 
-    function ensureRoom(next: number) {
-      if (y + next > pageHeight - 48) {
-        doc.addPage();
-        y = 56;
+  async function handleCreateBlank() {
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+    setVersionActionError(null);
+    try {
+      const supabase = createClient();
+      const { data: inserted, error } = await supabase
+        .from("resumes")
+        .insert({
+          user_id: userId,
+          title: t("untitledResume"),
+          content: { structured: emptyStructuredResume() },
+          is_primary: versions.length === 0,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      router.push(`/dashboard/resume/builder?id=${inserted.id}`);
+    } catch (err) {
+      console.error("[resume] failed to create a new version:", err);
+      setVersionActionError(t("versionActionError"));
+    }
+  }
+
+  async function handleDuplicateVersion(id: string, title: string) {
+    if (!userId) return;
+    setVersionActionError(null);
+    try {
+      const supabase = createClient();
+      const { data: existing, error: fetchError } = await supabase
+        .from("resumes")
+        .select("content")
+        .eq("id", id)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const { error: insertError } = await supabase.from("resumes").insert({
+        user_id: userId,
+        title: t("copyOf", { title }),
+        content: existing?.content ?? {},
+        is_primary: false,
+      });
+      if (insertError) throw insertError;
+      await loadVersions(supabase, userId);
+    } catch (err) {
+      console.error("[resume] failed to duplicate version:", err);
+      setVersionActionError(t("versionActionError"));
+    }
+  }
+
+  async function handleDeleteVersion(id: string) {
+    if (!userId) return;
+    if (!window.confirm(t("confirmDelete"))) return;
+    setVersionActionError(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("resumes").delete().eq("id", id);
+      if (error) throw error;
+      await loadVersions(supabase, userId);
+      if (id === resumeId) {
+        setResumeId(null);
+        setStructured(DEMO_STRUCTURED);
+        setOriginalText(null);
+        setIsDemoContent(true);
+        setEnhanceCount(0);
       }
+    } catch (err) {
+      console.error("[resume] failed to delete version:", err);
+      setVersionActionError(t("versionActionError"));
     }
+  }
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text(structured.fullName || "Resume", marginX, y);
-    y += 22;
-
-    if (structured.title) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12);
-      doc.setTextColor(80);
-      doc.text(structured.title, marginX, y);
-      doc.setTextColor(0);
-      y += 26;
-    } else {
-      y += 10;
+  async function handleSetPrimary(id: string) {
+    if (!userId) return;
+    setVersionActionError(null);
+    try {
+      const supabase = createClient();
+      await supabase.from("resumes").update({ is_primary: false }).eq("user_id", userId);
+      const { error } = await supabase.from("resumes").update({ is_primary: true }).eq("id", id);
+      if (error) throw error;
+      await loadVersions(supabase, userId);
+    } catch (err) {
+      console.error("[resume] failed to set primary version:", err);
+      setVersionActionError(t("versionActionError"));
     }
-
-    function sectionHeading(label: string) {
-      ensureRoom(24);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(30, 110, 80);
-      doc.text(label.toUpperCase(), marginX, y);
-      doc.setTextColor(0);
-      y += 16;
-    }
-
-    if (structured.summary) {
-      sectionHeading("Summary");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      const lines = doc.splitTextToSize(structured.summary, pageWidth - marginX * 2);
-      for (const line of lines) {
-        ensureRoom(14);
-        doc.text(line, marginX, y);
-        y += 14;
-      }
-      y += 8;
-    }
-
-    if (structured.skills.length > 0) {
-      sectionHeading("Skills");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      const line = structured.skills.join("   •   ");
-      const wrapped = doc.splitTextToSize(line, pageWidth - marginX * 2);
-      for (const l of wrapped) {
-        ensureRoom(14);
-        doc.text(l, marginX, y);
-        y += 14;
-      }
-      y += 8;
-    }
-
-    if (structured.experience.length > 0) {
-      sectionHeading("Experience");
-      for (const job of structured.experience) {
-        ensureRoom(16);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10.5);
-        const heading = [job.role, job.company].filter(Boolean).join(" · ");
-        doc.text(heading, marginX, y);
-        if (job.period) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.text(job.period, pageWidth - marginX, y, { align: "right" });
-        }
-        y += 13;
-        if (job.location) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(100);
-          doc.text(job.location, marginX, y);
-          doc.setTextColor(0);
-          y += 12;
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        for (const bullet of job.bullets) {
-          const wrapped = doc.splitTextToSize(`•  ${bullet}`, pageWidth - marginX * 2 - 8);
-          for (const l of wrapped) {
-            ensureRoom(13);
-            doc.text(l, marginX + 8, y);
-            y += 13;
-          }
-        }
-        y += 6;
-      }
-    }
-
-    if (structured.education.length > 0) {
-      sectionHeading("Education");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      for (const ed of structured.education) {
-        ensureRoom(14);
-        const line = [ed.degree, ed.school].filter(Boolean).join(" · ");
-        doc.text(line, marginX, y);
-        if (ed.period) {
-          doc.setFontSize(9);
-          doc.text(ed.period, pageWidth - marginX, y, { align: "right" });
-          doc.setFontSize(10.5);
-        }
-        y += 14;
-      }
-    }
-
-    doc.save("resume.pdf");
   }
 
   const busy = parsing || enhancing;
   const enhanceBlockedByPlan = !!originalText && enhanceLimitBlocks();
-  const canReEnhance = !!originalText && !enhanceLimitBlocks();
 
   return (
     <div className="max-w-3xl">
@@ -474,6 +499,100 @@ export default function ResumeBuilderPage() {
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="mt-0.5 flex-none" size={16} />
           <span>{loadErrorMsg}</span>
+        </div>
+      )}
+
+      {/* My resumes — every saved version, with the powerful manual builder
+          (a separate screen) as the entry point for creating or editing
+          one from scratch. Kept above the upload flow since returning users
+          most often want to jump straight to an existing version. */}
+      {userId && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">{t("myResumes")}</h2>
+            <button
+              onClick={handleCreateBlank}
+              className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+            >
+              <FilePlus2 size={14} />
+              {t("newResume")}
+            </button>
+          </div>
+
+          {versionActionError && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <AlertCircle className="mt-0.5 flex-none" size={16} />
+              <span>{versionActionError}</span>
+            </div>
+          )}
+
+          {versionsLoading && <p className="text-sm text-foreground/50">{t("loadingVersions")}</p>}
+
+          {!versionsLoading && versions.length === 0 && (
+            <p className="rounded-xl border border-dashed border-border p-4 text-sm text-foreground/50">
+              {t("noVersionsYet")}
+            </p>
+          )}
+
+          {!versionsLoading && versions.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {versions.map((v) => (
+                <div key={v.id} className="rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{v.title}</p>
+                      {(v.fullName || v.jobTitle) && (
+                        <p className="truncate text-xs text-foreground/60">
+                          {[v.fullName, v.jobTitle].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-[11px] text-foreground/40">
+                        {new Date(v.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {v.isPrimary && (
+                      <span className="flex flex-none items-center gap-1 rounded-full bg-gold-100 px-2 py-0.5 text-[11px] font-semibold text-gold-700">
+                        <Star size={10} fill="currentColor" />
+                        {t("primary")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold">
+                    <Link
+                      href={`/dashboard/resume/builder?id=${v.id}`}
+                      className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800"
+                    >
+                      <PenSquare size={12} />
+                      {t("open")}
+                    </Link>
+                    <button
+                      onClick={() => handleDuplicateVersion(v.id, v.title)}
+                      className="flex items-center gap-1 text-foreground/60 hover:text-foreground"
+                    >
+                      <Copy size={12} />
+                      {t("duplicate")}
+                    </button>
+                    {!v.isPrimary && (
+                      <button
+                        onClick={() => handleSetPrimary(v.id)}
+                        className="flex items-center gap-1 text-foreground/60 hover:text-foreground"
+                      >
+                        <Star size={12} />
+                        {t("setPrimary")}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteVersion(v.id)}
+                      className="ms-auto flex items-center gap-1 text-red-500 hover:text-red-600"
+                    >
+                      <Trash2 size={12} />
+                      {t("delete")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -514,9 +633,13 @@ export default function ResumeBuilderPage() {
             onChange={handleFileChange}
           />
         </label>
-        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface p-8 text-center text-sm text-foreground/60">
-          {t("orBuild")}
-        </div>
+        <button
+          onClick={handleCreateBlank}
+          className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-surface p-8 text-center transition-colors hover:border-emerald-400"
+        >
+          <PenSquare className="text-emerald-600" size={28} />
+          <span className="text-sm font-medium text-foreground">{t("orBuild")}</span>
+        </button>
       </div>
 
       {busy && (
@@ -568,15 +691,26 @@ export default function ResumeBuilderPage() {
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">{t("aiImprovedLabel")}</h2>
-          <button
-            onClick={handleEnhance}
-            disabled={busy || !originalText}
-            title={enhanceBlockedByPlan ? t("enhanceLimitReached") : undefined}
-            className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-          >
-            {enhanceBlockedByPlan ? <Lock size={12} className="text-gold-500" /> : <Sparkles size={14} />}
-            {enhancing ? t("enhancing") : t("reEnhance")}
-          </button>
+          <div className="flex items-center gap-2">
+            {resumeId && (
+              <Link
+                href={`/dashboard/resume/builder?id=${resumeId}`}
+                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-sand-100"
+              >
+                <PenSquare size={12} />
+                {t("editManually")}
+              </Link>
+            )}
+            <button
+              onClick={handleEnhance}
+              disabled={busy || !originalText}
+              title={enhanceBlockedByPlan ? t("enhanceLimitReached") : undefined}
+              className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+            >
+              {enhanceBlockedByPlan ? <Lock size={12} className="text-gold-500" /> : <Sparkles size={14} />}
+              {enhancing ? t("enhancing") : t("reEnhance")}
+            </button>
+          </div>
         </div>
         <p className="mb-3 text-xs text-foreground/50">
           {isDemoContent ? t("noResumeYet") : t("aiImprovedNote")}
@@ -589,6 +723,8 @@ export default function ResumeBuilderPage() {
             skills: t("sectionSkills"),
             experience: t("sectionExperience"),
             education: t("sectionEducation"),
+            certifications: t("sectionCertifications"),
+            languages: t("sectionLanguages"),
           }}
         />
 
