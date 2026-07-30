@@ -25,15 +25,31 @@ type Job = {
 // the product (and the account behind it) at real legal and enforcement
 // risk. Instead this route only calls sources that are meant to be called
 // programmatically:
-//   - Greenhouse's public job board API (boards-api.greenhouse.io) — free,
+//   - Greenhouse's public job board API (boards-api.greenhouse.io, or the EU
+//     cluster boards-api.eu.greenhouse.io for boards hosted there) — free,
 //     no key, explicitly public.
+//   - Lever's public postings API (api.lever.co) — same idea, free and
+//     public, used by a number of Gulf/MENA startups.
+//   - Ashby's public job-board API (api.ashbyhq.com) — ditto.
 //   - Jooble's REST API (jooble.org/api) — a licensed job-search aggregator
 //     with a free developer key, covering the UAE, Saudi Arabia, Qatar,
 //     Kuwait, Bahrain and more. Enabled once JOOBLE_API_KEY is set.
 // A curated fallback list keeps the page populated with real Gulf/Levant
-// employer links even before either of those is configured.
-
-const GREENHOUSE_BOARDS = ["doordash", "robinhood", "coinbase", "discord"];
+// employer links even before any of those is configured.
+//
+// The Greenhouse/Lever/Ashby board tokens below were verified individually
+// (each one checked for a live, non-empty board with Gulf/Levant/MEA-based
+// listings) rather than guessed — most well-known regional companies
+// actually run on other ATS platforms (Workable, Zoho Recruit, Teamtailor,
+// in-house portals) that don't expose a public read API, which is why this
+// list is short rather than exhaustive.
+const GREENHOUSE_BOARDS = [
+  { slug: "careem", host: "boards-api.greenhouse.io" },
+  { slug: "tamara", host: "boards-api.greenhouse.io" },
+  { slug: "ziina", host: "boards-api.eu.greenhouse.io" },
+];
+const LEVER_BOARDS = ["Yassir"];
+const ASHBY_BOARDS = [{ slug: "leantech", company: "Lean Technologies" }];
 
 // Location filter options exposed in the UI. Also used as the set of
 // locations queried against Jooble when no specific one is requested. Not
@@ -50,6 +66,17 @@ const LOCATIONS = [
   "Jordan",
   "Egypt",
 ];
+
+// Real listings (ours and Jooble's/employers') routinely use an abbreviation
+// instead of the full country name — "Dubai, UAE" rather than "Dubai,
+// United Arab Emirates" — so matching the location filter against the full
+// LOCATIONS name alone silently returned zero results for the country most
+// people actually search for. Every alias is checked in addition to the
+// full name.
+const LOCATION_ALIASES: Record<string, string[]> = {
+  "United Arab Emirates": ["uae", "u.a.e"],
+  "Saudi Arabia": ["ksa", "saudi"],
+};
 
 // Lightweight keyword-based industry classifier applied uniformly to every
 // job — real (Greenhouse/Jooble) and curated fallback alike — since none of
@@ -104,26 +131,101 @@ const FALLBACK_JOBS: Job[] = (
     { id: "demo-10", title: "HR Business Partner", company: "Emirates NBD", location: "Dubai, UAE", applyUrl: "https://www.emiratesnbd.com/en/careers", applyType: "external" },
     { id: "demo-11", title: "Product Designer", company: "Fetchr", location: "Dubai, UAE (Remote)", applyUrl: "https://www.fetchr.us/careers", applyType: "external" },
     { id: "demo-12", title: "Customer Support Lead", company: "Trella", location: "Cairo, Egypt (Hybrid)", applyUrl: "https://www.trella.app/careers", applyType: "external" },
+    // Qatar, Kuwait, Bahrain, and Oman previously had zero fallback
+    // coverage at all — since none of the real API sources above are
+    // guaranteed to return anything for a given country on any given
+    // request, that meant a location filter for any of these four could
+    // come back completely empty. Filled in with real, verified employer
+    // career-page links so every listed country always has something.
+    { id: "demo-13", title: "Cabin Crew", company: "Qatar Airways", location: "Doha, Qatar", applyUrl: "https://careers.qatarairways.com/global/Home", applyType: "external" },
+    { id: "demo-14", title: "Network Engineer", company: "Ooredoo Qatar", location: "Doha, Qatar", applyUrl: "https://www.ooredoo.qa/web/en/careers/", applyType: "external" },
+    { id: "demo-15", title: "Business Development Manager", company: "Zain", location: "Kuwait City, Kuwait", applyUrl: "https://careers.zain.com/", applyType: "external" },
+    { id: "demo-16", title: "Relationship Manager", company: "National Bank of Kuwait (NBK)", location: "Kuwait City, Kuwait", applyUrl: "https://www.nbk.com/careers.html", applyType: "external" },
+    { id: "demo-17", title: "Financial Analyst", company: "Bank ABC", location: "Manama, Bahrain", applyUrl: "https://www.bank-abc.com/En/AboutABC/Careers/Pages/default.aspx", applyType: "external" },
+    { id: "demo-18", title: "Customer Service Executive", company: "Batelco", location: "Manama, Bahrain (Hybrid)", applyUrl: "https://careers.batelco.com/", applyType: "external" },
+    { id: "demo-19", title: "Relationship Manager", company: "Bank Muscat", location: "Muscat, Oman", applyUrl: "https://www.bankmuscat.com/en/about/humanresources", applyType: "external" },
+    { id: "demo-20", title: "Ground Operations Officer", company: "Oman Air", location: "Muscat, Oman", applyUrl: "https://www.omanair.com/en/careers", applyType: "external" },
   ] satisfies Omit<Job, "industry" | "workType">[]
 ).map(finalize);
 
-async function fetchGreenhouseJobs(board: string): Promise<Job[]> {
+async function fetchGreenhouseJobs(slug: string, host: string): Promise<Job[]> {
   try {
     const res = await fetch(
-      `https://boards-api.greenhouse.io/v1/boards/${board}/jobs?content=false`,
+      `https://${host}/v1/boards/${slug}/jobs?content=false`,
       { next: { revalidate: 3600 } }
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.jobs ?? []).slice(0, 5).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) =>
+    return (data.jobs ?? []).slice(0, 8).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) =>
       finalize({
-        id: `${board}-${j.id}`,
+        id: `${slug}-${j.id}`,
         title: j.title,
-        company: board[0].toUpperCase() + board.slice(1),
+        company: slug[0].toUpperCase() + slug.slice(1),
         location: j.location?.name ?? "Remote",
         applyUrl: j.absolute_url,
         // Greenhouse's public job board API is read-only; real submission requires
         // the (auth'd) Job Board API — so this stays a "smart apply" deep link.
+        applyType: "external" as const,
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+type LeverPosting = {
+  id?: string;
+  text?: string;
+  categories?: { location?: string; team?: string };
+  hostedUrl?: string;
+  applyUrl?: string;
+};
+
+async function fetchLeverJobs(company: string): Promise<Job[]> {
+  try {
+    const res = await fetch(`https://api.lever.co/v0/postings/${company}?mode=json`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const data: LeverPosting[] = await res.json();
+    return (data ?? []).slice(0, 8).map((p, idx) =>
+      finalize({
+        id: `lever-${company}-${p.id ?? idx}`,
+        title: p.text ?? "Untitled role",
+        company,
+        location: p.categories?.location ?? "Remote",
+        applyUrl: p.applyUrl ?? p.hostedUrl ?? "#",
+        applyType: "external" as const,
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+type AshbyPosting = {
+  id?: string;
+  title?: string;
+  location?: string;
+  jobUrl?: string;
+  applyUrl?: string;
+};
+
+async function fetchAshbyJobs(slug: string, companyName: string): Promise<Job[]> {
+  try {
+    const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${slug}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const postings: AshbyPosting[] = data.jobs ?? [];
+    return postings.slice(0, 8).map((p, idx) =>
+      finalize({
+        id: `ashby-${slug}-${p.id ?? idx}`,
+        title: p.title ?? "Untitled role",
+        company: companyName,
+        location: p.location ?? "Remote",
+        applyUrl: p.applyUrl ?? p.jobUrl ?? "#",
         applyType: "external" as const,
       })
     );
@@ -202,8 +304,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await Promise.all(GREENHOUSE_BOARDS.map(fetchGreenhouseJobs));
-    realJobs = realJobs.concat(results.flat());
+    const [greenhouseResults, leverResults, ashbyResults] = await Promise.all([
+      Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host))),
+      Promise.all(LEVER_BOARDS.map(fetchLeverJobs)),
+      Promise.all(ASHBY_BOARDS.map((b) => fetchAshbyJobs(b.slug, b.company))),
+    ]);
+    realJobs = realJobs.concat(greenhouseResults.flat(), leverResults.flat(), ashbyResults.flat());
   } catch {
     // ignore — fall through to other sources
   }
@@ -239,9 +345,14 @@ export async function GET(request: NextRequest) {
   if (locationFilter) {
     // Match against the country name loosely (job.location is usually
     // "City, Country" or "City, Country (Remote)") rather than requiring an
-    // exact string match against the full location.
-    const needle = locationFilter.toLowerCase();
-    jobs = jobs.filter((j) => j.location.toLowerCase().includes(needle));
+    // exact string match against the full location — and also check known
+    // abbreviations (see LOCATION_ALIASES) since real listings frequently
+    // use "UAE" instead of the full country name.
+    const needles = [locationFilter.toLowerCase(), ...(LOCATION_ALIASES[locationFilter] ?? [])];
+    jobs = jobs.filter((j) => {
+      const loc = j.location.toLowerCase();
+      return needles.some((n) => loc.includes(n));
+    });
   }
 
   if (industryFilter) {
