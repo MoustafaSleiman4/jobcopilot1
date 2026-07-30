@@ -135,7 +135,10 @@
       "enhancing": "Enhancing...",
       "save": "Save resume",
       "saving": "Saving...",
-      "saved": "Saved"
+      "saved": "Saved",
+      "download": "Download PDF",
+      "downloadLocked": "Downloading your resume is a Pro feature. Upgrade to export polished, ready-to-send PDFs anytime.",
+      "upgradeCta": "Upgrade to Pro"
     },
     "jobs": {
       "title": "Job search",

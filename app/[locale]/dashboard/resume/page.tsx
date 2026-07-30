@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
-import { Upload, Sparkles, Save, FileCheck2, AlertCircle } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { Upload, Sparkles, Save, FileCheck2, AlertCircle, Download, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -15,6 +16,7 @@ export default function ResumeBuilderPage() {
   const [enhancing, setEnhancing] = useState(false);
 
   const [userId, setUserId] = useState<string | null | undefined>(undefined); // undefined = not checked yet
+  const [plan, setPlan] = useState<"free" | "pro">("free");
   const [resumeId, setResumeId] = useState<string | null>(null);
 
   const [uploadState, setUploadState] = useState<"idle" | "uploading" | "success" | "error">(
@@ -25,6 +27,7 @@ export default function ResumeBuilderPage() {
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,8 +35,18 @@ export default function ResumeBuilderPage() {
     let cancelled = false;
     try {
       const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
-        if (!cancelled) setUserId(data.user?.id ?? null);
+      supabase.auth.getUser().then(async ({ data }) => {
+        if (cancelled) return;
+        const uid = data.user?.id ?? null;
+        setUserId(uid);
+        if (!uid) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", uid)
+          .single();
+        if (!cancelled && profile?.plan === "pro") setPlan("pro");
       });
     } catch {
       // Supabase not configured yet — treat as no user, features stay disabled.
@@ -141,6 +154,30 @@ export default function ResumeBuilderPage() {
     }
   }
 
+  async function handleDownload() {
+    if (plan !== "pro") {
+      setShowPaywall(true);
+      return;
+    }
+
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const marginX = 56;
+    let y = 72;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("My Resume", marginX, y);
+    y += 28;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(summary, 500);
+    doc.text(lines, marginX, y);
+
+    doc.save("resume.pdf");
+  }
+
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
@@ -206,7 +243,7 @@ export default function ResumeBuilderPage() {
           rows={6}
           className="mt-4 w-full rounded-lg border border-border bg-background p-3 text-sm leading-relaxed focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={handleSave}
             disabled={saveState === "saving"}
@@ -215,6 +252,15 @@ export default function ResumeBuilderPage() {
             <Save size={15} />
             {saveState === "saving" ? t("saving") : t("save")}
           </button>
+
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-sand-100"
+          >
+            {plan === "pro" ? <Download size={15} /> : <Lock size={14} className="text-gold-500" />}
+            {t("download")}
+          </button>
+
           {saveState === "success" && (
             <span className="text-sm font-medium text-emerald-600">{t("saved")}</span>
           )}
@@ -222,6 +268,21 @@ export default function ResumeBuilderPage() {
             <span className="text-sm font-medium text-red-600">{saveErrorMsg}</span>
           )}
         </div>
+
+        {showPaywall && (
+          <div className="mt-5 flex flex-col items-start gap-3 rounded-xl border border-gold-400/40 bg-gold-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2.5">
+              <Lock className="mt-0.5 text-gold-600" size={16} />
+              <p className="text-sm text-foreground/80">{t("downloadLocked")}</p>
+            </div>
+            <Link
+              href="/pricing"
+              className="flex-none rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+            >
+              {t("upgradeCta")}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

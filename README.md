@@ -31,7 +31,10 @@ The app runs at http://localhost:3000 and redirects to `/en` or `/ar`. Everythin
 2. Project Settings → API → copy the Project URL and anon public key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. SQL Editor → paste and run `supabase/schema.sql`. This creates the tables and Row Level Security policies.
 4. SQL Editor → paste and run `supabase/storage-setup.sql`. This creates the private `resumes` storage bucket and policies that resume uploads need — without it, uploading a resume fails.
-5. Auth → Providers → enable email/password (and Google, if you want that login option).
+5. SQL Editor → paste and run `supabase/profile-trigger.sql`. This auto-creates a `profiles` row (with `plan = 'free'`) whenever someone signs up — without it, there's nothing for the app to read a user's plan from.
+6. Auth → Providers → enable email/password (and Google, if you want that login option).
+
+**Testing the Pro paywall before real billing is wired up**: resume downloads are gated to `profiles.plan = 'pro'`. To try the unlocked experience yourself, open Table Editor → `profiles`, find your row, and manually change `plan` to `pro`. Once real billing is connected (see below), the webhook keeps this in sync automatically.
 
 ### 2. Billing
 
@@ -41,6 +44,8 @@ Pick one (see the plan doc's payments section for why Lebanon in particular need
 - **Stripe** (`BILLING_PROVIDER=stripe`): create the two Prices, fill in `STRIPE_*`, point the webhook at the same URL.
 
 Switching providers later is a one-line env change (`lib/billing/index.ts`) — no UI or route changes needed.
+
+Also set `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API → `service_role`, the secret one — never the anon/publishable key) so the webhook can mark a user's `profiles.plan` as `pro` after a real payment. This is server-only; never prefix it with `NEXT_PUBLIC_`.
 
 ### 3. AI features
 
