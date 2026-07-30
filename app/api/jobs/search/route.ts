@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+type WorkType = "remote" | "hybrid" | "onsite";
+
 type Job = {
   id: string;
   title: string;
@@ -10,7 +12,7 @@ type Job = {
   applyUrl: string;
   applyType: "one_click" | "external";
   industry: string;
-  remote: boolean;
+  workType: WorkType;
 };
 
 // --- Real, ToS-compliant sources only ---
@@ -72,13 +74,20 @@ function inferIndustry(title: string): string {
   return "Other";
 }
 
-function isRemote(location: string): boolean {
-  return /remote/i.test(location);
+// Same idea as inferIndustry: none of the underlying sources reliably expose
+// a clean work-arrangement field, so we infer it from the free-text location
+// string (which for real listings is usually something like "Dubai, UAE
+// (Remote)" or "Dubai, UAE (Hybrid)"). Checked in this order since a listing
+// mentioning "hybrid" should never fall through to the broader "remote" test.
+function inferWorkType(location: string): WorkType {
+  if (/hybrid/i.test(location)) return "hybrid";
+  if (/remote/i.test(location)) return "remote";
+  return "onsite";
 }
 
-/** Fills in the derived industry/remote fields shared by every source. */
-function finalize(job: Omit<Job, "industry" | "remote">): Job {
-  return { ...job, industry: inferIndustry(job.title), remote: isRemote(job.location) };
+/** Fills in the derived industry/work-type fields shared by every source. */
+function finalize(job: Omit<Job, "industry" | "workType">): Job {
+  return { ...job, industry: inferIndustry(job.title), workType: inferWorkType(job.location) };
 }
 
 const FALLBACK_JOBS: Job[] = (
@@ -90,12 +99,12 @@ const FALLBACK_JOBS: Job[] = (
     { id: "demo-5", title: "Relationship Manager", company: "Bank Audi", location: "Beirut, Lebanon", applyUrl: "https://www.bankaudigroup.com/careers", applyType: "external" },
     { id: "demo-8", title: "Software Engineer", company: "IDS (International Data Systems)", location: "Beirut, Lebanon", applyUrl: "https://www.idsplus.com/careers", applyType: "external" },
     { id: "demo-9", title: "Digital Marketing Specialist", company: "Bank of Beirut", location: "Beirut, Lebanon", applyUrl: "https://www.bankofbeirut.com/careers", applyType: "external" },
-    { id: "demo-6", title: "Operations Lead", company: "Talabat", location: "Amman, Jordan (Remote)", applyUrl: "https://www.talabat.com/careers", applyType: "external" },
+    { id: "demo-6", title: "Operations Lead", company: "Talabat", location: "Amman, Jordan (Hybrid)", applyUrl: "https://www.talabat.com/careers", applyType: "external" },
     { id: "demo-7", title: "Supply Chain Analyst", company: "Americana Group", location: "Cairo, Egypt", applyUrl: "https://www.americana-group.com/careers", applyType: "external" },
     { id: "demo-10", title: "HR Business Partner", company: "Emirates NBD", location: "Dubai, UAE", applyUrl: "https://www.emiratesnbd.com/en/careers", applyType: "external" },
     { id: "demo-11", title: "Product Designer", company: "Fetchr", location: "Dubai, UAE (Remote)", applyUrl: "https://www.fetchr.us/careers", applyType: "external" },
-    { id: "demo-12", title: "Customer Support Lead", company: "Trella", location: "Cairo, Egypt", applyUrl: "https://www.trella.app/careers", applyType: "external" },
-  ] satisfies Omit<Job, "industry" | "remote">[]
+    { id: "demo-12", title: "Customer Support Lead", company: "Trella", location: "Cairo, Egypt (Hybrid)", applyUrl: "https://www.trella.app/careers", applyType: "external" },
+  ] satisfies Omit<Job, "industry" | "workType">[]
 ).map(finalize);
 
 async function fetchGreenhouseJobs(board: string): Promise<Job[]> {
@@ -165,7 +174,11 @@ export async function GET(request: NextRequest) {
   const q = qRaw.toLowerCase();
   const locationFilter = request.nextUrl.searchParams.get("location") ?? "";
   const industryFilter = request.nextUrl.searchParams.get("industry") ?? "";
-  const remoteOnly = request.nextUrl.searchParams.get("remote") === "true";
+  const workTypeParam = request.nextUrl.searchParams.get("workType") ?? "";
+  const workTypeFilter: WorkType | "" =
+    workTypeParam === "remote" || workTypeParam === "hybrid" || workTypeParam === "onsite"
+      ? workTypeParam
+      : "";
 
   let realJobs: Job[] = [];
 
@@ -235,9 +248,14 @@ export async function GET(request: NextRequest) {
     jobs = jobs.filter((j) => j.industry === industryFilter);
   }
 
-  if (remoteOnly) {
-    jobs = jobs.filter((j) => j.remote);
+  if (workTypeFilter) {
+    jobs = jobs.filter((j) => j.workType === workTypeFilter);
   }
 
-  return NextResponse.json({ jobs: jobs.slice(0, 60), industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"), locations: LOCATIONS });
+  return NextResponse.json({
+    jobs: jobs.slice(0, 60),
+    industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
+    locations: LOCATIONS,
+    workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],
+  });
 }

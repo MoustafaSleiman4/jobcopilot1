@@ -183,12 +183,21 @@
       "loading": "جارٍ البحث عن وظائف...",
       "allLocations": "كل المواقع",
       "allIndustries": "كل القطاعات",
+      "allWorkTypes": "عن بُعد، هجين، ومكتبي",
       "remoteOnly": "عن بُعد فقط",
       "location": "الموقع",
       "industry": "القطاع",
       "clearFilters": "مسح الفلاتر",
       "noResults": "لا توجد وظائف مطابقة — جرّب بحثًا أو فلاتر مختلفة.",
       "resultsCount": "{count, plural, one {وظيفة واحدة} other {# وظيفة}}",
+      "matchedToResume": "نعرض وظائف مطابقة لمسمى سيرتك الذاتية، \"{title}\" — ابحث لرؤية المزيد.",
+      "applyLocked": "التقديم على الوظائف ميزة حصرية للخطة الاحترافية. رقّي حسابك للاحترافي لفتح التقديم بضغطة واحدة وطلبات غير محدودة.",
+      "upgradeCta": "الترقية إلى الاحترافي",
+      "workTypes": {
+        "remote": "عن بُعد",
+        "hybrid": "هجين",
+        "onsite": "من المكتب"
+      },
       "industryNames": {
         "Technology": "التكنولوجيا",
         "Marketing": "التسويق",
