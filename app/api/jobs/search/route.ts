@@ -189,16 +189,24 @@ export async function GET(request: NextRequest) {
     // ignore — fall through to other sources
   }
 
+  // Always blend in the curated Gulf/Levant fallback list alongside whatever
+  // real listings came back, rather than replacing it. Previously this
+  // *replaced* the curated list the moment any real job showed up — so a
+  // handful of unrelated Greenhouse results (generic global tech companies,
+  // not Gulf/MEA employers) would silently push out every relevant curated
+  // listing, which is why the page could show as few as ~10 jobs total with
+  // none of them regionally relevant.
+  let jobs = [...realJobs, ...FALLBACK_JOBS];
+
   // De-dupe by apply URL (Jooble in particular can return the same posting
-  // more than once across nearby locations).
+  // more than once across nearby locations, and a real listing could in
+  // theory collide with a fallback one).
   const seen = new Set<string>();
-  realJobs = realJobs.filter((j) => {
+  jobs = jobs.filter((j) => {
     if (seen.has(j.applyUrl)) return false;
     seen.add(j.applyUrl);
     return true;
   });
-
-  let jobs = realJobs.length > 0 ? realJobs : FALLBACK_JOBS;
 
   if (q) {
     jobs = jobs.filter(
