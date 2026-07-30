@@ -7,12 +7,14 @@
     "dashboard": "Dashboard"
   },
   "home": {
-    "badge": "Built for job seekers in Saudi Arabia, the UAE & the Gulf",
+    "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
     "title": "Your AI copilot for landing the next job",
-    "subtitle": "Build a standout resume, get matched to real openings across the Gulf and beyond, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
+    "subtitle": "Build a standout resume, get matched to real openings across the Gulf, Lebanon, and the wider Middle East & Africa region, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "See pricing",
-    "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi & beyond",
+    "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi, Beirut, Cairo, Amman & beyond",
+    "regionsLabel": "Proudly serving job seekers across",
+    "regions": ["Saudi Arabia", "UAE", "Lebanon", "Qatar", "Kuwait", "Bahrain", "Oman", "Egypt", "Jordan"],
     "features": {
       "title": "Everything you need to get hired, faster",
       "resume": {
@@ -21,7 +23,7 @@
       },
       "search": {
         "title": "Smart job search",
-        "desc": "We scan thousands of real openings from verified company career pages and job boards across the Gulf and globally, matched to your profile every day."
+        "desc": "We scan thousands of real openings from verified company career pages and job boards across the Gulf, the Levant, Egypt, and globally, matched to your profile every day."
       },
       "apply": {
         "title": "One-click apply",
@@ -153,7 +155,7 @@
     }
   },
   "footer": {
-    "tagline": "Your AI copilot for the Gulf job market.",
+    "tagline": "Your AI copilot for the Gulf & MEA job market.",
     "rights": "All rights reserved."
   }
 }

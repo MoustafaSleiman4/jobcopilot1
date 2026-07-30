@@ -63,15 +63,36 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Subtle geometric motif inspired by Gulf mashrabiya patterns, used sparingly as a background accent */
+/* Geometric lattice motif inspired by Gulf mashrabiya screens, used sparingly as a background accent */
 .pattern-motif {
-  background-image: radial-gradient(
-      circle at 1px 1px,
-      var(--gold-200) 1px,
-      transparent 0
+  background-image: linear-gradient(45deg, var(--gold-200) 1px, transparent 1px),
+    linear-gradient(-45deg, var(--gold-200) 1px, transparent 1px),
+    linear-gradient(
+      45deg,
+      transparent 74%,
+      var(--gold-200) 75%,
+      var(--gold-200) 76%,
+      transparent 77%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 74%,
+      var(--gold-200) 75%,
+      var(--gold-200) 76%,
+      transparent 77%
     );
-  background-size: 24px 24px;
-  opacity: 0.35;
+  background-size: 40px 40px;
+  opacity: 0.4;
+}
+
+/* Warm desert-to-dusk gradient, used behind hero/CTA sections for a Gulf feel */
+.desert-gradient {
+  background: radial-gradient(
+      ellipse 120% 80% at 50% -10%,
+      var(--gold-100) 0%,
+      transparent 55%
+    ),
+    linear-gradient(180deg, var(--sand-100) 0%, var(--background) 100%);
 }
 
 .rtl-flip {

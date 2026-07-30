@@ -2,6 +2,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import DuneDivider from "@/components/decorative/DuneDivider";
+import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
 import {
   FileText,
   Search,
@@ -24,6 +26,7 @@ export default function HomePage() {
   const t = useTranslations("home");
 
   const featureKeys = Object.keys(featureIcons) as (keyof typeof featureIcons)[];
+  const regions = t.raw("regions") as string[];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -31,9 +34,10 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="relative overflow-hidden">
+        <section className="desert-gradient relative overflow-hidden">
           <div className="pattern-motif pointer-events-none absolute inset-0" />
-          <div className="relative mx-auto max-w-4xl px-6 pb-20 pt-20 text-center sm:pt-28">
+          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-14 h-28 w-full text-emerald-700/[0.08] sm:h-40" />
+          <div className="relative mx-auto max-w-4xl px-6 pb-16 pt-20 text-center sm:pt-28">
             <span className="inline-block rounded-full border border-gold-400/40 bg-gold-50 px-4 py-1.5 text-xs font-semibold text-gold-600">
               {t("badge")}
             </span>
@@ -58,11 +62,24 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-8 text-sm text-foreground/50">{t("trustedBy")}</p>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
+              {regions.map((region) => (
+                <span
+                  key={region}
+                  className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70"
+                >
+                  {region}
+                </span>
+              ))}
+            </div>
           </div>
+          <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
         </section>
 
         {/* Features */}
-        <section className="border-t border-border bg-surface py-20">
+        <section className="bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
             <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
               {t("features.title")}
@@ -92,8 +109,9 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="bg-gradient-to-br from-emerald-600 to-emerald-800 py-20 text-center text-white">
-          <div className="mx-auto max-w-2xl px-6">
+        <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 py-20 text-center text-white">
+          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full text-white/[0.06] sm:h-32" />
+          <div className="relative mx-auto max-w-2xl px-6">
             <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
             <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
             <Link

@@ -47,6 +47,30 @@ const FALLBACK_JOBS: Job[] = [
     applyUrl: "https://www.aramco.com/careers",
     applyType: "external",
   },
+  {
+    id: "demo-5",
+    title: "Relationship Manager",
+    company: "Bank Audi",
+    location: "Beirut, Lebanon",
+    applyUrl: "https://www.bankaudigroup.com/careers",
+    applyType: "external",
+  },
+  {
+    id: "demo-6",
+    title: "Operations Lead",
+    company: "Talabat",
+    location: "Amman, Jordan (Remote)",
+    applyUrl: "https://www.talabat.com/careers",
+    applyType: "external",
+  },
+  {
+    id: "demo-7",
+    title: "Supply Chain Analyst",
+    company: "Americana Group",
+    location: "Cairo, Egypt",
+    applyUrl: "https://www.americana-group.com/careers",
+    applyType: "external",
+  },
 ];
 
 async function fetchGreenhouseJobs(board: string): Promise<Job[]> {

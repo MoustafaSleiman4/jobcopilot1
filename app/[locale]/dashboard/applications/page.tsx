@@ -6,6 +6,8 @@ const demoApplications = [
   { company: "Emirates NBD", title: "Digital Product Manager", status: "saved" },
   { company: "noon", title: "Senior Frontend Engineer", status: "offer" },
   { company: "Aramco Digital", title: "Data Analyst", status: "rejected" },
+  { company: "Bank Audi", title: "Relationship Manager", status: "applied" },
+  { company: "Talabat", title: "Operations Lead", status: "saved" },
 ] as const;
 
 const columns = ["saved", "applied", "interview", "offer", "rejected"] as const;
