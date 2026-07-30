@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbf8f1;
+  --foreground: #1c1a15;
+  --surface: #ffffff;
+  --border: #e8e0cd;
+
+  --gold-50: #fdf9ec;
+  --gold-100: #faf0cd;
+  --gold-200: #f3dd97;
+  --gold-400: #d9ad3f;
+  --gold-500: #c9962b;
+  --gold-600: #a97a1e;
+
+  --emerald-50: #eaf6f1;
+  --emerald-100: #cdeadd;
+  --emerald-400: #0f8f66;
+  --emerald-500: #0b7754;
+  --emerald-600: #085f43;
+  --emerald-700: #064a35;
+
+  --sand-100: #f6efdc;
+  --sand-200: #efe3c3;
+
+  --font-latin: "Inter";
+  --font-arabic: "Tajawal";
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+
+  --color-gold-50: var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+
+  --color-emerald-50: var(--emerald-50);
+  --color-emerald-100: var(--emerald-100);
+  --color-emerald-400: var(--emerald-400);
+  --color-emerald-500: var(--emerald-500);
+  --color-emerald-600: var(--emerald-600);
+  --color-emerald-700: var(--emerald-700);
+
+  --color-sand-100: var(--sand-100);
+  --color-sand-200: var(--sand-200);
+
+  --font-sans: var(--font-latin);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[lang="ar"] {
+  --font-sans: var(--font-arabic);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Subtle geometric motif inspired by Gulf mashrabiya patterns, used sparingly as a background accent */
+.pattern-motif {
+  background-image: radial-gradient(
+      circle at 1px 1px,
+      var(--gold-200) 1px,
+      transparent 0
+    );
+  background-size: 24px 24px;
+  opacity: 0.35;
+}
+
+.rtl-flip {
+  transform: scaleX(1);
+}
+
+html[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
 }

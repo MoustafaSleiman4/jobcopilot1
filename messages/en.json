@@ -1,0 +1,159 @@
+{
+  "nav": {
+    "product": "Product",
+    "pricing": "Pricing",
+    "login": "Log in",
+    "signup": "Get started",
+    "dashboard": "Dashboard"
+  },
+  "home": {
+    "badge": "Built for job seekers in Saudi Arabia, the UAE & the Gulf",
+    "title": "Your AI copilot for landing the next job",
+    "subtitle": "Build a standout resume, get matched to real openings across the Gulf and beyond, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
+    "ctaPrimary": "Start free",
+    "ctaSecondary": "See pricing",
+    "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi & beyond",
+    "features": {
+      "title": "Everything you need to get hired, faster",
+      "resume": {
+        "title": "Build & enhance your resume",
+        "desc": "Upload an existing resume or build one from scratch. Our AI rewrites bullet points, tailors it to each job, and checks it against ATS keyword filters."
+      },
+      "search": {
+        "title": "Smart job search",
+        "desc": "We scan thousands of real openings from verified company career pages and job boards across the Gulf and globally, matched to your profile every day."
+      },
+      "apply": {
+        "title": "One-click apply",
+        "desc": "Apply instantly where supported, or get a pre-filled application ready in one extra click on the source site — never a blind auto-submit bot."
+      },
+      "tracker": {
+        "title": "Application tracker",
+        "desc": "See every application's status in one board: saved, applied, interview, offer."
+      },
+      "chatbot": {
+        "title": "AI job-search assistant",
+        "desc": "Ask anything — resume feedback, interview prep, salary questions — and get answers grounded in your own profile, any time."
+      },
+      "bilingual": {
+        "title": "Arabic & English, built in",
+        "desc": "A fully right-to-left Arabic experience alongside English, not a bolt-on translation."
+      }
+    },
+    "finalCta": {
+      "title": "Ready to find your next role?",
+      "subtitle": "Create your free account and build your first resume in minutes.",
+      "button": "Create free account"
+    }
+  },
+  "pricing": {
+    "title": "Simple, transparent pricing",
+    "subtitle": "Start free. Upgrade when you're ready to apply faster.",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "period": "forever",
+      "desc": "Try the essentials",
+      "features": ["1 resume", "5 applications / month", "Basic job matching", "Community support"]
+    },
+    "pro": {
+      "name": "Pro",
+      "monthlyPrice": "$9.99",
+      "monthlyPeriod": "/ month",
+      "yearlyPrice": "$99.90",
+      "yearlyPeriod": "/ year",
+      "badge": "Most popular",
+      "desc": "Everything you need to land the job",
+      "features": [
+        "Unlimited resumes & AI enhancement",
+        "Unlimited applications",
+        "One-click apply where supported",
+        "AI cover letter generator",
+        "AI job-search chatbot",
+        "Application tracker",
+        "Mock interview practice",
+        "Priority support"
+      ],
+      "cta": "Upgrade to Pro"
+    },
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "yearlySave": "Save ~17%"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Log in to continue your job search",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "It's free to get started",
+      "name": "Full name",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Log in"
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "overview": "Overview",
+      "resume": "Resume",
+      "jobs": "Job search",
+      "applications": "Applications",
+      "chat": "Assistant"
+    },
+    "overview": {
+      "title": "Welcome back",
+      "subtitle": "Here's what's happening with your job search.",
+      "statResumes": "Resumes",
+      "statApplications": "Applications",
+      "statInterviews": "Interviews",
+      "planFree": "Free plan",
+      "planPro": "Pro plan",
+      "upgrade": "Upgrade to Pro"
+    },
+    "resume": {
+      "title": "Resume builder",
+      "subtitle": "Upload, build, and enhance your resume with AI.",
+      "upload": "Upload resume (PDF or DOCX)",
+      "orBuild": "or build one from scratch",
+      "enhance": "Enhance with AI",
+      "enhancing": "Enhancing...",
+      "save": "Save resume"
+    },
+    "jobs": {
+      "title": "Job search",
+      "subtitle": "Real openings, matched to your profile.",
+      "searchPlaceholder": "Search by title, company, or keyword",
+      "apply": "Apply",
+      "smartApply": "Smart apply",
+      "loading": "Searching for jobs..."
+    },
+    "applications": {
+      "title": "Applications",
+      "subtitle": "Track every application in one place.",
+      "saved": "Saved",
+      "applied": "Applied",
+      "interview": "Interview",
+      "offer": "Offer",
+      "rejected": "Rejected"
+    },
+    "chat": {
+      "title": "AI job-search assistant",
+      "subtitle": "Ask about your resume, interviews, or the job market.",
+      "placeholder": "Ask me anything about your job search...",
+      "send": "Send"
+    }
+  },
+  "footer": {
+    "tagline": "Your AI copilot for the Gulf job market.",
+    "rights": "All rights reserved."
+  }
+}
