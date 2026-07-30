@@ -40,20 +40,36 @@ The app runs at http://localhost:3000 and redirects to `/en` or `/ar`. Everythin
 
 Pick one (see the plan doc's payments section for why Lebanon in particular needs care here):
 
-- **Lemon Squeezy** (default, `BILLING_PROVIDER=lemonsqueezy`): create a store, two variants ($9.99/mo and $99.90/yr), and fill in `LEMONSQUEEZY_*` in `.env.local`. Point the store's webhook at `/api/billing/webhook`.
+- **Lemon Squeezy** (default, `BILLING_PROVIDER=lemonsqueezy`): create a store, two variants ($9.99/mo and $99.90/yr), and fill in `.env.local`:
+  - `LEMONSQUEEZY_API_KEY` — Settings → API → create an API key.
+  - `LEMONSQUEEZY_STORE_ID` — Settings → General.
+  - `LEMONSQUEEZY_MONTHLY_VARIANT_ID` / `LEMONSQUEEZY_YEARLY_VARIANT_ID` — the variant IDs of your two products.
+  - `LEMONSQUEEZY_WEBHOOK_SECRET` — Settings → Webhooks → create a webhook pointed at `https://gulfjobcopilot.com/api/billing/webhook`, subscribed to at least `subscription_created`, `subscription_payment_success`, and `subscription_cancelled`. The "Signing secret" you set there is this value — without it, incoming webhooks are accepted (200 OK, so Lemon Squeezy doesn't keep retrying) but silently ignored, since there's no way to verify they're genuine.
 - **Stripe** (`BILLING_PROVIDER=stripe`): create the two Prices, fill in `STRIPE_*`, point the webhook at the same URL.
 
 Switching providers later is a one-line env change (`lib/billing/index.ts`) — no UI or route changes needed.
 
 Also set `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API → `service_role`, the secret one — never the anon/publishable key) so the webhook can mark a user's `profiles.plan` as `pro` after a real payment. This is server-only; never prefix it with `NEXT_PUBLIC_`.
 
-### 3. AI features
+### 3. Email notifications (new signups + new payments)
+
+The app can email an admin address whenever someone registers or pays, using [Resend](https://resend.com):
+
+1. Sign up at resend.com (free tier), create an API key, and set `RESEND_API_KEY` in `.env.local` / Vercel.
+2. Optionally set `RESEND_FROM_EMAIL` (e.g. `"GulfJobCopilot <notifications@gulfjobcopilot.com>"`) once you've verified a sending domain in Resend; until then it falls back to Resend's sandbox sender.
+3. `ADMIN_NOTIFICATION_EMAIL` controls where these land — defaults to `moustafa_sleiman@hotmail.com` if unset.
+4. **New payments** are already wired up — `/api/billing/webhook` emails on every `subscription.created`/`subscription.renewed`/`subscription.cancelled` event once the billing webhook above is configured. Nothing extra to do here.
+5. **New signups** need one extra step since Supabase, not this app, is what actually knows the moment a user registers: in the Supabase dashboard, go to **Database → Webhooks → Create a new webhook**, table `profiles`, event `Insert`, and point it at `https://gulfjobcopilot.com/api/notify/new-signup`. Add an HTTP header `x-webhook-secret` with a secret value of your choosing, and set that same value as `SUPABASE_WEBHOOK_SECRET` in `.env.local`/Vercel so the route can confirm the request really came from Supabase.
+
+Without `RESEND_API_KEY` set, both notification paths just log what they would have sent — nothing breaks, you just won't get real emails until it's configured.
+
+### 4. AI features
 
 Set `ANTHROPIC_API_KEY` in `.env.local` to turn on real resume enhancement and the chatbot. Without it, both features return clearly-labeled demo responses so the UI is still fully demoable.
 
 Uploading a resume now runs it through a full pipeline: the file is uploaded to Supabase Storage, its text is extracted server-side (PDF via `pdf-parse`, Word via `mammoth`), then rewritten by Claude into a polished, ATS-friendly version shown to the user (viewable/editable for free; the exported PDF is Pro-gated, see below).
 
-### 4. Real job search
+### 5. Real job search
 
 Job search calls two legitimate, ToS-compliant sources — never a scraper:
 

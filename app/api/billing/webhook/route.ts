@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBillingProvider } from "@/lib/billing";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendAdminNotification } from "@/lib/email";
 
 /**
  * Single webhook endpoint for whichever billing provider is active.
@@ -26,6 +27,16 @@ export async function POST(request: NextRequest) {
   try {
     const admin = createAdminClient();
 
+    // Best-effort lookup so the notification email can mention who paid —
+    // never let a failure here block updating the user's actual plan.
+    let userEmail = "unknown";
+    try {
+      const { data } = await admin.auth.admin.getUserById(event.userId);
+      userEmail = data.user?.email ?? "unknown";
+    } catch {
+      // service role key issue or user not found — proceed without the email
+    }
+
     if (event.type === "subscription.created" || event.type === "subscription.renewed") {
       await admin
         .from("subscriptions")
@@ -39,12 +50,26 @@ export async function POST(request: NextRequest) {
           { onConflict: "user_id" }
         );
       await admin.from("profiles").update({ plan: "pro" }).eq("id", event.userId);
+
+      const isNew = event.type === "subscription.created";
+      await sendAdminNotification(
+        isNew ? "New GulfJobCopilot Pro subscriber" : "GulfJobCopilot subscription renewed",
+        `<p>${isNew ? "A user just subscribed to Pro." : "A Pro subscription just renewed."}</p>
+         <p><strong>Email:</strong> ${userEmail}</p>
+         <p><strong>Plan:</strong> ${event.plan}</p>
+         <p><strong>Provider:</strong> ${provider.name}</p>`
+      );
     } else if (event.type === "subscription.cancelled") {
       await admin
         .from("subscriptions")
         .update({ status: "cancelled" })
         .eq("user_id", event.userId);
       await admin.from("profiles").update({ plan: "free" }).eq("id", event.userId);
+
+      await sendAdminNotification(
+        "GulfJobCopilot subscription cancelled",
+        `<p>A Pro subscription was just cancelled.</p><p><strong>Email:</strong> ${userEmail}</p>`
+      );
     }
   } catch (err) {
     // Admin client not configured yet (SUPABASE_SERVICE_ROLE_KEY missing) —
