@@ -89,6 +89,7 @@
       "email": "Email",
       "password": "Password",
       "submit": "Log in",
+      "forgotLink": "Forgot password?",
       "noAccount": "Don't have an account?",
       "signupLink": "Sign up"
     },
@@ -101,6 +102,25 @@
       "submit": "Create account",
       "hasAccount": "Already have an account?",
       "loginLink": "Log in"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a link to reset it",
+      "email": "Email",
+      "submit": "Send reset link",
+      "success": "If an account exists for that email, a reset link is on its way. Check your inbox (and spam folder).",
+      "backToLogin": "Back to log in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "subtitle": "Enter a new password for your account",
+      "password": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Update password",
+      "success": "Your password has been updated. Redirecting you to your dashboard…",
+      "mismatch": "Passwords don't match.",
+      "invalidLink": "This reset link is invalid or has expired. Request a new one below.",
+      "requestNewLink": "Request a new reset link"
     }
   },
   "dashboard": {
