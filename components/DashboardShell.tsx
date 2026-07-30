@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 import ChatWidget from "./ChatWidget";
+import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   FileText,
@@ -29,6 +31,34 @@ export default function DashboardShell({
 }) {
   const t = useTranslations("dashboard.nav");
   const pathname = usePathname();
+  const [plan, setPlan] = useState<"free" | "pro">("free");
+
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const supabase = createClient();
+      supabase.auth
+        .getUser()
+        .then(async ({ data }) => {
+          const uid = data.user?.id;
+          if (!uid || cancelled) return;
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("plan")
+            .eq("id", uid)
+            .single();
+          if (!cancelled && profile?.plan === "pro") setPlan("pro");
+        })
+        .catch(() => {
+          // Not logged in / network issue — stay on the free-tier default.
+        });
+    } catch {
+      // Supabase not configured yet — stay on the free-tier default.
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-sand-100">
@@ -74,7 +104,7 @@ export default function DashboardShell({
         <main className="flex-1 p-6 md:p-10">{children}</main>
       </div>
 
-      <ChatWidget />
+      <ChatWidget plan={plan} />
     </div>
   );
 }

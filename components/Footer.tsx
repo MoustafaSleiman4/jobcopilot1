@@ -11,7 +11,7 @@ export default function Footer() {
         <Logo />
         <p className="text-sm text-foreground/60">{t("tagline")}</p>
         <p className="text-xs text-foreground/40">
-          © {year} JobCopilot. {t("rights")}
+          © {year} GulfJobCopilot. {t("rights")}
         </p>
       </div>
     </footer>

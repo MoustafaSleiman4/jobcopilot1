@@ -1,4 +1,4 @@
-# JobCopilot
+# GulfJobCopilot
 
 An AI job-search copilot for Saudi Arabia, the UAE, and the wider Gulf market — bilingual (Arabic/English, full RTL), resume builder/enhancer, job matching with one-click/smart apply, an application tracker, and an AI chatbot assistant. Subscription: Free / Pro at $9.99 per month or $99.90 per year.
 

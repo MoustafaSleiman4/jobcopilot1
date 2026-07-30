@@ -144,7 +144,15 @@
       "viewOriginal": "View original text",
       "hideOriginal": "Hide original text",
       "aiImprovedLabel": "AI-improved resume",
-      "aiImprovedNote": "This is the version our AI improved for you — free to view and keep editing. Upgrade to Pro to download it as a polished PDF."
+      "aiImprovedNote": "This is the version our AI improved for you — free to view. Upgrade to Pro to download it as a polished PDF.",
+      "reEnhance": "Re-run AI",
+      "sectionSummary": "Summary",
+      "sectionSkills": "Skills",
+      "sectionExperience": "Experience",
+      "sectionEducation": "Education",
+      "loadError": "Couldn't load your saved resume — try refreshing the page.",
+      "noResumeYet": "This is a sample layout — upload your resume above to see your own AI-improved version.",
+      "enhanceLimitReached": "You've used your one free AI resume enhancement. Upgrade to Pro for unlimited AI rewrites."
     },
     "jobs": {
       "title": "Job search",
@@ -167,7 +175,11 @@
       "title": "AI job-search assistant",
       "subtitle": "Ask about your resume, interviews, or the job market.",
       "placeholder": "Ask me anything about your job search...",
-      "send": "Send"
+      "placeholderLocked": "Upgrade to Pro to keep chatting",
+      "send": "Send",
+      "limitReached": "You've used your 3 free messages. Upgrade to Pro for unlimited access to the AI assistant.",
+      "messagesLeft": "{count, plural, one {# free message left} other {# free messages left}}",
+      "upgradeCta": "Upgrade to Pro"
     }
   },
   "footer": {

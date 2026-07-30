@@ -16,7 +16,7 @@ import "@fontsource/tajawal/800.css";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "JobCopilot — Your AI copilot for the Gulf & MEA job market",
+  title: "GulfJobCopilot — Your AI copilot for the Gulf & MEA job market",
   description:
     "Build your resume, get matched to real jobs across the Gulf, Lebanon, and the wider Middle East & Africa region, and apply in one click — in Arabic or English.",
 };

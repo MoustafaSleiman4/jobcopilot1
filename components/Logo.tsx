@@ -13,7 +13,7 @@ export default function Logo({ className = "" }: { className?: string }) {
         </svg>
       </span>
       <span className="text-lg">
-        Job<span className="text-emerald-600">Copilot</span>
+        Gulf<span className="text-emerald-600">JobCopilot</span>
       </span>
     </span>
   );

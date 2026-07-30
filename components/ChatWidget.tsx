@@ -2,11 +2,14 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { MessageCircleMore, X, Send, Bot } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { MessageCircleMore, X, Send, Bot, Lock } from "lucide-react";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-export default function ChatWidget() {
+const FREE_MESSAGE_LIMIT = 3;
+
+export default function ChatWidget({ plan = "free" }: { plan?: "free" | "pro" }) {
   const t = useTranslations("dashboard.chat");
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -14,11 +17,15 @@ export default function ChatWidget() {
     {
       role: "assistant",
       content:
-        "Hi! I'm your JobCopilot assistant. Ask me about your resume, interview prep, or the job market — I'll use your profile to help.",
+        "Hi! I'm your GulfJobCopilot assistant. Ask me about your resume, interview prep, or the job market — I'll use your profile to help.",
     },
   ]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const limitReached = plan !== "pro" && userMessageCount >= FREE_MESSAGE_LIMIT;
+  const messagesLeft = Math.max(0, FREE_MESSAGE_LIMIT - userMessageCount);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -27,7 +34,7 @@ export default function ChatWidget() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || limitReached) return;
 
     const nextMessages: Message[] = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
@@ -38,7 +45,7 @@ export default function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ messages: nextMessages, plan }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
@@ -84,19 +91,38 @@ export default function ChatWidget() {
                 ...
               </div>
             )}
+            {plan !== "pro" && !limitReached && userMessageCount > 0 && (
+              <p className="text-center text-xs text-foreground/40">
+                {t("messagesLeft", { count: messagesLeft })}
+              </p>
+            )}
+            {limitReached && (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-gold-400/40 bg-gold-50 p-3 text-center">
+                <Lock className="text-gold-600" size={16} />
+                <p className="text-xs text-foreground/80">{t("limitReached")}</p>
+                <Link
+                  href="/pricing"
+                  className="rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  {t("upgradeCta")}
+                </Link>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border p-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t("placeholder")}
-              className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              placeholder={limitReached ? t("placeholderLocked") : t("placeholder")}
+              disabled={limitReached}
+              className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:opacity-50"
             />
             <button
               type="submit"
               aria-label={t("send")}
-              className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={limitReached}
+              className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               <Send size={16} />
             </button>
