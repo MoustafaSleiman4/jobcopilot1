@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 // Self-hosted fonts (no runtime fetch to Google Fonts required).
@@ -15,11 +15,79 @@ import "@fontsource/tajawal/700.css";
 import "@fontsource/tajawal/800.css";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  title: "GulfJobCopilot — Your AI copilot for the Gulf & MEA job market",
-  description:
-    "Build your resume, get matched to real jobs across the Gulf, Lebanon, and the wider Middle East & Africa region, and apply in one click — in Arabic or English.",
-};
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
+
+// Locale-aware metadata (title/description are localized, and each locale
+// gets a canonical URL plus hreflang alternates pointing at the other one)
+// instead of one static object shared by both /en and /ar — search engines
+// otherwise have no way to know the Arabic and English pages are the same
+// content in two languages, and Arabic search results would show English
+// titles/descriptions.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "home" });
+
+  const title = `GulfJobCopilot — ${t("title")}`;
+  const description = t("subtitle");
+  const path = `/${locale}`;
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: `%s | GulfJobCopilot`,
+    },
+    description,
+    applicationName: "GulfJobCopilot",
+    keywords: [
+      "jobs in Saudi Arabia",
+      "jobs in UAE",
+      "jobs in Dubai",
+      "jobs in Lebanon",
+      "Gulf jobs",
+      "Middle East job search",
+      "AI resume builder",
+      "resume enhancer",
+      "job search Beirut",
+      "وظائف الخليج",
+      "وظائف لبنان",
+      "السيرة الذاتية",
+    ],
+    alternates: {
+      canonical: path,
+      languages: {
+        en: "/en",
+        ar: "/ar",
+        "x-default": "/en",
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: path,
+      siteName: "GulfJobCopilot",
+      locale: locale === "ar" ? "ar_AR" : "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true },
+    },
+    icons: {
+      icon: "/favicon.ico",
+    },
+  };
+}
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

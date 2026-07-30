@@ -101,8 +101,35 @@ export default function DashboardShell({
             <LocaleSwitcher />
           </div>
         </header>
-        <main className="flex-1 p-6 md:p-10">{children}</main>
+        {/* Below md, the sidebar above is hidden entirely — this bottom tab
+            bar is the only way to move between dashboard sections on a
+            phone, so it isn't optional chrome. The generous bottom padding
+            on <main> keeps page content (a save button, a job's apply
+            button) from ending up underneath either the tab bar or the
+            floating chat button that floats just above it. */}
+        <main className="flex-1 p-6 pb-44 md:p-10 md:pb-10">{children}</main>
       </div>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {navItems.map(({ key, href, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={key}
+              href={href}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
+                active ? "text-emerald-700" : "text-foreground/50"
+              }`}
+            >
+              <Icon className="h-5 w-5" size={20} />
+              {t(key)}
+            </Link>
+          );
+        })}
+      </nav>
 
       <ChatWidget plan={plan} />
     </div>

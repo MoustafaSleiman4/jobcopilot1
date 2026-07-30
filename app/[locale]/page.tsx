@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -22,14 +22,49 @@ const featureIcons = {
   bilingual: Languages,
 } as const;
 
-export default function HomePage() {
-  const t = useTranslations("home");
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
+
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "home" });
 
   const featureKeys = Object.keys(featureIcons) as (keyof typeof featureIcons)[];
   const regions = t.raw("regions") as string[];
 
+  // Organization + SoftwareApplication structured data so search engines can
+  // show a richer result (name, description, pricing) instead of just a
+  // plain blue link — see https://developers.google.com/search/docs/appearance/structured-data.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "GulfJobCopilot",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: `${SITE_URL}/${locale}`,
+    inLanguage: locale,
+    description: t("subtitle"),
+    offers: [
+      { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free" },
+      { "@type": "Offer", price: "9.99", priceCurrency: "USD", name: "Pro monthly" },
+    ],
+    provider: {
+      "@type": "Organization",
+      name: "GulfJobCopilot",
+      url: SITE_URL,
+    },
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
 
       <main className="flex-1">

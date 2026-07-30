@@ -60,7 +60,9 @@ export default function ChatWidget({ plan = "free" }: { plan?: "free" | "pro" })
   }
 
   return (
-    <div className="fixed bottom-6 end-6 z-50">
+    // Extra bottom offset below md so the floating button and panel clear
+    // DashboardShell's mobile bottom tab bar instead of sitting on top of it.
+    <div className="fixed bottom-24 end-4 z-50 sm:end-6 md:bottom-6">
       {open && (
         <div className="mb-4 flex h-[28rem] w-80 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl sm:w-96">
           <div className="flex items-center justify-between bg-emerald-600 px-4 py-3 text-white">

@@ -180,7 +180,37 @@
       "searchPlaceholder": "ابحث بالمسمى الوظيفي أو الشركة أو كلمة مفتاحية",
       "apply": "تقديم",
       "smartApply": "تقديم ذكي",
-      "loading": "جارٍ البحث عن وظائف..."
+      "loading": "جارٍ البحث عن وظائف...",
+      "allLocations": "كل المواقع",
+      "allIndustries": "كل القطاعات",
+      "remoteOnly": "عن بُعد فقط",
+      "location": "الموقع",
+      "industry": "القطاع",
+      "clearFilters": "مسح الفلاتر",
+      "noResults": "لا توجد وظائف مطابقة — جرّب بحثًا أو فلاتر مختلفة.",
+      "resultsCount": "{count, plural, one {وظيفة واحدة} other {# وظيفة}}",
+      "industryNames": {
+        "Technology": "التكنولوجيا",
+        "Marketing": "التسويق",
+        "Finance & Banking": "المالية والمصارف",
+        "Sales & Business Development": "المبيعات وتطوير الأعمال",
+        "Operations & Supply Chain": "العمليات وسلسلة التوريد",
+        "Human Resources": "الموارد البشرية",
+        "Customer Support": "دعم العملاء",
+        "Design": "التصميم",
+        "Other": "أخرى"
+      },
+      "locationNames": {
+        "United Arab Emirates": "الإمارات العربية المتحدة",
+        "Saudi Arabia": "السعودية",
+        "Qatar": "قطر",
+        "Kuwait": "الكويت",
+        "Bahrain": "البحرين",
+        "Oman": "عُمان",
+        "Lebanon": "لبنان",
+        "Jordan": "الأردن",
+        "Egypt": "مصر"
+      }
     },
     "applications": {
       "title": "الطلبات",
