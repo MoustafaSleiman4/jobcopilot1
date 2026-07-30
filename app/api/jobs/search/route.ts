@@ -89,6 +89,22 @@ const FALLBACK_JOBS: Job[] = [
     applyType: "external",
   },
   {
+    id: "demo-8",
+    title: "Software Engineer",
+    company: "IDS (International Data Systems)",
+    location: "Beirut, Lebanon",
+    applyUrl: "https://www.idsplus.com/careers",
+    applyType: "external",
+  },
+  {
+    id: "demo-9",
+    title: "Digital Marketing Specialist",
+    company: "Bank of Beirut",
+    location: "Beirut, Lebanon",
+    applyUrl: "https://www.bankofbeirut.com/careers",
+    applyType: "external",
+  },
+  {
     id: "demo-6",
     title: "Operations Lead",
     company: "Talabat",
@@ -209,8 +225,15 @@ export async function GET(request: NextRequest) {
   });
 
   if (q) {
+    // Include location in the match, not just title/company — otherwise
+    // typing a place name like "Lebanon" or "Beirut" returned zero results
+    // even when Lebanon-based listings were present, since nothing in a
+    // job's title or company name usually mentions the country.
     jobs = jobs.filter(
-      (j) => j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
+      (j) =>
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        j.location.toLowerCase().includes(q)
     );
   }
 
