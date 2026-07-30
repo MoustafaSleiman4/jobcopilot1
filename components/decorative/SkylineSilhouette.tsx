@@ -1,79 +1,84 @@
 /**
- * An ambient Gulf/Levant skyline silhouette used as a low-opacity background
- * behind the hero and CTA sections. These are original, simplified vector
- * silhouettes inspired by well-known building outlines (in the style of
- * generic "city skyline" clip art), not traced from photographs or
- * architectural drawings:
- *  - a tiered, tapering central tower evoking Burj Khalifa (Dubai)
- *  - a tapered obelisk with a sphere evoking Al Faisaliah Tower (Riyadh)
- *  - a low rooftop-terrace building evoking Beirut Digital District, which
- *    (unlike the two towers above) is a low-rise district rather than a
- *    single iconic tower, so it's represented that way
- * plus generic towers/minarets/a crescent moon to round out the skyline.
+ * A skyline silhouette used behind the hero and CTA sections, built to
+ * clearly read as four specific, recognizable landmarks (left to right):
+ *  - Al Faisaliah Tower (Riyadh) — tapered obelisk with its signature
+ *    gold sphere near the top
+ *  - Kingdom Centre / Al Mamlakah Tower (Riyadh) — the "bottle-opener"
+ *    silhouette: twin legs rising from a shared base, joined by an arch
+ *    opening, capped by a connecting lintel at the top
+ *  - Burj Khalifa (Dubai) — the tallest element, a tiered, stepped tower
+ *    tapering to a needle spire
+ *  - Beirut Digital District — represented as a cluster of low/mid-rise
+ *    buildings with a rooftop pergola, since BDD is a district rather
+ *    than a single tower
+ * These are original, simplified vector silhouettes drawn in the style of
+ * "city skyline" illustration/clip art (not traced from photos or
+ * architectural drawings), sized and spaced so each one is unambiguous
+ * rather than blending into generic filler buildings.
  */
 export default function SkylineSilhouette({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 1200 220"
-      preserveAspectRatio="xMidYMax slice"
+      viewBox="0 0 1200 260"
+      preserveAspectRatio="xMidYMax meet"
       className={className}
       aria-hidden="true"
     >
-      <g fill="currentColor">
-        {/* crescent moon */}
-        <path d="M1060 36a24 24 0 1 0 6 47 29 29 0 1 1-6-47z" />
+      <g
+        fill="currentColor"
+        fillOpacity={0.55}
+        stroke="currentColor"
+        strokeOpacity={0.9}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      >
+        {/* far-left low filler buildings */}
+        <rect x="10" y="200" width="28" height="60" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
+        <rect x="46" y="180" width="20" height="80" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
 
-        {/* far-left low towers */}
-        <rect x="20" y="155" width="26" height="65" />
-        <rect x="55" y="135" width="20" height="85" />
-        <rect x="90" y="165" width="30" height="55" />
+        {/* Al Faisaliah Tower — tapered obelisk + a clearly separated ball + spire mast */}
+        <g>
+          <polygon points="110,260 118,160 128,100 152,100 162,160 170,260" />
+          <circle cx="140" cy="76" r="20" />
+          <rect x="137.5" y="12" width="5" height="44" />
+        </g>
 
-        {/* minaret */}
-        <rect x="150" y="95" width="9" height="125" />
-        <polygon points="145.5,95 154.5,68 163.5,95" />
-        <rect x="142" y="91" width="25" height="7" />
+        {/* Kingdom Centre / Al Mamlakah Tower — "bottle-opener" silhouette:
+            solid base, two legs, a smooth rounded arch opening, connecting
+            lintel on top */}
+        <path
+          fillRule="evenodd"
+          d="M300,260 L300,90 Q300,68 325,68 L385,68 Q410,68 410,90 L410,260 Z
+             M334,260 L334,145 Q334,86 355,86 Q376,86 376,145 L376,260 Z"
+        />
 
-        {/* Al Faisaliah Tower — tapered obelisk + sphere + mast */}
-        <polygon points="330,220 350,58 368,58 388,220" />
-        <circle cx="359" cy="46" r="11" />
-        <rect x="357" y="10" width="4" height="30" />
+        {/* Burj Khalifa — tiered, tapering central spire, the tallest element */}
+        <path d="M540,260 L540,168 L560,168 L560,120 L578,120 L578,78 L596,78 L596,50 L600,50 L604,8 L608,50 L612,50 L612,78 L630,78 L630,120 L648,120 L648,168 L668,168 L668,260 Z" />
 
-        {/* low mid towers */}
-        <rect x="420" y="150" width="24" height="70" />
-        <rect x="452" y="130" width="18" height="90" />
+        {/* low filler buildings between landmarks */}
+        <rect x="440" y="205" width="26" height="55" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
+        <rect x="700" y="195" width="24" height="65" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
+        <rect x="734" y="215" width="30" height="45" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
 
-        {/* Burj Khalifa — tiered, tapering central spire (the tallest element) */}
-        <path d="M540,220 L540,130 L556,130 L556,86 L570,86 L570,48 L584,48 L590,10 L596,48 L610,48 L610,86 L624,86 L624,130 L640,130 L640,220 Z" />
+        {/* Beirut Digital District — cluster of low/mid-rise buildings with
+            a rooftop pergola/trellis, since BDD is a district, not one tower */}
+        <g fillOpacity={0.5} strokeOpacity={0.85}>
+          <rect x="860" y="150" width="50" height="110" />
+          <rect x="918" y="185" width="115" height="75" />
+          <rect x="928" y="165" width="90" height="22" />
+          {/* rooftop pergola/trellis slats */}
+          <rect x="940" y="148" width="4" height="18" />
+          <rect x="960" y="148" width="4" height="18" />
+          <rect x="980" y="148" width="4" height="18" />
+          <rect x="1000" y="148" width="4" height="18" />
+          <rect x="936" y="145" width="68" height="4" />
+        </g>
 
-        {/* mid towers right of the spire */}
-        <rect x="670" y="140" width="22" height="80" />
-        <rect x="700" y="160" width="30" height="60" />
-        <polygon points="750,220 768,95 786,220" />
-
-        {/* second minaret */}
-        <rect x="840" y="100" width="9" height="120" />
-        <polygon points="835.5,100 844.5,74 853.5,100" />
-        <rect x="832" y="96" width="25" height="7" />
-
-        {/* generic towers */}
-        <rect x="900" y="145" width="26" height="75" />
-        <rect x="940" y="120" width="20" height="100" />
-
-        {/* Beirut Digital District — low rooftop-terrace building rather
-            than a tall tower, since BDD is a district, not a single icon */}
-        <rect x="990" y="165" width="90" height="55" />
-        <rect x="1000" y="150" width="70" height="15" />
-        {/* rooftop pergola/trellis, common on BDD's converted rooftops */}
-        <rect x="1010" y="136" width="3" height="14" />
-        <rect x="1026" y="136" width="3" height="14" />
-        <rect x="1042" y="136" width="3" height="14" />
-        <rect x="1058" y="136" width="3" height="14" />
-        <rect x="1008" y="134" width="56" height="3" />
-
-        {/* right-edge towers */}
-        <rect x="1100" y="155" width="24" height="65" />
-        <rect x="1135" y="135" width="18" height="85" />
-        <rect x="1165" y="170" width="26" height="50" />
+        {/* far-right low filler buildings */}
+        <rect x="1080" y="195" width="26" height="65" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
+        <rect x="1116" y="175" width="20" height="85" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
+        <rect x="1150" y="210" width="30" height="50" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
       </g>
     </svg>
   );

@@ -36,8 +36,8 @@ export default function HomePage() {
         {/* Hero */}
         <section className="desert-gradient relative overflow-hidden">
           <div className="pattern-motif pointer-events-none absolute inset-0" />
-          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-14 h-32 w-full text-emerald-800/[0.22] sm:h-48" />
-          <div className="relative mx-auto max-w-4xl px-6 pb-16 pt-20 text-center sm:pt-28">
+          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
+          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
             <span className="inline-block rounded-full border border-gold-400/40 bg-gold-50 px-4 py-1.5 text-xs font-semibold text-gold-600">
               {t("badge")}
             </span>
@@ -109,8 +109,8 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 py-20 text-center text-white">
-          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-28 w-full text-white/[0.16] sm:h-40" />
+        <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 pb-48 pt-20 text-center text-white sm:pb-64">
+          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-36 w-full text-white sm:h-52" />
           <div className="relative mx-auto max-w-2xl px-6">
             <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
             <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
