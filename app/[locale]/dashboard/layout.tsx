@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import { createClient } from "@/lib/supabase/server";
 
@@ -6,24 +7,34 @@ import { createClient } from "@/lib/supabase/server";
 // explicitly rather than letting Next.js infer it at build time.
 export const dynamic = "force-dynamic";
 
-async function isSupabaseConfigured() {
+async function getSupabaseSession() {
   try {
-    await createClient();
-    return true;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return { configured: true as const, user };
   } catch {
-    return false;
+    return { configured: false as const, user: null };
   }
 }
 
 export default async function DashboardLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
-  const configured = await isSupabaseConfigured();
+  const { locale } = await params;
+  const { configured, user } = await getSupabaseSession();
 
-  // Once Supabase is configured, this is the place to check for a real
-  // session and redirect unauthenticated users to /login.
+  // Once Supabase is configured, a real login is required to see the
+  // dashboard — without this, uploads/saves would silently fail Row Level
+  // Security checks instead of prompting the user to log in.
+  if (configured && !user) {
+    redirect(`/${locale}/login`);
+  }
 
   return <DashboardShell demoMode={!configured}>{children}</DashboardShell>;
 }

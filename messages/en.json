@@ -125,10 +125,17 @@
       "title": "Resume builder",
       "subtitle": "Upload, build, and enhance your resume with AI.",
       "upload": "Upload resume (PDF or DOCX)",
+      "uploading": "Uploading...",
+      "uploaded": "Uploaded",
+      "uploadError": "Upload failed",
+      "uploadTooBig": "That file is larger than 10MB — please use a smaller file.",
+      "loginRequired": "Please log in to upload or save a resume.",
       "orBuild": "or build one from scratch",
       "enhance": "Enhance with AI",
       "enhancing": "Enhancing...",
-      "save": "Save resume"
+      "save": "Save resume",
+      "saving": "Saving...",
+      "saved": "Saved"
     },
     "jobs": {
       "title": "Job search",

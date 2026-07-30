@@ -30,7 +30,8 @@ The app runs at http://localhost:3000 and redirects to `/en` or `/ar`. Everythin
 1. Create a project at https://supabase.com (free tier, no forced expiry).
 2. Project Settings → API → copy the Project URL and anon public key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. SQL Editor → paste and run `supabase/schema.sql`. This creates the tables and Row Level Security policies.
-4. Auth → Providers → enable email/password (and Google, if you want that login option).
+4. SQL Editor → paste and run `supabase/storage-setup.sql`. This creates the private `resumes` storage bucket and policies that resume uploads need — without it, uploading a resume fails.
+5. Auth → Providers → enable email/password (and Google, if you want that login option).
 
 ### 2. Billing
 
