@@ -138,7 +138,13 @@
       "saved": "Saved",
       "download": "Download PDF",
       "downloadLocked": "Downloading your resume is a Pro feature. Upgrade to export polished, ready-to-send PDFs anytime.",
-      "upgradeCta": "Upgrade to Pro"
+      "upgradeCta": "Upgrade to Pro",
+      "parsing": "Reading your resume...",
+      "rewriting": "AI is rewriting your resume...",
+      "viewOriginal": "View original text",
+      "hideOriginal": "Hide original text",
+      "aiImprovedLabel": "AI-improved resume",
+      "aiImprovedNote": "This is the version our AI improved for you — free to view and keep editing. Upgrade to Pro to download it as a polished PDF."
     },
     "jobs": {
       "title": "Job search",

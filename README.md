@@ -51,6 +51,19 @@ Also set `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API → 
 
 Set `ANTHROPIC_API_KEY` in `.env.local` to turn on real resume enhancement and the chatbot. Without it, both features return clearly-labeled demo responses so the UI is still fully demoable.
 
+Uploading a resume now runs it through a full pipeline: the file is uploaded to Supabase Storage, its text is extracted server-side (PDF via `pdf-parse`, Word via `mammoth`), then rewritten by Claude into a polished, ATS-friendly version shown to the user (viewable/editable for free; the exported PDF is Pro-gated, see below).
+
+### 4. Real job search
+
+Job search calls two legitimate, ToS-compliant sources — never a scraper:
+
+- **Greenhouse's public job board API** — free, no key, already wired up.
+- **Jooble** (recommended for real Gulf/Levant coverage): sign up for a free API key at https://jooble.org/api/about and set `JOOBLE_API_KEY` in `.env.local`. Jooble is a licensed aggregator with dedicated coverage for the UAE, Saudi Arabia, Qatar, Kuwait, and Bahrain (and accepts other countries like Lebanon/Jordan/Egypt as free-text locations).
+
+**Why not LinkedIn:** LinkedIn's User Agreement explicitly prohibits scraping/automated data collection, they actively detect and block bots, and there's no public jobs-search API open to third-party apps like this one. Building that would risk the product and the account behind it — so it's intentionally not part of this app. Once you have real hiring volume, the legitimate way to add LinkedIn-sourced jobs is LinkedIn's official Talent/Jobs Partner Program (a paid, approved-partner integration), which could be added the same way as Jooble above.
+
+Without a `JOOBLE_API_KEY`, job search still shows real, live Greenhouse listings plus a curated Gulf/Levant demo list, so the page is never empty.
+
 ## Deploying online for free
 
 **Recommended: Vercel (frontend + serverless API routes) + Supabase (already free from step 1 above).**

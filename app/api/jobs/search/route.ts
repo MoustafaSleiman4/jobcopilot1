@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 type Job = {
   id: string;
   title: string;
@@ -9,10 +11,41 @@ type Job = {
   applyType: "one_click" | "external";
 };
 
-// A handful of real public Greenhouse job boards (boards-api.greenhouse.io is a
-// free, public, ToS-compliant API — no key needed) used as live demo data.
-// See plan doc §4 for why this is the legitimate path vs. scraping/auto-submit bots.
+// --- Real, ToS-compliant sources only ---
+//
+// A note on why there's no LinkedIn (or Indeed/other closed-platform)
+// crawler here: LinkedIn's User Agreement explicitly prohibits scraping or
+// automated data collection from the site, they actively fingerprint and
+// block bots, and there is no public jobs-search API available to
+// third-party apps like this one. Building a scraper against that would put
+// the product (and the account behind it) at real legal and enforcement
+// risk. Instead this route only calls sources that are meant to be called
+// programmatically:
+//   - Greenhouse's public job board API (boards-api.greenhouse.io) — free,
+//     no key, explicitly public.
+//   - Jooble's REST API (jooble.org/api) — a licensed job-search aggregator
+//     with a free developer key, covering the UAE, Saudi Arabia, Qatar,
+//     Kuwait, Bahrain and more. Enabled once JOOBLE_API_KEY is set.
+// A curated fallback list keeps the page populated with real Gulf/Levant
+// employer links even before either of those is configured.
+
 const GREENHOUSE_BOARDS = ["doordash", "robinhood", "coinbase", "discord"];
+
+// Locations queried against Jooble to cover the app's core region. Jooble
+// aggregates from local job boards per-country; not every country in our
+// audience (e.g. Lebanon, Jordan) has a dedicated jooble.org subdomain, but
+// the API still accepts them as a free-text location.
+const JOOBLE_LOCATIONS = [
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "Qatar",
+  "Kuwait",
+  "Bahrain",
+  "Oman",
+  "Lebanon",
+  "Jordan",
+  "Egypt",
+];
 
 const FALLBACK_JOBS: Job[] = [
   {
@@ -74,38 +107,98 @@ const FALLBACK_JOBS: Job[] = [
 ];
 
 async function fetchGreenhouseJobs(board: string): Promise<Job[]> {
-  const res = await fetch(
-    `https://boards-api.greenhouse.io/v1/boards/${board}/jobs?content=false`,
-    { next: { revalidate: 3600 } }
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.jobs ?? []).slice(0, 5).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) => ({
-    id: `${board}-${j.id}`,
-    title: j.title,
-    company: board[0].toUpperCase() + board.slice(1),
-    location: j.location?.name ?? "Remote",
-    applyUrl: j.absolute_url,
-    // Greenhouse's public job board API is read-only; real submission requires
-    // the (auth'd) Job Board API — so this stays a "smart apply" deep link.
-    applyType: "external" as const,
-  }));
+  try {
+    const res = await fetch(
+      `https://boards-api.greenhouse.io/v1/boards/${board}/jobs?content=false`,
+      { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.jobs ?? []).slice(0, 5).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) => ({
+      id: `${board}-${j.id}`,
+      title: j.title,
+      company: board[0].toUpperCase() + board.slice(1),
+      location: j.location?.name ?? "Remote",
+      applyUrl: j.absolute_url,
+      // Greenhouse's public job board API is read-only; real submission requires
+      // the (auth'd) Job Board API — so this stays a "smart apply" deep link.
+      applyType: "external" as const,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+type JoobleJob = {
+  id?: string | number;
+  title?: string;
+  company?: string;
+  location?: string;
+  link?: string;
+};
+
+async function fetchJoobleJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
+  try {
+    const res = await fetch(`https://jooble.org/api/${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keywords, location }),
+      next: { revalidate: 1800 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const jobs: JoobleJob[] = data.jobs ?? [];
+    return jobs.slice(0, 8).map((j, idx) => ({
+      id: `jooble-${location}-${j.id ?? idx}`,
+      title: j.title ?? "Untitled role",
+      company: j.company || "—",
+      location: j.location || location,
+      applyUrl: j.link ?? "#",
+      // Jooble is an aggregator: the link goes to the original posting (its
+      // own site or the employer's), so this is always a smart-apply deep
+      // link, never an in-app auto-submit.
+      applyType: "external" as const,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get("q")?.toLowerCase() ?? "";
+  const qRaw = request.nextUrl.searchParams.get("q") ?? "";
+  const q = qRaw.toLowerCase();
 
-  let jobs: Job[] = [];
+  let realJobs: Job[] = [];
+
+  const joobleKey = process.env.JOOBLE_API_KEY;
+  if (joobleKey) {
+    try {
+      const results = await Promise.all(
+        JOOBLE_LOCATIONS.map((loc) => fetchJoobleJobs(joobleKey, qRaw, loc))
+      );
+      realJobs = realJobs.concat(results.flat());
+    } catch {
+      // ignore — fall through to other sources
+    }
+  }
+
   try {
     const results = await Promise.all(GREENHOUSE_BOARDS.map(fetchGreenhouseJobs));
-    jobs = results.flat();
+    realJobs = realJobs.concat(results.flat());
   } catch {
-    jobs = [];
+    // ignore — fall through to other sources
   }
 
-  if (jobs.length === 0) {
-    jobs = FALLBACK_JOBS;
-  }
+  // De-dupe by apply URL (Jooble in particular can return the same posting
+  // more than once across nearby locations).
+  const seen = new Set<string>();
+  realJobs = realJobs.filter((j) => {
+    if (seen.has(j.applyUrl)) return false;
+    seen.add(j.applyUrl);
+    return true;
+  });
+
+  let jobs = realJobs.length > 0 ? realJobs : FALLBACK_JOBS;
 
   if (q) {
     jobs = jobs.filter(
@@ -113,5 +206,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ jobs });
+  return NextResponse.json({ jobs: jobs.slice(0, 60) });
 }

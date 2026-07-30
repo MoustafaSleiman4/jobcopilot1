@@ -3,17 +3,37 @@
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Upload, Sparkles, Save, FileCheck2, AlertCircle, Download, Lock } from "lucide-react";
+import {
+  Upload,
+  Sparkles,
+  Save,
+  FileCheck2,
+  AlertCircle,
+  Download,
+  Lock,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const DEMO_RESUME =
+  "Marketing coordinator with 3 years of experience running paid social campaigns for retail brands across the UAE.";
 
 export default function ResumeBuilderPage() {
   const t = useTranslations("dashboard.resume");
-  const [summary, setSummary] = useState(
-    "Marketing coordinator with 3 years of experience running paid social campaigns for retail brands across the UAE."
-  );
+
+  // The single source of truth for "what the user currently sees/edits" —
+  // starts as demo placeholder text, becomes the AI-improved version once a
+  // resume has been uploaded and enhanced.
+  const [resumeText, setResumeText] = useState(DEMO_RESUME);
+  const [originalText, setOriginalText] = useState<string | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
+
   const [enhancing, setEnhancing] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [pipelineErrorMsg, setPipelineErrorMsg] = useState<string | null>(null);
 
   const [userId, setUserId] = useState<string | null | undefined>(undefined); // undefined = not checked yet
   const [plan, setPlan] = useState<"free" | "pro">("free");
@@ -47,9 +67,16 @@ export default function ResumeBuilderPage() {
           .eq("id", uid)
           .single();
         if (!cancelled && profile?.plan === "pro") setPlan("pro");
+      }).catch((err: unknown) => {
+        // A network/auth failure here (not just "unconfigured") should
+        // still resolve to "no user" rather than leaving the page stuck
+        // thinking the session check is still in progress forever.
+        console.error("[resume] Supabase getUser() failed:", err);
+        if (!cancelled) setUserId(null);
       });
-    } catch {
+    } catch (err) {
       // Supabase not configured yet — treat as no user, features stay disabled.
+      console.error("[resume] Supabase client unavailable:", err);
       setUserId(null);
     }
     return () => {
@@ -57,16 +84,29 @@ export default function ResumeBuilderPage() {
     };
   }, []);
 
+  async function runEnhance(text: string): Promise<string> {
+    const res = await fetch("/api/resume/enhance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "AI enhancement failed");
+    }
+    const data = await res.json();
+    return data.enhanced ?? text;
+  }
+
   async function handleEnhance() {
     setEnhancing(true);
+    setPipelineErrorMsg(null);
     try {
-      const res = await fetch("/api/resume/enhance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: summary }),
-      });
-      const data = await res.json();
-      setSummary(data.enhanced ?? summary);
+      const enhanced = await runEnhance(resumeText);
+      setResumeText(enhanced);
+    } catch (err) {
+      console.error("[resume] manual enhance failed:", err);
+      setPipelineErrorMsg(err instanceof Error ? err.message : "AI enhancement failed");
     } finally {
       setEnhancing(false);
     }
@@ -91,6 +131,9 @@ export default function ResumeBuilderPage() {
 
     setUploadState("uploading");
     setUploadErrorMsg(null);
+    setPipelineErrorMsg(null);
+
+    let newResumeId: string | null = null;
 
     try {
       const supabase = createClient();
@@ -108,12 +151,53 @@ export default function ResumeBuilderPage() {
         .single();
       if (insertError) throw insertError;
 
-      setResumeId(inserted?.id ?? null);
+      newResumeId = inserted?.id ?? null;
+      setResumeId(newResumeId);
       setUploadedFileName(file.name);
       setUploadState("success");
     } catch (err) {
+      console.error("[resume] upload failed:", err);
       setUploadState("error");
       setUploadErrorMsg(err instanceof Error ? err.message : t("uploadError"));
+      return; // don't attempt to parse/enhance a file that failed to upload
+    }
+
+    // Extract text from the file, then run it through the AI rewrite —
+    // both steps are best-effort: if either fails, the user still has their
+    // file safely uploaded and can type/paste text manually below.
+    setParsing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const parseRes = await fetch("/api/resume/parse", { method: "POST", body: formData });
+      const parseData = await parseRes.json();
+      if (!parseRes.ok) throw new Error(parseData.error ?? "Could not read this file.");
+
+      const extracted: string = parseData.text;
+      setOriginalText(extracted);
+      setParsing(false);
+
+      setEnhancing(true);
+      const enhanced = await runEnhance(extracted);
+      setResumeText(enhanced);
+
+      if (newResumeId) {
+        try {
+          const supabase = createClient();
+          await supabase
+            .from("resumes")
+            .update({ content: { original: extracted, enhanced } })
+            .eq("id", newResumeId);
+        } catch (err) {
+          console.error("[resume] failed to persist AI-enhanced content:", err);
+        }
+      }
+    } catch (err) {
+      console.error("[resume] parse/enhance pipeline failed:", err);
+      setPipelineErrorMsg(err instanceof Error ? err.message : "Couldn't process this file automatically.");
+    } finally {
+      setParsing(false);
+      setEnhancing(false);
     }
   }
 
@@ -129,7 +213,7 @@ export default function ResumeBuilderPage() {
 
     try {
       const supabase = createClient();
-      const content = { summary };
+      const content = { original: originalText, enhanced: resumeText };
 
       if (resumeId) {
         const { error } = await supabase
@@ -149,6 +233,7 @@ export default function ResumeBuilderPage() {
 
       setSaveState("success");
     } catch (err) {
+      console.error("[resume] save failed:", err);
       setSaveState("error");
       setSaveErrorMsg(err instanceof Error ? err.message : "Save failed");
     }
@@ -163,6 +248,7 @@ export default function ResumeBuilderPage() {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const marginX = 56;
+    const pageHeight = doc.internal.pageSize.getHeight();
     let y = 72;
 
     doc.setFont("helvetica", "bold");
@@ -172,11 +258,20 @@ export default function ResumeBuilderPage() {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    const lines = doc.splitTextToSize(summary, 500);
-    doc.text(lines, marginX, y);
+    const lines = doc.splitTextToSize(resumeText, 500);
+    for (const line of lines) {
+      if (y > pageHeight - 56) {
+        doc.addPage();
+        y = 56;
+      }
+      doc.text(line, marginX, y);
+      y += 15;
+    }
 
     doc.save("resume.pdf");
   }
+
+  const busy = parsing || enhancing;
 
   return (
     <div className="max-w-3xl">
@@ -225,22 +320,58 @@ export default function ResumeBuilderPage() {
         </div>
       </div>
 
+      {busy && (
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          <Loader2 className="animate-spin" size={16} />
+          {parsing ? t("parsing") : t("rewriting")}
+        </div>
+      )}
+
+      {pipelineErrorMsg && !busy && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 flex-none" size={16} />
+          <span>{pipelineErrorMsg}</span>
+        </div>
+      )}
+
+      {originalText && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowOriginal((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-foreground/60 hover:text-foreground"
+          >
+            {showOriginal ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {showOriginal ? t("hideOriginal") : t("viewOriginal")}
+          </button>
+          {showOriginal && (
+            <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border border-border bg-sand-50 p-4 font-sans text-xs leading-relaxed text-foreground/70">
+              {originalText}
+            </pre>
+          )}
+        </div>
+      )}
+
       <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Professional summary</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {originalText ? t("aiImprovedLabel") : "Professional summary"}
+          </h2>
           <button
             onClick={handleEnhance}
-            disabled={enhancing}
+            disabled={busy}
             className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
           >
             <Sparkles size={14} />
             {enhancing ? t("enhancing") : t("enhance")}
           </button>
         </div>
+        {originalText && (
+          <p className="mt-1.5 text-xs text-foreground/50">{t("aiImprovedNote")}</p>
+        )}
         <textarea
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          rows={6}
+          value={resumeText}
+          onChange={(e) => setResumeText(e.target.value)}
+          rows={originalText ? 14 : 6}
           className="mt-4 w-full rounded-lg border border-border bg-background p-3 text-sm leading-relaxed focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
         <div className="mt-4 flex flex-wrap items-center gap-3">
