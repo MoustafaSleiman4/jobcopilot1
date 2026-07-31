@@ -474,9 +474,9 @@
       "save": "Save",
       "saved": "Saved",
       "prepare": {
-        "title": "Prepare your application",
+        "title": "Application opened",
         "subtitle": "For {title} at {company}",
-        "note": "This gets everything ready so applying is one click — it opens the employer's own application page for you to submit; GulfJobCopilot doesn't submit it on your behalf.",
+        "note": "We opened the employer's application page in a new tab and marked this Applied on your tracker — GulfJobCopilot doesn't submit the form on your behalf, so finish it there. Your info, resume, and a tailored cover letter are ready below.",
         "contactHeading": "Your contact info",
         "notSet": "Not set — add this in your profile",
         "resumeHeading": "Your resume",
@@ -488,7 +488,25 @@
         "letterError": "Couldn't generate a cover letter — please try again.",
         "copy": "Copy",
         "copied": "Copied",
-        "confirmCta": "Open application"
+        "confirmCta": "Open application",
+        "popupBlocked": "Your browser blocked the automatic pop-up. Open it manually instead:",
+        "openAgain": "Open application",
+        "retryLetter": "Try again",
+        "doneCta": "Done"
+      },
+      "bulk": {
+        "select": "Select for bulk apply",
+        "selectedCount": "{count, plural, one {# job selected} other {# jobs selected}}",
+        "cappedNote": "(applying to the first {max})",
+        "clear": "Clear",
+        "applyCta": "{count, plural, one {Apply to # job} other {Apply to # jobs}}",
+        "applying": "Applying {done}/{total}…",
+        "resultsRunningTitle": "Applying to your selected jobs…",
+        "resultsRunningSubtitle": "Preparing a tailored cover letter and marking each one Applied — this stays open until it's done.",
+        "resultsTitle": "Done — review and open each application",
+        "resultsSubtitle": "{count, plural, one {# job is ready — all marked Applied on your tracker.} other {# jobs are ready — all marked Applied on your tracker.}} Open each one to finish submitting it on the employer's site.",
+        "openApplication": "Open",
+        "pending": "Waiting…"
       }
     },
     "applications": {

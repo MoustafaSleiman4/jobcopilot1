@@ -24,7 +24,19 @@ import {
   Mail,
   Phone,
   User,
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
+
+// Bulk apply fans out one AI cover-letter generation call per selected job —
+// capped so a user can't accidentally fire off 80 simultaneous AI calls (and
+// so the results panel stays scannable). Selecting more than this just
+// applies to the first MAX_BULK_APPLY and says so, rather than silently
+// dropping the rest with no explanation.
+const MAX_BULK_APPLY = 15;
 
 type WorkType = "remote" | "hybrid" | "onsite";
 
@@ -83,7 +95,22 @@ export default function JobSearchPage() {
   const [generatingLetter, setGeneratingLetter] = useState(false);
   const [letterError, setLetterError] = useState<string | null>(null);
   const [copiedLetter, setCopiedLetter] = useState(false);
+  // True when handleApply's window.open() came back null — every browser
+  // blocks popups NOT triggered synchronously inside a click handler, so
+  // this should stay false in the normal case (the open call here IS
+  // synchronous), but some browsers/extensions block more aggressively —
+  // this is the fallback so "one click" never silently fails to open
+  // anything with no way to recover.
+  const [popupBlocked, setPopupBlocked] = useState(false);
   const userTypedRef = useRef(false);
+
+  // --- Bulk apply ---
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkResults, setBulkResults] = useState<
+    { job: Job; coverLetter: string; letterError?: string }[] | null
+  >(null);
 
   // Load the signed-in user's plan and their saved resume's job title, so
   // the search can default to "jobs like the one on your resume" instead of
@@ -274,34 +301,62 @@ export default function JobSearchPage() {
     }
   }
 
+  // Shared by the single-job flow (handleApply) and bulk apply — one AI
+  // call, returns the letter text or throws with a message good enough to
+  // show directly.
+  async function generateCoverLetterFor(job: Job): Promise<string> {
+    if (!defaultResumeStructured) throw new Error(t("prepare.noResume"));
+    const res = await fetch("/api/resume/cover-letter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        resume: defaultResumeStructured,
+        jobTitle: job.title,
+        company: job.company,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Generation failed");
+    return data.letter as string;
+  }
+
+  // True one-click: opens the employer's application page immediately
+  // (synchronously, inside the click handler — see popupBlocked above for
+  // why that matters) and marks the job Applied in the background, instead
+  // of the previous 3-step flow (open a "prepare" modal -> click Generate
+  // -> click Confirm to finally open the page). The modal now opens
+  // *alongside* the new tab as a live status/reference panel — contact
+  // info, resume download, and the cover letter (auto-generating itself,
+  // no button to click) — not a gate the user has to clear before anything
+  // happens.
+  //
+  // This still isn't literal blind submission on the candidate's behalf —
+  // see the note in the modal — no job source used here exposes a public
+  // API that would let us submit on the candidate's behalf without
+  // becoming an employer/platform partner.
   function handleApply(job: Job) {
     if (plan !== "pro") {
       setShowUpgradeBanner(true);
       return;
     }
-    // Pro users get a "prepare application" step first: their contact
-    // info and resume are pulled up ready to use, and a cover letter can be
-    // generated on demand, so opening the employer's own apply page is a
-    // one-click confirmation rather than starting from a blank form. This
-    // isn't literal zero-interaction submission — see the note in the
-    // modal — no job source used here exposes a public API that would let
-    // us submit on the candidate's behalf without becoming an employer/
-    // platform partner.
+    const win = window.open(job.applyUrl, "_blank", "noreferrer");
+    setPopupBlocked(!win);
     setCoverLetter("");
     setLetterError(null);
     setCopiedLetter(false);
     setPrepareJob(job);
+    void recordApplied(job);
+    if (defaultResumeStructured) {
+      setGeneratingLetter(true);
+      generateCoverLetterFor(job)
+        .then((letter) => setCoverLetter(letter))
+        .catch((err) => setLetterError(err instanceof Error ? err.message : t("prepare.letterError")))
+        .finally(() => setGeneratingLetter(false));
+    }
   }
 
   function closePrepareModal() {
     setPrepareJob(null);
-  }
-
-  async function handleConfirmOpenApplication() {
-    if (!prepareJob) return;
-    window.open(prepareJob.applyUrl, "_blank", "noreferrer");
-    await recordApplied(prepareJob);
-    closePrepareModal();
   }
 
   async function handleDownloadResume() {
@@ -314,23 +369,66 @@ export default function JobSearchPage() {
     setGeneratingLetter(true);
     setLetterError(null);
     try {
-      const res = await fetch("/api/resume/cover-letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume: defaultResumeStructured,
-          jobTitle: prepareJob.title,
-          company: prepareJob.company,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      setCoverLetter(data.letter as string);
+      setCoverLetter(await generateCoverLetterFor(prepareJob));
     } catch (err) {
       setLetterError(err instanceof Error ? err.message : t("prepare.letterError"));
     } finally {
       setGeneratingLetter(false);
     }
+  }
+
+  // --- Bulk apply ---
+  function toggleSelected(job: Job) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(job.id)) next.delete(job.id);
+      else next.add(job.id);
+      return next;
+    });
+  }
+
+  // Deliberately does NOT try to window.open() every selected job's
+  // application page — browsers only reliably allow one popup per user
+  // gesture, so auto-opening e.g. 8 tabs from a single click would silently
+  // fail for most of them with no error and no way for the user to tell
+  // which ones actually opened. Instead this preps everything (marks each
+  // Applied, generates each cover letter) and hands back a checklist where
+  // every "Open" is its own real click — same total effort as opening tabs,
+  // but nothing silently fails.
+  async function handleBulkApply() {
+    if (plan !== "pro") {
+      setShowUpgradeBanner(true);
+      return;
+    }
+    const targets = jobs.filter((j) => selectedIds.has(j.id)).slice(0, MAX_BULK_APPLY);
+    if (targets.length === 0) return;
+    setBulkRunning(true);
+    setBulkProgress(0);
+    setBulkResults(null);
+
+    const results: { job: Job; coverLetter: string; letterError?: string }[] = [];
+    for (const job of targets) {
+      await recordApplied(job);
+      let letter = "";
+      let letterErr: string | undefined;
+      if (defaultResumeStructured) {
+        try {
+          letter = await generateCoverLetterFor(job);
+        } catch (err) {
+          letterErr = err instanceof Error ? err.message : t("prepare.letterError");
+        }
+      }
+      results.push({ job, coverLetter: letter, letterError: letterErr });
+      setBulkProgress(results.length);
+    }
+
+    setBulkResults(results);
+    setSelectedIds(new Set());
+    setBulkRunning(false);
+  }
+
+  function closeBulkResults() {
+    setBulkResults(null);
   }
 
   async function handleCopyCoverLetter() {
@@ -427,6 +525,47 @@ export default function JobSearchPage() {
         <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: jobs.length })}</p>
       )}
 
+      {selectedIds.size > 0 && (
+        <div className="sticky top-2 z-30 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 shadow-sm">
+          <p className="text-sm font-semibold text-emerald-800">
+            {t("bulk.selectedCount", { count: selectedIds.size })}
+            {selectedIds.size > MAX_BULK_APPLY && (
+              <span className="ms-1.5 font-normal text-emerald-700/70">
+                {t("bulk.cappedNote", { max: MAX_BULK_APPLY })}
+              </span>
+            )}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkRunning}
+              className="rounded-full px-3 py-2 text-xs font-semibold text-emerald-800/70 hover:text-emerald-900 disabled:opacity-60"
+            >
+              {t("bulk.clear")}
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkApply}
+              disabled={bulkRunning}
+              className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-70"
+            >
+              {bulkRunning ? (
+                <>
+                  <Loader2 className="animate-spin" size={13} />
+                  {t("bulk.applying", { done: bulkProgress, total: Math.min(selectedIds.size, MAX_BULK_APPLY) })}
+                </>
+              ) : (
+                <>
+                  <Zap size={13} />
+                  {t("bulk.applyCta", { count: Math.min(selectedIds.size, MAX_BULK_APPLY) })}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showUpgradeBanner && (
         <div className="mt-4 flex flex-col items-start gap-3 rounded-xl border border-gold-400/40 bg-gold-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2.5">
@@ -450,9 +589,26 @@ export default function JobSearchPage() {
           jobs.map((job) => (
             <div
               key={job.id}
-              className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center"
+              className={`flex flex-col justify-between gap-4 rounded-2xl border bg-surface p-6 sm:flex-row sm:items-center ${
+                selectedIds.has(job.id) ? "border-emerald-400 ring-1 ring-emerald-400/30" : "border-border"
+              }`}
             >
-              <div>
+              <div className="flex items-start gap-3">
+                {plan === "pro" && !trackedIds.has(job.id) && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(job)}
+                    title={t("bulk.select")}
+                    className="mt-0.5 flex-none text-foreground/30 hover:text-emerald-600"
+                  >
+                    {selectedIds.has(job.id) ? (
+                      <CheckSquare size={19} className="text-emerald-600" />
+                    ) : (
+                      <Square size={19} />
+                    )}
+                  </button>
+                )}
+                <div>
                 <h3 className="font-semibold text-foreground">{job.title}</h3>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/60">
                   <span className="flex items-center gap-1.5">
@@ -479,6 +635,7 @@ export default function JobSearchPage() {
                   >
                     {t(`workTypes.${job.workType}`)}
                   </span>
+                </div>
                 </div>
               </div>
               <div className="flex flex-none items-center gap-2">
@@ -520,7 +677,10 @@ export default function JobSearchPage() {
           <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-foreground">{t("prepare.title")}</h2>
+                <h2 className="flex items-center gap-1.5 text-lg font-bold text-foreground">
+                  <CheckCircle2 size={18} className="text-emerald-600" />
+                  {t("prepare.title")}
+                </h2>
                 <p className="mt-1 text-sm text-foreground/60">
                   {t("prepare.subtitle", { title: prepareJob.title, company: prepareJob.company })}
                 </p>
@@ -533,9 +693,27 @@ export default function JobSearchPage() {
               </button>
             </div>
 
-            <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs text-sky-800">
-              {t("prepare.note")}
-            </p>
+            {popupBlocked ? (
+              <div className="mt-4 flex flex-col items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+                <span className="flex items-start gap-1.5">
+                  <AlertTriangle size={14} className="mt-0.5 flex-none" />
+                  {t("prepare.popupBlocked")}
+                </span>
+                <a
+                  href={prepareJob.applyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex flex-none items-center gap-1 rounded-full bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700"
+                >
+                  {t("prepare.openAgain")}
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-800">
+                {t("prepare.note")}
+              </p>
+            )}
 
             {/* Contact info */}
             <div className="mt-5">
@@ -576,28 +754,32 @@ export default function JobSearchPage() {
               )}
             </div>
 
-            {/* Cover letter */}
+            {/* Cover letter — generated automatically as soon as the modal
+                opens (see handleApply), no button to click. A manual retry
+                button only appears if that background generation failed. */}
             {defaultResumeStructured && (
               <div className="mt-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
                     {t("prepare.coverLetterHeading")}
                   </h3>
-                  {!coverLetter && (
+                  {letterError && (
                     <button
                       onClick={handleGenerateCoverLetter}
                       disabled={generatingLetter}
                       className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 disabled:opacity-60"
                     >
-                      {generatingLetter ? (
-                        <Loader2 className="animate-spin" size={13} />
-                      ) : (
-                        <Sparkles size={13} />
-                      )}
-                      {generatingLetter ? t("prepare.generating") : t("prepare.generateLetter")}
+                      <Sparkles size={13} />
+                      {t("prepare.retryLetter")}
                     </button>
                   )}
                 </div>
+                {generatingLetter && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-foreground/50">
+                    <Loader2 className="animate-spin" size={13} />
+                    {t("prepare.generating")}
+                  </p>
+                )}
                 {letterError && <p className="mt-2 text-xs text-red-600">{letterError}</p>}
                 {coverLetter && (
                   <div className="mt-2">
@@ -620,12 +802,99 @@ export default function JobSearchPage() {
             )}
 
             <button
-              onClick={handleConfirmOpenApplication}
+              onClick={closePrepareModal}
               className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
             >
-              {t("prepare.confirmCta")}
-              <ExternalLink size={15} />
+              {t("prepare.doneCta")}
             </button>
+          </div>
+        </div>
+      )}
+
+      {(bulkRunning || bulkResults) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={bulkRunning ? undefined : closeBulkResults} />
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">
+                  {bulkRunning ? t("bulk.resultsRunningTitle") : t("bulk.resultsTitle")}
+                </h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  {bulkRunning
+                    ? t("bulk.resultsRunningSubtitle")
+                    : t("bulk.resultsSubtitle", { count: bulkResults?.length ?? 0 })}
+                </p>
+              </div>
+              {!bulkRunning && (
+                <button
+                  onClick={closeBulkResults}
+                  className="flex-none rounded-full p-1.5 text-foreground/50 hover:bg-sand-100 hover:text-foreground"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {(bulkResults ?? []).map(({ job, coverLetter: letter, letterError: err }) => (
+                <div key={job.id} className="rounded-xl border border-border bg-background p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+                        <CheckCircle2 size={14} className="flex-none text-emerald-600" />
+                        {job.title}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-foreground/50">{job.company}</p>
+                    </div>
+                    <a
+                      href={job.applyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-none items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                    >
+                      {t("bulk.openApplication")}
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                  {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+                  {letter && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                        {t("prepare.coverLetterHeading")}
+                      </summary>
+                      <textarea
+                        readOnly
+                        value={letter}
+                        rows={6}
+                        className="mt-2 w-full resize-y rounded-lg border border-border bg-surface p-2.5 text-xs leading-relaxed text-foreground"
+                      />
+                    </details>
+                  )}
+                </div>
+              ))}
+              {bulkRunning &&
+                Array.from({ length: Math.max(0, Math.min(selectedIds.size, MAX_BULK_APPLY) - bulkProgress) }).map(
+                  (_, i) => (
+                    <div
+                      key={`pending-${i}`}
+                      className="flex items-center gap-2 rounded-xl border border-dashed border-border p-3.5 text-xs text-foreground/40"
+                    >
+                      <Loader2 className="animate-spin" size={13} />
+                      {t("bulk.pending")}
+                    </div>
+                  )
+                )}
+            </div>
+
+            {!bulkRunning && (
+              <button
+                onClick={closeBulkResults}
+                className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                {t("prepare.doneCta")}
+              </button>
+            )}
           </div>
         </div>
       )}
