@@ -37,41 +37,44 @@ export default function SkylineSilhouette({ className = "" }: { className?: stri
         <rect x="10" y="200" width="28" height="60" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
         <rect x="46" y="180" width="20" height="80" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
 
-        {/* Al Faisaliah Tower (Riyadh) — a slender obelisk with a gently
-            curved (not straight-edged) taper, the way the real tower's
-            profile eases inward rather than forming hard angles, closing
-            to a point that's capped by its signature gold sphere, with the
-            thin spire mast rising above the sphere exactly as on the real
-            building. */}
+        {/* Al Faisaliah Tower (Riyadh) — a slender, STRAIGHT-sided obelisk
+            (an earlier version used a curved Q-bezier taper that bowed
+            outward into a "bell"/parachute silhouette at real render size —
+            caught only by actually screenshotting it, not from reading the
+            coordinates — a straight linear taper reads far more crisply as
+            a needle-like tower), closing to a point capped by its
+            signature gold sphere, with the thin spire mast rising above
+            the sphere exactly as on the real building. */}
         <g>
-          <path d="M104,260 L110,182 Q114,138 122,112 Q130,88 140,88 Q150,88 158,112 Q166,138 170,182 L176,260 Z" />
-          <circle cx="140" cy="80" r="21" />
-          <rect x="137.5" y="18" width="5" height="40" />
+          <path d="M117,260 L131,100 L149,100 L163,260 Z" />
+          <circle cx="140" cy="79" r="17" />
+          <rect x="138" y="18" width="4" height="42" />
         </g>
 
-        {/* Kingdom Centre / Al Mamlakah Tower — "bottle-opener" silhouette:
-            a wide, gently tapering base rising into two legs that lean
-            inward, meeting a pointed (not semicircular) arch opening near
-            the top — the real building's arch is closer to a parabolic
-            point than a round curve — capped by a flat crown lintel that
-            sits slightly proud of the legs on either side. */}
+        {/* Kingdom Centre / Al Mamlakah Tower — "bottle-opener" silhouette,
+            narrowed and slimmed (legs and overall width both reduced) from
+            an earlier version that read as a fat rainbow/gateway arch
+            rather than a slender skyscraper — two legs rising and leaning
+            inward, meeting a pointed (parabolic, not semicircular) arch
+            opening near the top, capped by a flat crown lintel that sits
+            slightly proud of the legs on either side. */}
         <path
           fillRule="evenodd"
-          d="M296,260 L302,150 Q306,100 320,80 Q330,68 345,66 L365,66 Q380,68 390,80 Q404,100 408,150 L414,260 Z
-             M330,260 L334,168 Q336,120 344,104 Q349,94 355,94 Q361,94 366,104 Q374,120 376,168 L380,260 Z"
+          d="M300,260 L306,145 Q310,95 322,76 Q333,62 350,60 L370,60 Q387,62 398,76 Q410,95 414,145 L420,260 Z
+             M333,260 L337,165 Q339,115 346,100 Q351,92 360,92 Q369,92 374,100 Q381,115 383,165 L387,260 Z"
         />
 
         {/* Burj Khalifa — the tallest element by a clear margin, and drawn
-            slender rather than pyramidal: a modest-width base that stays
-            near-parallel for its lower half (like a real skyscraper, not a
-            ziggurat), then a handful of setbacks narrowing it step by step,
-            finished with a long, needle-thin spire making up roughly a
-            quarter of the total height — echoing the real tower's Y-shaped,
-            spiraling setbacks without the silhouette reading as a pyramid. */}
+            slender rather than blocky: a narrower base than an earlier
+            version, five graduated setback steps (rather than three coarse
+            ones) narrowing it step by step, finished with a long,
+            needle-thin spire making up roughly a third of the total height
+            — echoing the real tower's Y-shaped, spiraling setbacks without
+            the silhouette reading as a generic stepped high-rise. */}
         <path
-          d="M572,260 L572,165 L580,165 L580,130 L588,130 L588,100 L594,100 L594,75
-             L600,75 L604,8 L608,75 L614,75 L614,100 L620,100 L620,130 L628,130 L628,165
-             L636,165 L636,260 Z"
+          d="M572,260 L572,190 L576,190 L576,140 L580,140 L580,105 L584,105 L584,78
+             L588,78 L588,58 L592,58 L600,5 L608,58 L612,58 L612,78 L616,78 L616,105
+             L620,105 L620,140 L624,140 L624,190 L628,190 L628,260 Z"
         />
 
         {/* low filler buildings between landmarks */}

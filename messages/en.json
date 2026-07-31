@@ -149,7 +149,9 @@
         "Mock interview practice",
         "Priority support"
       ],
-      "cta": "Upgrade to Pro"
+      "cta": "Upgrade to Pro",
+      "currentPlan": "You're on Pro",
+      "currentPlanNote": "You already have an active Pro subscription."
     },
     "monthly": "Monthly",
     "yearly": "Yearly",
@@ -348,7 +350,7 @@
       "languageName": "Language",
       "level": "Proficiency level",
       "removeLanguage": "Remove",
-      "themeSection": "Preview accent color",
+      "themeSection": "Style",
       "editTab": "Edit",
       "previewTab": "Preview",
       "setPrimary": "Set as primary",
@@ -411,7 +413,17 @@
       "addRow": "Add row",
       "listItemPlaceholder": "List item",
       "addListItem": "Add item",
-      "noCustomSectionsYet": "No custom sections yet — add a table or list above."
+      "noCustomSectionsYet": "No custom sections yet — add a table or list above.",
+      "themeSectionNote": "Applied consistently across the whole resume — the preview and your downloaded PDF always match.",
+      "accentColor": "Accent color",
+      "fontFamily": "Font",
+      "fontSize": "Text size",
+      "fontSans": "Sans-serif",
+      "fontSerif": "Serif",
+      "fontMono": "Monospace",
+      "sizeCompact": "Compact",
+      "sizeStandard": "Standard",
+      "sizeLarge": "Large"
     },
     "jobs": {
       "title": "Job search",
@@ -512,7 +524,10 @@
       "saving": "Saving…",
       "confirmDelete": "Delete this application? This can't be undone.",
       "formRequired": "Company and job title are required.",
-      "formError": "Something went wrong saving this application. Please try again."
+      "formError": "Something went wrong saving this application. Please try again.",
+      "appliedOn": "Applied {date}",
+      "viewHistory": "View history",
+      "hideHistory": "Hide history"
     },
     "chat": {
       "title": "AI job-search assistant",

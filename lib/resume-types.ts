@@ -51,6 +51,28 @@ export type CustomSection = {
   rows: string[][];
 };
 
+// A single, saved-with-the-resume style setting applied consistently across
+// every section — both on screen (ResumePreview.tsx) and in the downloaded
+// PDF (lib/resume-pdf.ts) read the exact same `resume.style` object, so
+// switching font/size/color once always changes the whole document
+// everywhere it's rendered, rather than each surface (or each section)
+// drifting out of sync with its own separate setting.
+export type ResumeFontFamily = "sans" | "serif" | "mono";
+export type ResumeFontSize = "compact" | "standard" | "large";
+export type ResumeAccentColor = "emerald" | "gold" | "slate";
+
+export type ResumeStyle = {
+  fontFamily: ResumeFontFamily;
+  fontSize: ResumeFontSize;
+  accentColor: ResumeAccentColor;
+};
+
+export const DEFAULT_RESUME_STYLE: ResumeStyle = {
+  fontFamily: "sans",
+  fontSize: "standard",
+  accentColor: "emerald",
+};
+
 export type StructuredResume = {
   fullName: string;
   title: string;
@@ -74,6 +96,7 @@ export type StructuredResume = {
   // "reverse-chronological" with no custom sections.
   format?: ResumeFormat;
   customSections?: CustomSection[];
+  style?: ResumeStyle;
 };
 
 /** A fully-populated empty resume — the one place every optional field gets
@@ -94,5 +117,6 @@ export function emptyStructuredResume(): StructuredResume {
     languages: [],
     format: "reverse-chronological",
     customSections: [],
+    style: { ...DEFAULT_RESUME_STYLE },
   };
 }

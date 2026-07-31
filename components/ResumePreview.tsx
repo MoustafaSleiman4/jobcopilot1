@@ -14,10 +14,27 @@ import { getFormatConfig, type SectionKey } from "@/lib/resume-formats";
  * changes. Nothing is ever hidden or deleted based on format, only
  * reordered/restyled, so switching formats is always non-destructive.
  */
+// Base font-size (px) for each fontSize setting. Every text-size class in
+// this component is expressed as an em value relative to this base (see the
+// FS() helper below) rather than Tailwind's fixed text-sm/text-xs/etc,
+// specifically so that changing the base here rescales the *entire* preview
+// proportionally — headings, body text, table text, all of it — instead of
+// only the elements someone remembered to update.
+const FONT_SIZE_PX: Record<NonNullable<StructuredResume["style"]>["fontSize"], number> = {
+  compact: 13,
+  standard: 14,
+  large: 16,
+};
+
+const FONT_FAMILY_CLASS: Record<NonNullable<StructuredResume["style"]>["fontFamily"], string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+};
+
 export default function ResumePreview({
   resume,
   labels,
-  accentColor = "emerald",
 }: {
   resume: StructuredResume;
   labels: {
@@ -28,7 +45,6 @@ export default function ResumePreview({
     certifications?: string;
     languages?: string;
   };
-  accentColor?: "emerald" | "gold" | "slate";
 }) {
   const hasSkills = resume.skills.length > 0;
   const hasExperience = resume.experience.length > 0;
@@ -40,6 +56,16 @@ export default function ResumePreview({
 
   const config = getFormatConfig(resume.format);
   const plain = config.plain;
+
+  // Single source of truth for style: resume.style, saved with the resume
+  // itself. Falls back to each field's original hardcoded default (plain
+  // formats -> serif, otherwise sans; emerald accent; standard size) so
+  // resumes saved before this setting existed still render exactly as
+  // before.
+  const accentColor = resume.style?.accentColor ?? "emerald";
+  const fontFamily = resume.style?.fontFamily ?? (plain ? "serif" : "sans");
+  const fontSize = resume.style?.fontSize ?? "standard";
+  const basePx = FONT_SIZE_PX[fontSize];
 
   const headerGradient = plain
     ? ""
@@ -54,8 +80,8 @@ export default function ResumePreview({
   if (resume.summary) {
     sections.summary = (
       <section key="summary">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">{labels.summary}</h4>
-        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/80">{resume.summary}</p>
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">{labels.summary}</h4>
+        <p className="mt-2 whitespace-pre-line text-[1em] leading-relaxed text-foreground/80">{resume.summary}</p>
       </section>
     );
   }
@@ -63,13 +89,13 @@ export default function ResumePreview({
   if (hasSkills) {
     sections.skills = (
       <section key="skills">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">{labels.skills}</h4>
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">{labels.skills}</h4>
         {plain ? (
-          <p className="mt-2 text-sm text-foreground/80">{resume.skills.join(" · ")}</p>
+          <p className="mt-2 text-[1em] text-foreground/80">{resume.skills.join(" · ")}</p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {resume.skills.map((skill, i) => (
-              <span key={i} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <span key={i} className="rounded-full bg-emerald-50 px-3 py-1 text-[0.86em] font-medium text-emerald-700">
                 {skill}
               </span>
             ))}
@@ -82,20 +108,20 @@ export default function ResumePreview({
   if (hasExperience) {
     sections.experience = (
       <section key="experience">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">{labels.experience}</h4>
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">{labels.experience}</h4>
         <div className="mt-3 space-y-4">
           {resume.experience.map((job, i) => (
             <div key={i} className={plain ? "" : "border-s-2 border-emerald-200 ps-4"}>
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-[1em] font-semibold text-foreground">
                   {job.role}
                   {job.company ? ` · ${job.company}` : ""}
                 </p>
-                {job.period && <p className="text-xs text-foreground/50">{job.period}</p>}
+                {job.period && <p className="text-[0.86em] text-foreground/50">{job.period}</p>}
               </div>
-              {job.location && <p className="text-xs text-foreground/50">{job.location}</p>}
+              {job.location && <p className="text-[0.86em] text-foreground/50">{job.location}</p>}
               {job.bullets.length > 0 && (
-                <ul className="mt-1.5 list-disc space-y-0.5 ps-4 text-sm text-foreground/70">
+                <ul className="mt-1.5 list-disc space-y-0.5 ps-4 text-[1em] text-foreground/70">
                   {job.bullets.map((b, bi) => (
                     <li key={bi}>{b}</li>
                   ))}
@@ -111,14 +137,14 @@ export default function ResumePreview({
   if (hasEducation) {
     sections.education = (
       <section key="education">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">{labels.education}</h4>
-        <table className="mt-2 w-full text-sm">
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">{labels.education}</h4>
+        <table className="mt-2 w-full text-[1em]">
           <tbody>
             {resume.education.map((ed, i) => (
               <tr key={i} className="border-b border-border last:border-0">
                 <td className="py-1.5 pe-3 font-medium text-foreground">{ed.degree}</td>
                 <td className="py-1.5 pe-3 text-foreground/70">{ed.school}</td>
-                <td className="py-1.5 text-end text-xs text-foreground/50">{ed.period}</td>
+                <td className="py-1.5 text-end text-[0.86em] text-foreground/50">{ed.period}</td>
               </tr>
             ))}
           </tbody>
@@ -130,16 +156,16 @@ export default function ResumePreview({
   if (hasCertifications) {
     sections.certifications = (
       <section key="certifications">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">
           {labels.certifications ?? "Certifications"}
         </h4>
-        <table className="mt-2 w-full text-sm">
+        <table className="mt-2 w-full text-[1em]">
           <tbody>
             {(resume.certifications ?? []).map((c, i) => (
               <tr key={i} className="border-b border-border last:border-0">
                 <td className="py-1.5 pe-3 font-medium text-foreground">{c.name}</td>
                 <td className="py-1.5 pe-3 text-foreground/70">{c.issuer}</td>
-                <td className="py-1.5 text-end text-xs text-foreground/50">{c.year}</td>
+                <td className="py-1.5 text-end text-[0.86em] text-foreground/50">{c.year}</td>
               </tr>
             ))}
           </tbody>
@@ -151,17 +177,17 @@ export default function ResumePreview({
   if (hasLanguages) {
     sections.languages = (
       <section key="languages">
-        <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">
+        <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">
           {labels.languages ?? "Languages"}
         </h4>
         {plain ? (
-          <p className="mt-2 text-sm text-foreground/80">
+          <p className="mt-2 text-[1em] text-foreground/80">
             {(resume.languages ?? []).map((l) => (l.level ? `${l.name} (${l.level})` : l.name)).join(" · ")}
           </p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {(resume.languages ?? []).map((l, i) => (
-              <span key={i} className="rounded-full bg-sand-100 px-3 py-1 text-xs font-medium text-foreground/70">
+              <span key={i} className="rounded-full bg-sand-100 px-3 py-1 text-[0.86em] font-medium text-foreground/70">
                 {l.name}
                 {l.level ? ` · ${l.level}` : ""}
               </span>
@@ -181,15 +207,15 @@ export default function ResumePreview({
           return (
             <section key={cs.id}>
               {cs.title && (
-                <h4 className="text-xs font-bold uppercase tracking-wide text-gold-600">{cs.title}</h4>
+                <h4 className="text-[0.86em] font-bold uppercase tracking-wide text-gold-600">{cs.title}</h4>
               )}
               {cs.type === "table" ? (
-                <table className="mt-2 w-full text-sm">
+                <table className="mt-2 w-full text-[1em]">
                   {cs.columns.some((c) => c.trim()) && (
                     <thead>
                       <tr className="border-b border-border">
                         {cs.columns.map((col, ci) => (
-                          <th key={ci} className="py-1.5 pe-3 text-start text-xs font-bold text-foreground/60">
+                          <th key={ci} className="py-1.5 pe-3 text-start text-[0.86em] font-bold text-foreground/60">
                             {col}
                           </th>
                         ))}
@@ -209,7 +235,7 @@ export default function ResumePreview({
                   </tbody>
                 </table>
               ) : (
-                <ul className="mt-2 list-disc space-y-0.5 ps-4 text-sm text-foreground/80">
+                <ul className="mt-2 list-disc space-y-0.5 ps-4 text-[1em] text-foreground/80">
                   {rows.map((row, ri) => (
                     <li key={ri}>{row[0]}</li>
                   ))}
@@ -223,12 +249,15 @@ export default function ResumePreview({
   }
 
   return (
-    <div className={`overflow-hidden rounded-2xl border border-border bg-surface shadow-sm ${plain ? "font-serif" : ""}`}>
+    <div
+      className={`overflow-hidden rounded-2xl border border-border bg-surface shadow-sm ${FONT_FAMILY_CLASS[fontFamily]}`}
+      style={{ fontSize: `${basePx}px` }}
+    >
       <div className={plain ? "border-b-2 border-foreground/80 px-6 py-5" : `bg-gradient-to-r ${headerGradient} px-6 py-5 text-white`}>
-        <h3 className={`text-xl font-bold ${plain ? "text-foreground" : ""}`}>{resume.fullName || "—"}</h3>
-        {resume.title && <p className={`mt-1 text-sm ${plain ? "text-foreground/70" : "text-white/90"}`}>{resume.title}</p>}
+        <h3 className={`text-[1.43em] font-bold ${plain ? "text-foreground" : ""}`}>{resume.fullName || "—"}</h3>
+        {resume.title && <p className={`mt-1 text-[1em] ${plain ? "text-foreground/70" : "text-white/90"}`}>{resume.title}</p>}
         {hasContact && (
-          <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${plain ? "text-foreground/60" : "text-white/80"}`}>
+          <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.86em] ${plain ? "text-foreground/60" : "text-white/80"}`}>
             {resume.email && (
               <span className="flex items-center gap-1.5">
                 <Mail size={12} /> {resume.email}

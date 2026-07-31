@@ -6,7 +6,13 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { downloadResumePdf } from "@/lib/resume-pdf";
-import { emptyStructuredResume, RESUME_FORMATS, type CustomSection, type StructuredResume } from "@/lib/resume-types";
+import {
+  emptyStructuredResume,
+  RESUME_FORMATS,
+  DEFAULT_RESUME_STYLE,
+  type CustomSection,
+  type StructuredResume,
+} from "@/lib/resume-types";
 import ResumePreview from "@/components/ResumePreview";
 import {
   ArrowLeft,
@@ -50,6 +56,21 @@ const ACCENTS: { key: "emerald" | "gold" | "slate"; swatch: string }[] = [
   { key: "slate", swatch: "bg-slate-600" },
 ];
 
+// Only jsPDF's built-in standard fonts (no embedding needed) are offered —
+// see the comment in lib/resume-pdf.ts — so whichever one is picked here
+// renders identically in the downloaded PDF, not just in this preview.
+const FONT_FAMILIES: { key: "sans" | "serif" | "mono"; labelKey: string; previewClass: string }[] = [
+  { key: "sans", labelKey: "fontSans", previewClass: "font-sans" },
+  { key: "serif", labelKey: "fontSerif", previewClass: "font-serif" },
+  { key: "mono", labelKey: "fontMono", previewClass: "font-mono" },
+];
+
+const FONT_SIZES: { key: "compact" | "standard" | "large"; labelKey: string }[] = [
+  { key: "compact", labelKey: "sizeCompact" },
+  { key: "standard", labelKey: "sizeStandard" },
+  { key: "large", labelKey: "sizeLarge" },
+];
+
 export default function ResumeBuilderForm() {
   const t = useTranslations("dashboard.resumeBuilder");
   const searchParams = useSearchParams();
@@ -63,7 +84,7 @@ export default function ResumeBuilderForm() {
   const [isPrimary, setIsPrimary] = useState(false);
   const [structured, setStructured] = useState<StructuredResume>(emptyStructuredResume());
   const [aiUsed, setAiUsed] = useState(0);
-  const [accent, setAccent] = useState<"emerald" | "gold" | "slate">("emerald");
+  const resumeStyle = structured.style ?? DEFAULT_RESUME_STYLE;
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -139,6 +160,17 @@ export default function ResumeBuilderForm() {
     setStructured(next);
     setDirty(true);
     return next;
+  }
+
+  // Saved directly on the resume (structured.style) rather than as separate
+  // component state — this is the single source of truth both the preview
+  // and the downloaded PDF read, so a choice made here can never drift out
+  // of sync with what actually gets exported (previously the accent-color
+  // picker below only ever affected the on-screen preview; downloadResumePdf
+  // was never told about it at all, which is the exact "download changes
+  // font and color" bug this fixes).
+  function updateStyle(patch: Partial<NonNullable<StructuredResume["style"]>>) {
+    update("style", { ...DEFAULT_RESUME_STYLE, ...structured.style, ...patch });
   }
 
   // --- Skills ---
@@ -1141,15 +1173,56 @@ export default function ResumeBuilderForm() {
 
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("themeSection")}</h3>
-        <div className="mt-3 flex gap-3">
+        <p className="mt-1 text-xs text-foreground/50">{t("themeSectionNote")}</p>
+
+        <p className="mt-4 text-xs font-semibold text-foreground/70">{t("accentColor")}</p>
+        <div className="mt-2 flex gap-3">
           {ACCENTS.map((a) => (
             <button
               key={a.key}
               type="button"
-              onClick={() => setAccent(a.key)}
+              onClick={() => updateStyle({ accentColor: a.key })}
               aria-label={a.key}
-              className={`h-8 w-8 rounded-full ${a.swatch} ${accent === a.key ? "ring-2 ring-offset-2 ring-foreground/40" : ""}`}
+              className={`h-8 w-8 rounded-full ${a.swatch} ${
+                resumeStyle.accentColor === a.key ? "ring-2 ring-offset-2 ring-foreground/40" : ""
+              }`}
             />
+          ))}
+        </div>
+
+        <p className="mt-4 text-xs font-semibold text-foreground/70">{t("fontFamily")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {FONT_FAMILIES.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => updateStyle({ fontFamily: f.key })}
+              className={`rounded-full border px-3.5 py-1.5 text-sm ${f.previewClass} ${
+                resumeStyle.fontFamily === f.key
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-border text-foreground/70 hover:bg-sand-100"
+              }`}
+            >
+              {t(f.labelKey)}
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-4 text-xs font-semibold text-foreground/70">{t("fontSize")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {FONT_SIZES.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => updateStyle({ fontSize: s.key })}
+              className={`rounded-full border px-3.5 py-1.5 text-sm ${
+                resumeStyle.fontSize === s.key
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-border text-foreground/70 hover:bg-sand-100"
+              }`}
+            >
+              {t(s.labelKey)}
+            </button>
           ))}
         </div>
       </section>
@@ -1261,7 +1334,7 @@ export default function ResumeBuilderForm() {
         <div className={mobileTab === "edit" ? "block" : "hidden lg:block"}>{editPane}</div>
         <div className={mobileTab === "preview" ? "block" : "hidden lg:block"}>
           <div className="lg:sticky lg:top-6">
-            <ResumePreview resume={structured} labels={previewLabels} accentColor={accent} />
+            <ResumePreview resume={structured} labels={previewLabels} />
           </div>
         </div>
       </div>

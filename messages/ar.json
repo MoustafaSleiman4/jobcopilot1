@@ -149,7 +149,9 @@
         "تدريب على المقابلات",
         "دعم أولوية"
       ],
-      "cta": "الترقية إلى الاحترافي"
+      "cta": "الترقية إلى الاحترافي",
+      "currentPlan": "أنت مشترك في Pro",
+      "currentPlanNote": "لديك بالفعل اشتراك Pro نشط."
     },
     "monthly": "شهري",
     "yearly": "سنوي",
@@ -348,7 +350,7 @@
       "languageName": "اللغة",
       "level": "مستوى الإتقان",
       "removeLanguage": "إزالة",
-      "themeSection": "لون المعاينة",
+      "themeSection": "النمط",
       "editTab": "تعديل",
       "previewTab": "معاينة",
       "setPrimary": "تعيين كأساسية",
@@ -411,7 +413,17 @@
       "addRow": "إضافة صف",
       "listItemPlaceholder": "عنصر القائمة",
       "addListItem": "إضافة عنصر",
-      "noCustomSectionsYet": "لا توجد أقسام مخصصة بعد — أضف جدولًا أو قائمة أعلاه."
+      "noCustomSectionsYet": "لا توجد أقسام مخصصة بعد — أضف جدولًا أو قائمة أعلاه.",
+      "themeSectionNote": "يُطبَّق بثبات على السيرة الذاتية بالكامل — المعاينة وملف PDF الذي تحمّله متطابقان دائمًا.",
+      "accentColor": "لون التمييز",
+      "fontFamily": "الخط",
+      "fontSize": "حجم النص",
+      "fontSans": "بدون تشكيل (Sans-serif)",
+      "fontSerif": "مُذيَّل (Serif)",
+      "fontMono": "أحادي المسافة (Monospace)",
+      "sizeCompact": "مضغوط",
+      "sizeStandard": "قياسي",
+      "sizeLarge": "كبير"
     },
     "jobs": {
       "title": "البحث عن وظائف",
@@ -512,7 +524,10 @@
       "saving": "جارٍ الحفظ…",
       "confirmDelete": "حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.",
       "formRequired": "اسم الشركة والمسمى الوظيفي مطلوبان.",
-      "formError": "حدث خطأ أثناء حفظ هذا الطلب. حاول مرة أخرى."
+      "formError": "حدث خطأ أثناء حفظ هذا الطلب. حاول مرة أخرى.",
+      "appliedOn": "تم التقديم {date}",
+      "viewHistory": "عرض السجل",
+      "hideHistory": "إخفاء السجل"
     },
     "chat": {
       "title": "المساعد الذكي للبحث عن عمل",

@@ -1,23 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, BadgeCheck } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { createClient } from "@/lib/supabase/client";
 
 export default function PricingCards() {
   const t = useTranslations("pricing");
   const locale = useLocale();
   const router = useRouter();
-  const { user, loading: checkingSession } = useAuthUser();
+  const { user, loading: checkingSession, configured } = useAuthUser();
   const [yearly, setYearly] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // "pro" here only ever means "already has an active Pro subscription" —
+  // used purely to stop a Pro user from opening a second Lemon Squeezy
+  // checkout for a plan they already have (which previously silently
+  // created a second, redundant subscription/order every time they clicked
+  // the card again — see the July 31 billing investigation, which turned up
+  // 11 paid orders from repeated test clicks before that mismatch was found).
+  const [currentPlan, setCurrentPlan] = useState<"free" | "pro" | null>(null);
+
+  useEffect(() => {
+    if (checkingSession || !configured || !user) {
+      setCurrentPlan(user ? null : "free");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
+        if (!cancelled) setCurrentPlan(data?.plan === "pro" ? "pro" : "free");
+      } catch {
+        if (!cancelled) setCurrentPlan("free");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, checkingSession, configured]);
 
   const freeFeatures = t.raw("free.features") as string[];
   const proFeatures = t.raw("pro.features") as string[];
   const planId = yearly ? "yearly" : "monthly";
+  const isAlreadyPro = currentPlan === "pro";
 
   // The Pro card's CTA used to just link to /signup, which meant nobody
   // could actually pay — signup never started a checkout, and an existing
@@ -27,7 +56,7 @@ export default function PricingCards() {
   // the chosen plan carried through via ?plan= so SignupForm can start
   // checkout itself right after signup succeeds.
   async function handleProClick() {
-    if (checkingSession) return;
+    if (checkingSession || isAlreadyPro) return;
     if (!user) {
       router.push(`/signup?plan=${planId}`);
       return;
@@ -42,6 +71,10 @@ export default function PricingCards() {
         body: JSON.stringify({ planId, userId: user.id, email: user.email, redirectUrl }),
       });
       const data = await res.json();
+      if (data.error === "already_subscribed") {
+        setCurrentPlan("pro");
+        throw new Error(t("pro.currentPlanNote"));
+      }
       if (!res.ok || !data.url) {
         throw new Error(data.error || "Checkout failed");
       }
@@ -123,15 +156,25 @@ export default function PricingCards() {
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            onClick={handleProClick}
-            disabled={checkingOut || checkingSession}
-            className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-70"
-          >
-            {checkingOut && <Loader2 className="h-4 w-4 animate-spin" />}
-            {checkingOut ? t("startingCheckout") : t("pro.cta")}
-          </button>
+          {isAlreadyPro ? (
+            <div className="mt-8 flex w-full items-center justify-center gap-2 rounded-full border-2 border-emerald-200 bg-emerald-50 py-3 text-center text-sm font-semibold text-emerald-700">
+              <BadgeCheck className="h-4 w-4" />
+              {t("pro.currentPlan")}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleProClick}
+              disabled={checkingOut || checkingSession}
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-70"
+            >
+              {checkingOut && <Loader2 className="h-4 w-4 animate-spin" />}
+              {checkingOut ? t("startingCheckout") : t("pro.cta")}
+            </button>
+          )}
+          {isAlreadyPro && (
+            <p className="mt-3 text-center text-xs text-foreground/50">{t("pro.currentPlanNote")}</p>
+          )}
           {checkoutError && (
             <p className="mt-3 text-center text-xs text-red-600">{checkoutError}</p>
           )}

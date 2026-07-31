@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -16,9 +16,16 @@ import {
   Building2,
   MapPin,
   Inbox,
+  CalendarCheck2,
+  History,
 } from "lucide-react";
 
 type ApplicationStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+type StatusHistoryEntry = {
+  status: ApplicationStatus;
+  at: string;
+};
 
 type Application = {
   id: string;
@@ -30,6 +37,7 @@ type Application = {
   notes: string | null;
   applied_at: string | null;
   updated_at: string;
+  status_history: StatusHistoryEntry[];
 };
 
 const COLUMNS: ApplicationStatus[] = ["saved", "applied", "interview", "offer", "rejected"];
@@ -42,14 +50,31 @@ const COLUMN_ACCENT: Record<ApplicationStatus, string> = {
   rejected: "border-s-red-300",
 };
 
+/** Builds a plausible status_history timeline for demo/local-only rows,
+ * mirroring what the DB trigger (log_application_status_change) would have
+ * produced for a row that moved through these stages over the past couple
+ * of weeks — so the demo view of the new history feature isn't just a
+ * single flat entry. */
+function demoHistory(
+  path: ApplicationStatus[],
+  daysAgoStart: number
+): StatusHistoryEntry[] {
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  return path.map((status, i) => ({
+    status,
+    at: new Date(now - (daysAgoStart - i * 2) * dayMs).toISOString(),
+  }));
+}
+
 const DEMO_APPLICATIONS: Application[] = [
-  { id: "demo-1", company: "Careem", title: "Growth Marketing Manager", location: "Dubai, UAE", apply_url: null, status: "interview", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-2", company: "STC", title: "Product Analyst", location: "Riyadh, Saudi Arabia", apply_url: null, status: "applied", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-3", company: "Emirates NBD", title: "Digital Product Manager", location: "Dubai, UAE", apply_url: null, status: "saved", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-4", company: "noon", title: "Senior Frontend Engineer", location: "Dubai, UAE", apply_url: null, status: "offer", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-5", company: "Aramco Digital", title: "Data Analyst", location: "Dhahran, Saudi Arabia", apply_url: null, status: "rejected", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-6", company: "Bank Audi", title: "Relationship Manager", location: "Beirut, Lebanon", apply_url: null, status: "applied", notes: null, applied_at: null, updated_at: "" },
-  { id: "demo-7", company: "Talabat", title: "Operations Lead", location: "Kuwait City, Kuwait", apply_url: null, status: "saved", notes: null, applied_at: null, updated_at: "" },
+  { id: "demo-1", company: "Careem", title: "Growth Marketing Manager", location: "Dubai, UAE", apply_url: null, status: "interview", notes: null, applied_at: new Date(Date.now() - 9 * 86400000).toISOString(), updated_at: "", status_history: demoHistory(["saved", "applied", "interview"], 12) },
+  { id: "demo-2", company: "STC", title: "Product Analyst", location: "Riyadh, Saudi Arabia", apply_url: null, status: "applied", notes: null, applied_at: new Date(Date.now() - 3 * 86400000).toISOString(), updated_at: "", status_history: demoHistory(["saved", "applied"], 5) },
+  { id: "demo-3", company: "Emirates NBD", title: "Digital Product Manager", location: "Dubai, UAE", apply_url: null, status: "saved", notes: null, applied_at: null, updated_at: "", status_history: demoHistory(["saved"], 1) },
+  { id: "demo-4", company: "noon", title: "Senior Frontend Engineer", location: "Dubai, UAE", apply_url: null, status: "offer", notes: null, applied_at: new Date(Date.now() - 18 * 86400000).toISOString(), updated_at: "", status_history: demoHistory(["saved", "applied", "interview", "offer"], 20) },
+  { id: "demo-5", company: "Aramco Digital", title: "Data Analyst", location: "Dhahran, Saudi Arabia", apply_url: null, status: "rejected", notes: null, applied_at: new Date(Date.now() - 14 * 86400000).toISOString(), updated_at: "", status_history: demoHistory(["saved", "applied", "rejected"], 15) },
+  { id: "demo-6", company: "Bank Audi", title: "Relationship Manager", location: "Beirut, Lebanon", apply_url: null, status: "applied", notes: null, applied_at: new Date(Date.now() - 1 * 86400000).toISOString(), updated_at: "", status_history: demoHistory(["saved", "applied"], 2) },
+  { id: "demo-7", company: "Talabat", title: "Operations Lead", location: "Kuwait City, Kuwait", apply_url: null, status: "saved", notes: null, applied_at: null, updated_at: "", status_history: demoHistory(["saved"], 0) },
 ];
 
 type FormState = {
@@ -74,12 +99,18 @@ const EMPTY_FORM: FormState = {
 
 export default function ApplicationsPage() {
   const t = useTranslations("dashboard.applications");
+  const locale = useLocale();
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }),
+    [locale]
+  );
   const { user, loading: userLoading, configured } = useAuthUser();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [historyOpenId, setHistoryOpenId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<ApplicationStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -101,7 +132,7 @@ export default function ApplicationsPage() {
         const supabase = createClient();
         const { data, error } = await supabase
           .from("applications")
-          .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at")
+          .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at, status_history")
           .eq("user_id", user!.id)
           .order("updated_at", { ascending: false });
         if (error) throw error;
@@ -138,9 +169,17 @@ export default function ApplicationsPage() {
     return map;
   }, [filtered]);
 
+  // Mirrors what the DB's log_application_status_change trigger does, so the
+  // timeline updates instantly in the UI instead of waiting for a refetch —
+  // both here and in the DB, a no-op (status unchanged) appends nothing.
+  function appendHistory(app: Application, status: ApplicationStatus): StatusHistoryEntry[] {
+    if (app.status === status) return app.status_history;
+    return [...(app.status_history ?? []), { status, at: new Date().toISOString() }];
+  }
+
   async function persistStatus(id: string, status: ApplicationStatus) {
     setApplications((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
+      prev.map((a) => (a.id === id ? { ...a, status, status_history: appendHistory(a, status) } : a))
     );
     if (isDemo) return;
     try {
@@ -222,11 +261,21 @@ export default function ApplicationsPage() {
       if (isDemo) {
         if (form.id) {
           setApplications((prev) =>
-            prev.map((a) => (a.id === form.id ? { ...a, ...payload } : a))
+            prev.map((a) =>
+              a.id === form.id
+                ? { ...a, ...payload, status_history: appendHistory(a, payload.status) }
+                : a
+            )
           );
         } else {
           setApplications((prev) => [
-            { id: `local-${Date.now()}`, updated_at: new Date().toISOString(), applied_at: null, ...payload },
+            {
+              id: `local-${Date.now()}`,
+              updated_at: new Date().toISOString(),
+              applied_at: null,
+              status_history: [{ status: payload.status, at: new Date().toISOString() }],
+              ...payload,
+            },
             ...prev,
           ]);
         }
@@ -239,13 +288,17 @@ export default function ApplicationsPage() {
         const { error } = await supabase.from("applications").update(payload).eq("id", form.id);
         if (error) throw error;
         setApplications((prev) =>
-          prev.map((a) => (a.id === form.id ? { ...a, ...payload } : a))
+          prev.map((a) =>
+            a.id === form.id
+              ? { ...a, ...payload, status_history: appendHistory(a, payload.status) }
+              : a
+          )
         );
       } else {
         const { data, error } = await supabase
           .from("applications")
           .insert({ ...payload, user_id: user!.id })
-          .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at")
+          .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at, status_history")
           .single();
         if (error) throw error;
         if (data) setApplications((prev) => [data as Application, ...prev]);
@@ -359,6 +412,12 @@ export default function ApplicationsPage() {
                             {app.location}
                           </p>
                         )}
+                        {app.applied_at && (
+                          <p className="mt-1 flex items-center gap-1 truncate text-[11px] font-medium text-emerald-700">
+                            <CalendarCheck2 size={11} />
+                            {t("appliedOn", { date: dateFormatter.format(new Date(app.applied_at)) })}
+                          </p>
+                        )}
                       </div>
 
                       <div className="relative flex-none">
@@ -420,6 +479,34 @@ export default function ApplicationsPage() {
                     </div>
                     {app.notes && (
                       <p className="mt-2 line-clamp-2 text-xs text-foreground/50">{app.notes}</p>
+                    )}
+                    {app.status_history?.length > 0 && (
+                      <div className="mt-2 border-t border-border/70 pt-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setHistoryOpenId((id) => (id === app.id ? null : app.id))
+                          }
+                          className="flex items-center gap-1 text-[11px] font-medium text-foreground/45 hover:text-foreground/70"
+                        >
+                          <History size={11} />
+                          {historyOpenId === app.id ? t("hideHistory") : t("viewHistory")}
+                        </button>
+                        {historyOpenId === app.id && (
+                          <ol className="mt-2 space-y-1.5 border-s-2 border-sand-200 ps-2.5">
+                            {[...app.status_history]
+                              .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+                              .map((entry, i) => (
+                                <li key={`${entry.status}-${entry.at}-${i}`} className="text-[11px] leading-tight">
+                                  <span className="font-semibold text-foreground/70">{t(entry.status)}</span>
+                                  <span className="ms-1.5 text-foreground/40">
+                                    {dateFormatter.format(new Date(entry.at))}
+                                  </span>
+                                </li>
+                              ))}
+                          </ol>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
