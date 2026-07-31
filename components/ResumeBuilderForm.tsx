@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -26,7 +26,11 @@ import {
   Table2,
   List,
   Columns,
+  Upload,
+  FileCheck2,
 } from "lucide-react";
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB, matches the /dashboard/resume upload flow
 
 function newSectionId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -71,6 +75,9 @@ export default function ResumeBuilderForm() {
   const [improveError, setImproveError] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
   const [skillInput, setSkillInput] = useState("");
+  const [uploadState, setUploadState] = useState<"idle" | "parsing" | "enhancing" | "success" | "error">("idle");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadErrorMsg, setUploadErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -355,6 +362,99 @@ export default function ResumeBuilderForm() {
     }
   }
 
+  // --- Upload-to-autofill: lets a user drop in an existing CV file right
+  // here in the manual builder (rather than only via the separate
+  // /dashboard/resume upload screen) and have the core fields filled in
+  // automatically, instead of starting from a blank form. Reuses the same
+  // parse -> AI-structure pipeline as that other screen, and shares its
+  // 1-free-AI-action quota (aiUsed) so this can't be used to bypass the
+  // free-plan limit. Only overwrites the fields the AI pipeline actually
+  // returns (name/title/summary/skills/experience/education) — contact
+  // details, format, custom sections, certifications, and languages the
+  // user already filled in are always left untouched, matching this app's
+  // non-destructive editing philosophy elsewhere (format switching, etc).
+  async function handleUploadFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setUploadState("error");
+      setUploadErrorMsg(t("uploadTooBig"));
+      return;
+    }
+
+    if (plan !== "pro" && aiUsed >= 1) {
+      setShowAiLimit(true);
+      return;
+    }
+
+    const hasExistingContent = Boolean(
+      structured.fullName.trim() ||
+        structured.summary.trim() ||
+        structured.experience.length > 0 ||
+        structured.education.length > 0
+    );
+    if (hasExistingContent && !window.confirm(t("uploadConfirmReplace"))) {
+      return;
+    }
+
+    setUploadedFileName(file.name);
+    setUploadErrorMsg(null);
+    setUploadState("parsing");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const parseRes = await fetch("/api/resume/parse", { method: "POST", body: formData });
+      const parseData = await parseRes.json();
+      if (!parseRes.ok) throw new Error(parseData.error ?? t("uploadError"));
+
+      setUploadState("enhancing");
+      const enhanceRes = await fetch("/api/resume/enhance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: parseData.text }),
+      });
+      const enhanceData = await enhanceRes.json();
+      if (!enhanceRes.ok) throw new Error(enhanceData.error ?? t("uploadError"));
+
+      const result = enhanceData.structured as StructuredResume;
+      // Built as one merged object (not sequential update() calls) since
+      // update() reads `structured` from the render closure — several calls
+      // in a row would each start from the same stale snapshot and only the
+      // last one would stick.
+      const merged: StructuredResume = {
+        ...structured,
+        fullName: result.fullName || structured.fullName,
+        title: result.title || structured.title,
+        summary: result.summary || structured.summary,
+        skills: result.skills.length > 0 ? result.skills : structured.skills,
+        experience: result.experience.length > 0 ? result.experience : structured.experience,
+        education: result.education.length > 0 ? result.education : structured.education,
+      };
+      setStructured(merged);
+      setDirty(true);
+
+      const nextCount = aiUsed + 1;
+      setAiUsed(nextCount);
+      if (resumeId) {
+        await persistAiCount(nextCount, merged);
+      }
+
+      setUploadState("success");
+    } catch (err) {
+      console.error("[resume-builder] upload/parse/enhance failed:", err);
+      setUploadState("error");
+      setUploadErrorMsg(err instanceof Error ? err.message : t("uploadError"));
+    }
+  }
+
   async function handleSave() {
     if (!userId) {
       router.push("/login");
@@ -453,6 +553,51 @@ export default function ResumeBuilderForm() {
 
   const editPane = (
     <div className="space-y-8">
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("uploadSection")}</h3>
+        <p className="mt-1 text-xs text-foreground/50">{t("uploadSectionHelp")}</p>
+        <label
+          className={`mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+            uploadState === "error"
+              ? "border-red-300 bg-red-50"
+              : "border-border bg-background hover:border-emerald-400"
+          }`}
+        >
+          {uploadState === "parsing" || uploadState === "enhancing" ? (
+            <>
+              <Loader2 className="animate-spin text-emerald-600" size={22} />
+              <span className="text-sm font-medium text-foreground">
+                {uploadState === "parsing" ? t("uploadParsing") : t("uploadEnhancing")}
+              </span>
+            </>
+          ) : uploadState === "error" ? (
+            <>
+              <AlertCircle className="text-red-500" size={22} />
+              <span className="text-sm font-medium text-red-600">{uploadErrorMsg}</span>
+            </>
+          ) : uploadState === "success" ? (
+            <>
+              <FileCheck2 className="text-emerald-600" size={22} />
+              <span className="text-sm font-medium text-foreground">
+                {t("uploadSuccess", { filename: uploadedFileName ?? "" })}
+              </span>
+            </>
+          ) : (
+            <>
+              <Upload className="text-emerald-600" size={22} />
+              <span className="text-sm font-medium text-foreground">{t("uploadCta")}</span>
+            </>
+          )}
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            disabled={uploadState === "parsing" || uploadState === "enhancing"}
+            onChange={handleUploadFile}
+          />
+        </label>
+      </section>
+
       <section className="rounded-2xl border border-border bg-surface p-5">
         <label className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("versionName")}</label>
         <input

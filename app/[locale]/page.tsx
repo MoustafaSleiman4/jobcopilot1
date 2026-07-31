@@ -11,6 +11,8 @@ import {
   KanbanSquare,
   MessageCircleMore,
   Languages,
+  Star,
+  Quote,
 } from "lucide-react";
 
 const featureIcons = {
@@ -21,6 +23,24 @@ const featureIcons = {
   chatbot: MessageCircleMore,
   bilingual: Languages,
 } as const;
+
+// Reuses the same icons as the features grid below — each step in "How it
+// works" maps to the feature it's demonstrating, so the two sections read
+// as one consistent story rather than introducing a second icon set.
+const stepIcons = {
+  resume: FileText,
+  match: Search,
+  apply: MousePointerClick,
+  track: KanbanSquare,
+} as const;
+
+// Rotates through the existing brand colors so avatar initials aren't all
+// identical — purely presentational, no meaning tied to a specific color.
+const AVATAR_COLORS = [
+  "bg-emerald-100 text-emerald-700",
+  "bg-gold-100 text-gold-700",
+  "bg-sand-200 text-foreground/70",
+];
 
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
 
@@ -33,7 +53,9 @@ export default async function HomePage({
   const t = await getTranslations({ locale, namespace: "home" });
 
   const featureKeys = Object.keys(featureIcons) as (keyof typeof featureIcons)[];
+  const stepKeys = Object.keys(stepIcons) as (keyof typeof stepIcons)[];
   const regions = t.raw("regions") as string[];
+  const testimonials = t.raw("testimonials.items") as { quote: string; role: string; location: string }[];
 
   // Organization + SoftwareApplication structured data so search engines can
   // show a richer result (name, description, pricing) instead of just a
@@ -113,6 +135,36 @@ export default async function HomePage({
           <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
         </section>
 
+        {/* How it works */}
+        <section className="bg-surface py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
+              {t("howItWorks.title")}
+            </h2>
+            <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {stepKeys.map((key, i) => {
+                const Icon = stepIcons[key];
+                return (
+                  <div key={key} className="relative text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+                      <Icon size={24} />
+                    </div>
+                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide text-gold-600">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="mt-1 text-lg font-semibold text-foreground">
+                      {t(`howItWorks.steps.${key}.title`)}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground/60">
+                      {t(`howItWorks.steps.${key}.desc`)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         {/* Features */}
         <section className="bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
@@ -139,6 +191,47 @@ export default async function HomePage({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials */}
+        <section className="bg-background py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
+              {t("testimonials.title")}
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-foreground/60">
+              {t("testimonials.subtitle")}
+            </p>
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {testimonials.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm"
+                >
+                  <Quote className="text-gold-400" size={22} />
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/80">
+                    &ldquo;{item.quote}&rdquo;
+                  </p>
+                  <div className="mt-5 flex items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}
+                    >
+                      {item.role.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{item.role}</p>
+                      <p className="truncate text-xs text-foreground/50">{item.location}</p>
+                    </div>
+                    <div className="ms-auto flex flex-none gap-0.5 text-gold-400">
+                      {Array.from({ length: 5 }).map((_, si) => (
+                        <Star key={si} size={12} fill="currentColor" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

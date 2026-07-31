@@ -57,6 +57,63 @@
       "title": "Ready to find your next role?",
       "subtitle": "Create your free account and build your first resume in minutes.",
       "button": "Create free account"
+    },
+    "howItWorks": {
+      "title": "How GulfJobCopilot works",
+      "steps": {
+        "resume": {
+          "title": "Build or upload your resume",
+          "desc": "Start from scratch or upload an existing CV — we structure it into clean sections and suggest improvements automatically."
+        },
+        "match": {
+          "title": "Get matched to real openings",
+          "desc": "We scan verified company career pages and job boards across the Gulf, the Levant, and MEA every day and match them to your profile."
+        },
+        "apply": {
+          "title": "Apply in one click",
+          "desc": "Apply instantly where supported, or get a pre-filled application ready in one extra click — never a blind auto-submit bot."
+        },
+        "track": {
+          "title": "Track every application",
+          "desc": "See saved, applied, interview, and offer stages in one board, so nothing falls through the cracks."
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Job seekers across the region are landing interviews faster",
+      "subtitle": "Early feedback from people using GulfJobCopilot to search, apply, and track their job hunt.",
+      "items": [
+        {
+          "quote": "Uploading my old CV and getting a cleaned-up, ATS-ready version back in minutes saved me a whole weekend.",
+          "role": "Marketing Coordinator",
+          "location": "Dubai"
+        },
+        {
+          "quote": "I like that it pulls jobs straight from company career pages, not just the same recycled listings I'd already seen everywhere else.",
+          "role": "Software Engineer",
+          "location": "Riyadh"
+        },
+        {
+          "quote": "Having Arabic and English both feel native, not like an afterthought, made this the first job tool that actually felt built for us.",
+          "role": "HR Specialist",
+          "location": "Amman"
+        },
+        {
+          "quote": "The application tracker is what finally got me organized — I could actually see which companies I still owed a follow-up.",
+          "role": "Finance Analyst",
+          "location": "Beirut"
+        },
+        {
+          "quote": "One-click apply on the boards that support it is a genuine time saver when you're applying to a dozen roles a week.",
+          "role": "Project Coordinator",
+          "location": "Abu Dhabi"
+        },
+        {
+          "quote": "The AI assistant answering my interview-prep questions felt like having a career coach on call at 11pm.",
+          "role": "Recent Graduate",
+          "location": "Cairo"
+        }
+      ]
     }
   },
   "pricing": {
@@ -239,6 +296,15 @@
       "title": "CV builder",
       "subtitle": "Build a fully custom resume section by section, with a live preview and AI assist wherever you need it.",
       "backToResumes": "Back to my resumes",
+      "uploadSection": "Upload your CV",
+      "uploadSectionHelp": "Upload a PDF or Word file and we'll fill in your name, summary, skills, experience, and education automatically. You can edit or remove anything afterward.",
+      "uploadCta": "Click to upload a PDF or Word file",
+      "uploadParsing": "Reading your file...",
+      "uploadEnhancing": "Filling in your details...",
+      "uploadSuccess": "Filled in from {filename}",
+      "uploadError": "Couldn't process that file automatically. You can still fill in the fields below by hand.",
+      "uploadTooBig": "That file is too large (10MB max).",
+      "uploadConfirmReplace": "This will replace your name, summary, skills, experience, and education with content from the uploaded file. Your contact details, format, and any custom sections stay untouched. Continue?",
       "versionName": "Resume name",
       "untitledResume": "Untitled resume",
       "contactSection": "Contact details",
