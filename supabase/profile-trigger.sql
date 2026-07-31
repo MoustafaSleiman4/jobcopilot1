@@ -33,5 +33,17 @@ where p.id is null;
 
 -- One user = one current subscription row, so the billing webhook can upsert
 -- on user_id instead of accumulating duplicate rows every renewal.
-alter table public.subscriptions
-  add constraint subscriptions_user_id_key unique (user_id);
+-- Guarded with a existence check (rather than a plain `add constraint`)
+-- because supabase/subscriptions-upgrade.sql may already have added this
+-- exact constraint — running this file unconditionally after that one had
+-- already run would otherwise error out on this line and, depending on how
+-- the statements are batched, could roll back the profiles backfill above
+-- along with it.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'subscriptions_user_id_key'
+  ) then
+    alter table public.subscriptions add constraint subscriptions_user_id_key unique (user_id);
+  end if;
+end $$;

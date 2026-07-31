@@ -74,7 +74,13 @@ export async function POST(request: NextRequest) {
   // never be blocked by a failure in a less critical write.
   if (event.type === "subscription.created" || event.type === "subscription.renewed") {
     try {
-      await admin.from("profiles").update({ plan: "pro" }).eq("id", event.userId);
+      // upsert, not update: a plain `.update().eq("id", ...)` silently
+      // matches zero rows (no error) if this user has no `profiles` row yet
+      // — which is exactly what happened in production when
+      // supabase/profile-trigger.sql had never been run, so profiles was
+      // completely empty. An update alone can never fix that; upsert
+      // creates the row if it's missing instead of quietly doing nothing.
+      await admin.from("profiles").upsert({ id: event.userId, plan: "pro" }, { onConflict: "id" });
     } catch (err) {
       console.error("Billing webhook: failed to upgrade profiles.plan to pro", event.userId, err);
     }
