@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { downloadResumePdf } from "@/lib/resume-pdf";
+import type { StructuredResume } from "@/lib/resume-types";
 import {
   Search,
   MapPin,
@@ -14,6 +16,14 @@ import {
   Lock,
   Bookmark,
   BookmarkCheck,
+  Sparkles,
+  Loader2,
+  Download,
+  Copy,
+  Check,
+  Mail,
+  Phone,
+  User,
 } from "lucide-react";
 
 type WorkType = "remote" | "hybrid" | "onsite";
@@ -37,7 +47,13 @@ type SearchResponse = {
 };
 
 type ResumeContent = {
-  structured?: { title?: string };
+  structured?: StructuredResume;
+};
+
+type ContactInfo = {
+  fullName: string;
+  email: string;
+  phone: string;
 };
 
 const WORK_TYPES: WorkType[] = ["remote", "hybrid", "onsite"];
@@ -57,8 +73,16 @@ export default function JobSearchPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [trackedIds, setTrackedIds] = useState<Set<string>>(new Set());
   const [resumeTitle, setResumeTitle] = useState<string | null>(null);
+  const [defaultResumeId, setDefaultResumeId] = useState<string | null>(null);
+  const [defaultResumeStructured, setDefaultResumeStructured] = useState<StructuredResume | null>(null);
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [defaultQueryReady, setDefaultQueryReady] = useState(false);
   const [showUpgradeBanner, setShowUpgradeBanner] = useState(false);
+  const [prepareJob, setPrepareJob] = useState<Job | null>(null);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [generatingLetter, setGeneratingLetter] = useState(false);
+  const [letterError, setLetterError] = useState<string | null>(null);
+  const [copiedLetter, setCopiedLetter] = useState(false);
   const userTypedRef = useRef(false);
 
   // Load the signed-in user's plan and their saved resume's job title, so
@@ -81,10 +105,16 @@ export default function JobSearchPage() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("plan")
+          .select("plan, full_name, phone")
           .eq("id", uid)
           .single();
-        if (!cancelled && profile?.plan === "pro") setPlan("pro");
+        if (cancelled) return;
+        if (profile?.plan === "pro") setPlan("pro");
+        setContactInfo({
+          fullName: profile?.full_name ?? "",
+          email: data.user?.email ?? "",
+          phone: profile?.phone ?? "",
+        });
 
         const { data: tracked } = await supabase
           .from("applications")
@@ -95,16 +125,25 @@ export default function JobSearchPage() {
           setTrackedIds(new Set(tracked.map((r) => r.source_job_id as string)));
         }
 
+        // Ordered primary-first so a user with multiple saved versions gets
+        // their intentionally-chosen "main" resume associated with new
+        // applications (for Reports' resume-performance breakdown), not
+        // just whichever one they touched most recently.
         const { data: resume } = await supabase
           .from("resumes")
-          .select("content")
+          .select("id, content")
           .eq("user_id", uid)
+          .order("is_primary", { ascending: false })
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
         if (cancelled) return;
 
-        const title = (resume?.content as ResumeContent | undefined)?.structured?.title;
+        if (resume?.id) setDefaultResumeId(resume.id as string);
+        const structured = (resume?.content as ResumeContent | undefined)?.structured;
+        if (structured) setDefaultResumeStructured(structured);
+
+        const title = structured?.title;
         if (title) {
           setResumeTitle(title);
           if (!userTypedRef.current) setQuery(title);
@@ -164,6 +203,7 @@ export default function JobSearchPage() {
       await supabase.from("applications").insert({
         user_id: userId,
         source_job_id: job.id,
+        resume_id: defaultResumeId,
         company: job.company,
         title: job.title,
         location: job.location || null,
@@ -196,13 +236,18 @@ export default function JobSearchPage() {
         if (existing.status === "saved") {
           await supabase
             .from("applications")
-            .update({ status: "applied", applied_at: new Date().toISOString() })
+            .update({
+              status: "applied",
+              applied_at: new Date().toISOString(),
+              resume_id: defaultResumeId,
+            })
             .eq("id", existing.id);
         }
       } else {
         await supabase.from("applications").insert({
           user_id: userId,
           source_job_id: job.id,
+          resume_id: defaultResumeId,
           company: job.company,
           title: job.title,
           location: job.location || null,
@@ -222,8 +267,68 @@ export default function JobSearchPage() {
       setShowUpgradeBanner(true);
       return;
     }
-    window.open(job.applyUrl, "_blank", "noreferrer");
-    recordApplied(job);
+    // Pro users get a "prepare application" step first: their contact
+    // info and resume are pulled up ready to use, and a cover letter can be
+    // generated on demand, so opening the employer's own apply page is a
+    // one-click confirmation rather than starting from a blank form. This
+    // isn't literal zero-interaction submission — see the note in the
+    // modal — no job source used here exposes a public API that would let
+    // us submit on the candidate's behalf without becoming an employer/
+    // platform partner.
+    setCoverLetter("");
+    setLetterError(null);
+    setCopiedLetter(false);
+    setPrepareJob(job);
+  }
+
+  function closePrepareModal() {
+    setPrepareJob(null);
+  }
+
+  async function handleConfirmOpenApplication() {
+    if (!prepareJob) return;
+    window.open(prepareJob.applyUrl, "_blank", "noreferrer");
+    await recordApplied(prepareJob);
+    closePrepareModal();
+  }
+
+  async function handleDownloadResume() {
+    if (!defaultResumeStructured) return;
+    await downloadResumePdf(defaultResumeStructured, "resume.pdf");
+  }
+
+  async function handleGenerateCoverLetter() {
+    if (!prepareJob || !defaultResumeStructured) return;
+    setGeneratingLetter(true);
+    setLetterError(null);
+    try {
+      const res = await fetch("/api/resume/cover-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume: defaultResumeStructured,
+          jobTitle: prepareJob.title,
+          company: prepareJob.company,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Generation failed");
+      setCoverLetter(data.letter as string);
+    } catch (err) {
+      setLetterError(err instanceof Error ? err.message : t("prepare.letterError"));
+    } finally {
+      setGeneratingLetter(false);
+    }
+  }
+
+  async function handleCopyCoverLetter() {
+    try {
+      await navigator.clipboard.writeText(coverLetter);
+      setCopiedLetter(true);
+      setTimeout(() => setCopiedLetter(false), 2000);
+    } catch {
+      // Not critical — the letter is still visible and selectable.
+    }
   }
 
   return (
@@ -396,6 +501,122 @@ export default function JobSearchPage() {
           <p className="text-sm text-foreground/50">{t("noResults")}</p>
         )}
       </div>
+
+      {prepareJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={closePrepareModal} />
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">{t("prepare.title")}</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  {t("prepare.subtitle", { title: prepareJob.title, company: prepareJob.company })}
+                </p>
+              </div>
+              <button
+                onClick={closePrepareModal}
+                className="flex-none rounded-full p-1.5 text-foreground/50 hover:bg-sand-100 hover:text-foreground"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs text-sky-800">
+              {t("prepare.note")}
+            </p>
+
+            {/* Contact info */}
+            <div className="mt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                {t("prepare.contactHeading")}
+              </h3>
+              <div className="mt-2 space-y-1.5 rounded-xl border border-border bg-background p-3.5 text-sm">
+                <div className="flex items-center gap-2 text-foreground/80">
+                  <User size={14} className="text-foreground/40" />
+                  {contactInfo?.fullName || t("prepare.notSet")}
+                </div>
+                <div className="flex items-center gap-2 text-foreground/80">
+                  <Mail size={14} className="text-foreground/40" />
+                  {contactInfo?.email || t("prepare.notSet")}
+                </div>
+                <div className="flex items-center gap-2 text-foreground/80">
+                  <Phone size={14} className="text-foreground/40" />
+                  {contactInfo?.phone || t("prepare.notSet")}
+                </div>
+              </div>
+            </div>
+
+            {/* Resume */}
+            <div className="mt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                {t("prepare.resumeHeading")}
+              </h3>
+              {defaultResumeStructured ? (
+                <button
+                  onClick={handleDownloadResume}
+                  className="mt-2 flex w-full items-center justify-between rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground hover:bg-sand-100"
+                >
+                  <span className="truncate">{resumeTitle || t("prepare.yourResume")}</span>
+                  <Download size={15} className="flex-none text-emerald-600" />
+                </button>
+              ) : (
+                <p className="mt-2 text-sm text-foreground/50">{t("prepare.noResume")}</p>
+              )}
+            </div>
+
+            {/* Cover letter */}
+            {defaultResumeStructured && (
+              <div className="mt-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                    {t("prepare.coverLetterHeading")}
+                  </h3>
+                  {!coverLetter && (
+                    <button
+                      onClick={handleGenerateCoverLetter}
+                      disabled={generatingLetter}
+                      className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 disabled:opacity-60"
+                    >
+                      {generatingLetter ? (
+                        <Loader2 className="animate-spin" size={13} />
+                      ) : (
+                        <Sparkles size={13} />
+                      )}
+                      {generatingLetter ? t("prepare.generating") : t("prepare.generateLetter")}
+                    </button>
+                  )}
+                </div>
+                {letterError && <p className="mt-2 text-xs text-red-600">{letterError}</p>}
+                {coverLetter && (
+                  <div className="mt-2">
+                    <textarea
+                      value={coverLetter}
+                      onChange={(e) => setCoverLetter(e.target.value)}
+                      rows={8}
+                      className="w-full resize-y rounded-xl border border-border bg-background p-3 text-xs leading-relaxed text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                    <button
+                      onClick={handleCopyCoverLetter}
+                      className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-foreground/60 hover:text-foreground"
+                    >
+                      {copiedLetter ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      {copiedLetter ? t("prepare.copied") : t("prepare.copy")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={handleConfirmOpenApplication}
+              className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              {t("prepare.confirmCta")}
+              <ExternalLink size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

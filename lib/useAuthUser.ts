@@ -7,6 +7,7 @@ export type AuthUser = {
   id: string;
   email: string | null;
   fullName: string | null;
+  phone: string | null;
   plan: "free" | "pro";
 };
 
@@ -41,7 +42,7 @@ export function useAuthUser() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("full_name, plan")
+          .select("full_name, phone, plan")
           .eq("id", authedUser.id)
           .single();
         if (cancelled) return;
@@ -50,6 +51,7 @@ export function useAuthUser() {
           id: authedUser.id,
           email: authedUser.email ?? null,
           fullName: profile?.full_name ?? null,
+          phone: profile?.phone ?? null,
           plan: profile?.plan === "pro" ? "pro" : "free",
         });
       } catch {

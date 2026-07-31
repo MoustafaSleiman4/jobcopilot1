@@ -16,6 +16,8 @@ import {
   MessageCircleMore,
   LogOut,
   ChevronDown,
+  Mail,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +25,8 @@ const navItems = [
   { key: "resume", href: "/dashboard/resume", icon: FileText },
   { key: "jobs", href: "/dashboard/jobs", icon: Search },
   { key: "applications", href: "/dashboard/applications", icon: KanbanSquare },
+  { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
+  { key: "reports", href: "/dashboard/reports", icon: BarChart3 },
 ] as const;
 
 export default function DashboardShell({
