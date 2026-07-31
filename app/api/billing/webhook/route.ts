@@ -13,6 +13,35 @@ import { sendAdminNotification } from "@/lib/email";
  * updates both `subscriptions` and `profiles.plan` so the rest of the app
  * (e.g. the resume-download paywall) reflects the user's real plan.
  */
+
+/**
+ * Self-diagnostic health check — visit this URL directly in a browser
+ * (GET, not the POST the real webhook uses) to see at a glance which of the
+ * env vars this endpoint depends on are actually set in this environment,
+ * without needing to dig through Vercel's runtime logs or guess. Never
+ * returns actual secret values, only whether each one is present, plus
+ * which billing provider is currently active. Added after a real incident
+ * where a payment silently didn't upgrade an account and the only way to
+ * find out why was reading Vercel logs line by line.
+ */
+export async function GET() {
+  const provider = getBillingProvider();
+  return NextResponse.json({
+    activeBillingProvider: provider.name,
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      LEMONSQUEEZY_API_KEY: Boolean(process.env.LEMONSQUEEZY_API_KEY),
+      LEMONSQUEEZY_STORE_ID: Boolean(process.env.LEMONSQUEEZY_STORE_ID),
+      LEMONSQUEEZY_MONTHLY_VARIANT_ID: Boolean(process.env.LEMONSQUEEZY_MONTHLY_VARIANT_ID),
+      LEMONSQUEEZY_YEARLY_VARIANT_ID: Boolean(process.env.LEMONSQUEEZY_YEARLY_VARIANT_ID),
+      LEMONSQUEEZY_WEBHOOK_SECRET: Boolean(process.env.LEMONSQUEEZY_WEBHOOK_SECRET),
+      RESEND_API_KEY: Boolean(process.env.RESEND_API_KEY),
+    },
+    note: "true/false only — this never exposes actual secret values. If any billing-related field above is false, that's why payments aren't upgrading accounts: fix it in Vercel → Settings → Environment Variables (Production), then redeploy.",
+  });
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-signature") ?? request.headers.get("stripe-signature");
