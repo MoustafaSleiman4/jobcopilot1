@@ -1,10 +1,31 @@
+"use client";
+
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { LayoutDashboard, LogOut } from "lucide-react";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
+import { useAuthUser } from "@/lib/useAuthUser";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Navbar() {
   const t = useTranslations("nav");
+  const router = useRouter();
+  const { user, loading } = useAuthUser();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  async function handleSignOut() {
+    setMenuOpen(false);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Supabase not configured — nothing to sign out of.
+    }
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur">
@@ -19,18 +40,68 @@ export default function Navbar() {
         </div>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-foreground/70 hover:text-foreground sm:block"
-          >
-            {t("login")}
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-          >
-            {t("signup")}
-          </Link>
+
+          {/* While the session check is in flight, default to the logged-out
+              buttons rather than flashing a loading state — if a session
+              exists it swaps in a moment later. */}
+          {!loading && user ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 ps-1.5 pe-3 text-sm font-medium text-foreground/80 hover:border-emerald-300"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                  {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
+                </span>
+                <span className="hidden max-w-[10rem] truncate sm:inline">
+                  {user.fullName || user.email}
+                </span>
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute end-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+                    <div className="truncate px-3 py-2 text-xs text-foreground/50">
+                      {user.email}
+                    </div>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                    >
+                      <LayoutDashboard size={15} />
+                      {t("dashboard")}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut size={15} />
+                      {t("signOut")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden text-sm font-medium text-foreground/70 hover:text-foreground sm:block"
+              >
+                {t("login")}
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+                {t("signup")}
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

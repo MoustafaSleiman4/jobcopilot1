@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePathname, Link } from "@/i18n/navigation";
+import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 import ChatWidget from "./ChatWidget";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthUser } from "@/lib/useAuthUser";
 import {
   LayoutDashboard,
   FileText,
   Search,
   KanbanSquare,
   MessageCircleMore,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
 
 const navItems = [
@@ -31,34 +34,22 @@ export default function DashboardShell({
 }) {
   const t = useTranslations("dashboard.nav");
   const pathname = usePathname();
-  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const router = useRouter();
+  const { user } = useAuthUser();
+  const plan = user?.plan ?? "free";
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  async function handleSignOut() {
+    setMenuOpen(false);
     try {
       const supabase = createClient();
-      supabase.auth
-        .getUser()
-        .then(async ({ data }) => {
-          const uid = data.user?.id;
-          if (!uid || cancelled) return;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("plan")
-            .eq("id", uid)
-            .single();
-          if (!cancelled && profile?.plan === "pro") setPlan("pro");
-        })
-        .catch(() => {
-          // Not logged in / network issue — stay on the free-tier default.
-        });
+      await supabase.auth.signOut();
     } catch {
-      // Supabase not configured yet — stay on the free-tier default.
+      // Supabase not configured — nothing to sign out of.
     }
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex min-h-screen bg-sand-100">
@@ -99,6 +90,59 @@ export default function DashboardShell({
               </span>
             )}
             <LocaleSwitcher />
+
+            {/* Account menu: this is the one place in the whole dashboard
+                that visibly confirms "you are logged in" (who as, and on
+                which plan) and gives an actual way to sign out — neither
+                existed anywhere before this. */}
+            {user && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-full border border-border bg-background py-1 ps-1 pe-2.5 text-sm font-medium text-foreground/80 hover:border-emerald-300"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                    {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden max-w-[9rem] truncate sm:inline">
+                    {user.fullName || user.email}
+                  </span>
+                  <ChevronDown size={14} className="text-foreground/40" />
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute end-0 z-20 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+                      <div className="px-3 py-2">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {user.fullName || t("account")}
+                        </p>
+                        <p className="truncate text-xs text-foreground/50">{user.email}</p>
+                        <span
+                          className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            plan === "pro"
+                              ? "bg-gold-100 text-gold-600"
+                              : "bg-sand-100 text-foreground/60"
+                          }`}
+                        >
+                          {plan === "pro" ? t("planPro") : t("planFree")}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut size={15} />
+                        {t("signOut")}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </header>
         {/* Below md, the sidebar above is hidden entirely — this bottom tab

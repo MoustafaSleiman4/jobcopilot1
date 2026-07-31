@@ -44,16 +44,28 @@ create table if not exists public.jobs (
   unique (source, external_id)
 );
 
--- Applications: the tracker board
+-- Applications: the tracker board.
+-- `job_id` intentionally stays optional and unenforced in practice: live
+-- search results come from external ATS APIs (Greenhouse/Lever/Ashby) and an
+-- in-memory fallback list, not from rows in public.jobs, so applications
+-- carry their own snapshot of the listing (company/title/location/apply_url)
+-- rather than depending on a jobs-table row existing.
 create table if not exists public.applications (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users (id) on delete cascade,
   job_id uuid references public.jobs (id) on delete set null,
   resume_id uuid references public.resumes (id) on delete set null,
+  source_job_id text,          -- id of the listing from /api/jobs/search, e.g. "demo-3" or "greenhouse-careem-123"
+  company text not null default '',
+  title text not null default '',
+  location text,
+  apply_url text,
   status text not null default 'saved' check (status in ('saved', 'applied', 'interview', 'offer', 'rejected')),
   notes text,
   applied_at timestamptz,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, source_job_id)
 );
 
 -- Subscriptions: mirrors the active billing provider's state
@@ -103,3 +115,20 @@ create policy "Users manage their own chat messages" on public.chat_messages
 
 create policy "Anyone can read jobs" on public.jobs
   for select using (true);
+
+-- Keep applications.updated_at current on every edit (status change, note
+-- edit, etc.) — the applications board sorts/labels by this.
+create or replace function public.set_applications_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists applications_set_updated_at on public.applications;
+create trigger applications_set_updated_at
+before update on public.applications
+for each row execute function public.set_applications_updated_at();
+
+create index if not exists applications_user_id_idx on public.applications (user_id);

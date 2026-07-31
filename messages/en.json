@@ -4,7 +4,8 @@
     "pricing": "Pricing",
     "login": "Log in",
     "signup": "Get started",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "signOut": "Sign out"
   },
   "home": {
     "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
@@ -14,7 +15,17 @@
     "ctaSecondary": "See pricing",
     "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi, Beirut, Cairo, Amman & beyond",
     "regionsLabel": "Proudly serving job seekers across",
-    "regions": ["Saudi Arabia", "UAE", "Lebanon", "Qatar", "Kuwait", "Bahrain", "Oman", "Egypt", "Jordan"],
+    "regions": [
+      "Saudi Arabia",
+      "UAE",
+      "Lebanon",
+      "Qatar",
+      "Kuwait",
+      "Bahrain",
+      "Oman",
+      "Egypt",
+      "Jordan"
+    ],
     "features": {
       "title": "Everything you need to get hired, faster",
       "resume": {
@@ -56,7 +67,12 @@
       "price": "$0",
       "period": "forever",
       "desc": "Try the essentials",
-      "features": ["1 resume", "5 applications / month", "Basic job matching", "Community support"]
+      "features": [
+        "1 resume",
+        "5 applications / month",
+        "Basic job matching",
+        "Community support"
+      ]
     },
     "pro": {
       "name": "Pro",
@@ -129,7 +145,11 @@
       "resume": "Resume",
       "jobs": "Job search",
       "applications": "Applications",
-      "chat": "Assistant"
+      "chat": "Assistant",
+      "account": "Account",
+      "planFree": "Free plan",
+      "planPro": "Pro plan",
+      "signOut": "Sign out"
     },
     "overview": {
       "title": "Welcome back",
@@ -139,7 +159,10 @@
       "statInterviews": "Interviews",
       "planFree": "Free plan",
       "planPro": "Pro plan",
-      "upgrade": "Upgrade to Pro"
+      "upgrade": "Upgrade to Pro",
+      "recentActivity": "Recent activity",
+      "viewAll": "View all",
+      "noActivity": "Nothing tracked yet. Save or apply to a job to see it here."
     },
     "resume": {
       "title": "Resume builder",
@@ -305,7 +328,9 @@
         "Lebanon": "Lebanon",
         "Jordan": "Jordan",
         "Egypt": "Egypt"
-      }
+      },
+      "save": "Save",
+      "saved": "Saved"
     },
     "applications": {
       "title": "Applications",
@@ -314,7 +339,33 @@
       "applied": "Applied",
       "interview": "Interview",
       "offer": "Offer",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "addApplication": "Add application",
+      "editApplication": "Edit application",
+      "demoNotice": "You're viewing sample data. Log in to track your real applications.",
+      "searchPlaceholder": "Search by company or title",
+      "totalCount": "{count, plural, =0 {No applications} one {# application} other {# applications}}",
+      "loading": "Loading your applications…",
+      "emptyTitle": "No applications yet",
+      "emptySubtitle": "Save a job or apply to one from your job search to start tracking it here.",
+      "emptyCta": "Search jobs",
+      "edit": "Edit",
+      "moveTo": "Move to {status}",
+      "viewPosting": "View posting",
+      "delete": "Delete",
+      "columnEmpty": "Nothing here",
+      "fieldCompany": "Company",
+      "fieldTitle": "Job title",
+      "fieldLocation": "Location",
+      "fieldUrl": "Job posting URL",
+      "fieldStatus": "Status",
+      "fieldNotes": "Notes",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "confirmDelete": "Delete this application? This can't be undone.",
+      "formRequired": "Company and job title are required.",
+      "formError": "Something went wrong saving this application. Please try again."
     },
     "chat": {
       "title": "AI job-search assistant",

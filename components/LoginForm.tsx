@@ -1,18 +1,29 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthUser } from "@/lib/useAuthUser";
 
 export default function LoginForm() {
   const t = useTranslations("auth.login");
   const router = useRouter();
+  const { user, loading: checkingSession } = useAuthUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Already signed in (e.g. reached /login via an old bookmark, a back
+  // button, or a stale link) — skip straight to the dashboard instead of
+  // asking them to log in again.
+  useEffect(() => {
+    if (!checkingSession && user) {
+      router.replace("/dashboard");
+    }
+  }, [checkingSession, user, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,6 +40,10 @@ export default function LoginForm() {
       setLoading(false);
     }
   }
+
+  // Signed in already: render nothing while the redirect effect above kicks
+  // in, rather than flashing the login form first.
+  if (user) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6 py-16">

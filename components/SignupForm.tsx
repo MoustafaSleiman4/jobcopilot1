@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthUser } from "@/lib/useAuthUser";
 
 export default function SignupForm() {
   const t = useTranslations("auth.signup");
   const router = useRouter();
+  const { user, loading: checkingSession } = useAuthUser();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!checkingSession && user) {
+      router.replace("/dashboard");
+    }
+  }, [checkingSession, user, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,6 +42,8 @@ export default function SignupForm() {
       setLoading(false);
     }
   }
+
+  if (user) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6 py-16">

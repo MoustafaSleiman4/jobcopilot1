@@ -12,6 +12,8 @@ import {
   SlidersHorizontal,
   X,
   Lock,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 
 type WorkType = "remote" | "hybrid" | "onsite";
@@ -52,6 +54,8 @@ export default function JobSearchPage() {
   const [loading, setLoading] = useState(true);
 
   const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [trackedIds, setTrackedIds] = useState<Set<string>>(new Set());
   const [resumeTitle, setResumeTitle] = useState<string | null>(null);
   const [defaultQueryReady, setDefaultQueryReady] = useState(false);
   const [showUpgradeBanner, setShowUpgradeBanner] = useState(false);
@@ -73,12 +77,23 @@ export default function JobSearchPage() {
           return;
         }
 
+        setUserId(uid);
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("plan")
           .eq("id", uid)
           .single();
         if (!cancelled && profile?.plan === "pro") setPlan("pro");
+
+        const { data: tracked } = await supabase
+          .from("applications")
+          .select("source_job_id")
+          .eq("user_id", uid)
+          .not("source_job_id", "is", null);
+        if (!cancelled && tracked) {
+          setTrackedIds(new Set(tracked.map((r) => r.source_job_id as string)));
+        }
 
         const { data: resume } = await supabase
           .from("resumes")
@@ -137,12 +152,78 @@ export default function JobSearchPage() {
     setWorkType("");
   }
 
+  // Snapshot the listing's own fields into `applications` rather than
+  // relying on a `job_id` foreign key — live results come from external ATS
+  // APIs and an in-memory fallback list, not from rows in the `jobs` table,
+  // so there's nothing for a job_id to reference.
+  async function handleSave(job: Job) {
+    if (!userId || trackedIds.has(job.id)) return;
+    setTrackedIds((prev) => new Set(prev).add(job.id));
+    try {
+      const supabase = createClient();
+      await supabase.from("applications").insert({
+        user_id: userId,
+        source_job_id: job.id,
+        company: job.company,
+        title: job.title,
+        location: job.location || null,
+        apply_url: job.applyUrl || null,
+        status: "saved",
+      });
+    } catch {
+      // A duplicate-key error here just means it was already saved
+      // (e.g. from another tab) — the optimistic UI state already reflects
+      // "saved" either way, so there's nothing more to do.
+    }
+  }
+
+  async function recordApplied(job: Job) {
+    if (!userId) return;
+    setTrackedIds((prev) => new Set(prev).add(job.id));
+    try {
+      const supabase = createClient();
+      const { data: existing } = await supabase
+        .from("applications")
+        .select("id, status")
+        .eq("user_id", userId)
+        .eq("source_job_id", job.id)
+        .maybeSingle();
+
+      if (existing) {
+        // Only advance "saved" -> "applied". If it's already further along
+        // the pipeline (interview/offer/rejected), clicking Apply again
+        // shouldn't silently regress the tracker.
+        if (existing.status === "saved") {
+          await supabase
+            .from("applications")
+            .update({ status: "applied", applied_at: new Date().toISOString() })
+            .eq("id", existing.id);
+        }
+      } else {
+        await supabase.from("applications").insert({
+          user_id: userId,
+          source_job_id: job.id,
+          company: job.company,
+          title: job.title,
+          location: job.location || null,
+          apply_url: job.applyUrl || null,
+          status: "applied",
+          applied_at: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // Best-effort tracking — the application still went through in the
+      // browser tab that opened either way.
+    }
+  }
+
   function handleApply(job: Job) {
     if (plan !== "pro") {
       setShowUpgradeBanner(true);
       return;
     }
     window.open(job.applyUrl, "_blank", "noreferrer");
+    recordApplied(job);
   }
 
   return (
@@ -283,15 +364,32 @@ export default function JobSearchPage() {
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleApply(job)}
-                className="flex flex-none items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                {plan !== "pro" ? <Lock size={13} /> : null}
-                {job.applyType === "one_click" ? t("apply") : t("smartApply")}
-                {plan === "pro" && <ExternalLink size={14} />}
-              </button>
+              <div className="flex flex-none items-center gap-2">
+                {userId && (
+                  <button
+                    type="button"
+                    onClick={() => handleSave(job)}
+                    disabled={trackedIds.has(job.id)}
+                    title={trackedIds.has(job.id) ? t("saved") : t("save")}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                      trackedIds.has(job.id)
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                        : "border-border text-foreground/50 hover:border-emerald-300 hover:text-emerald-600"
+                    }`}
+                  >
+                    {trackedIds.has(job.id) ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleApply(job)}
+                  className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  {plan !== "pro" ? <Lock size={13} /> : null}
+                  {job.applyType === "one_click" ? t("apply") : t("smartApply")}
+                  {plan === "pro" && <ExternalLink size={14} />}
+                </button>
+              </div>
             </div>
           ))}
         {!loading && jobs.length === 0 && (
