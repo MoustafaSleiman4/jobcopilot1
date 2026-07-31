@@ -96,7 +96,9 @@
     },
     "monthly": "Monthly",
     "yearly": "Yearly",
-    "yearlySave": "Save ~17%"
+    "yearlySave": "Save ~17%",
+    "startingCheckout": "Starting checkout…",
+    "checkoutError": "Couldn't start checkout. Please try again in a moment."
   },
   "auth": {
     "login": {
@@ -117,7 +119,9 @@
       "password": "Password",
       "submit": "Create account",
       "hasAccount": "Already have an account?",
-      "loginLink": "Log in"
+      "loginLink": "Log in",
+      "pendingPlanNotice": "Create your account and we'll take you straight to secure checkout.",
+      "redirectingToCheckout": "Redirecting to checkout…"
     },
     "forgotPassword": {
       "title": "Reset your password",

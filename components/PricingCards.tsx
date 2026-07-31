@@ -2,15 +2,53 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { Check, Loader2 } from "lucide-react";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useAuthUser } from "@/lib/useAuthUser";
 
 export default function PricingCards() {
   const t = useTranslations("pricing");
+  const router = useRouter();
+  const { user, loading: checkingSession } = useAuthUser();
   const [yearly, setYearly] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const freeFeatures = t.raw("free.features") as string[];
   const proFeatures = t.raw("pro.features") as string[];
+  const planId = yearly ? "yearly" : "monthly";
+
+  // The Pro card's CTA used to just link to /signup, which meant nobody
+  // could actually pay — signup never started a checkout, and an existing
+  // logged-in free user clicking it had no path to Lemon Squeezy at all.
+  // Now: logged in -> start checkout directly and hand off to Lemon
+  // Squeezy's hosted page. Logged out -> go create an account first, with
+  // the chosen plan carried through via ?plan= so SignupForm can start
+  // checkout itself right after signup succeeds.
+  async function handleProClick() {
+    if (checkingSession) return;
+    if (!user) {
+      router.push(`/signup?plan=${planId}`);
+      return;
+    }
+    setCheckingOut(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, userId: user.id, email: user.email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Checkout failed");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : t("checkoutError"));
+      setCheckingOut(false);
+    }
+  }
 
   return (
     <div>
@@ -83,12 +121,18 @@ export default function PricingCards() {
               </li>
             ))}
           </ul>
-          <Link
-            href={`/signup?plan=${yearly ? "yearly" : "monthly"}`}
-            className="mt-8 block rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+          <button
+            type="button"
+            onClick={handleProClick}
+            disabled={checkingOut || checkingSession}
+            className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-70"
           >
-            {t("pro.cta")}
-          </Link>
+            {checkingOut && <Loader2 className="h-4 w-4 animate-spin" />}
+            {checkingOut ? t("startingCheckout") : t("pro.cta")}
+          </button>
+          {checkoutError && (
+            <p className="mt-3 text-center text-xs text-red-600">{checkoutError}</p>
+          )}
         </div>
       </div>
     </div>

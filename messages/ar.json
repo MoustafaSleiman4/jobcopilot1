@@ -96,7 +96,9 @@
     },
     "monthly": "شهري",
     "yearly": "سنوي",
-    "yearlySave": "وفّر ~17%"
+    "yearlySave": "وفّر ~17%",
+    "startingCheckout": "جارٍ بدء الدفع…",
+    "checkoutError": "تعذّر بدء عملية الدفع. حاول مرة أخرى بعد قليل."
   },
   "auth": {
     "login": {
@@ -117,7 +119,9 @@
       "password": "كلمة المرور",
       "submit": "إنشاء حساب",
       "hasAccount": "لديك حساب بالفعل؟",
-      "loginLink": "تسجيل الدخول"
+      "loginLink": "تسجيل الدخول",
+      "pendingPlanNotice": "أنشئ حسابك وسننقلك مباشرة إلى صفحة الدفع الآمنة.",
+      "redirectingToCheckout": "جارٍ التحويل إلى صفحة الدفع…"
     },
     "forgotPassword": {
       "title": "إعادة تعيين كلمة المرور",
