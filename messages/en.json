@@ -121,7 +121,21 @@
       "hasAccount": "Already have an account?",
       "loginLink": "Log in",
       "pendingPlanNotice": "Create your account and we'll take you straight to secure checkout.",
-      "redirectingToCheckout": "Redirecting to checkout…"
+      "redirectingToCheckout": "Redirecting to checkout…",
+      "confirmTitle": "Check your email",
+      "confirmBody": "We sent a confirmation link and a 6-digit code to {email}.",
+      "confirmSpam": "Not seeing it? Check your spam/junk folder — and if you're on Hotmail/Outlook, note that their link-safety scanning can sometimes use up the link before you click it. The code below works either way.",
+      "codeLabel": "Enter the 6-digit code",
+      "codePlaceholder": "123456",
+      "verifyCode": "Confirm",
+      "verifying": "Confirming...",
+      "codeError": "That code didn't work — it may have expired. Try resending.",
+      "orClickLink": "or click the link in the email",
+      "resendButton": "Resend email",
+      "resendSending": "Resending...",
+      "resendSent": "Sent — check your inbox again.",
+      "resendError": "Couldn't resend — please try again shortly.",
+      "backToLogin": "Back to log in"
     },
     "forgotPassword": {
       "title": "Reset your password",
