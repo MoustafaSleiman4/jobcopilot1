@@ -48,7 +48,19 @@ const GREENHOUSE_BOARDS = [
   { slug: "tamara", host: "boards-api.greenhouse.io" },
   { slug: "ziina", host: "boards-api.eu.greenhouse.io" },
 ];
-const LEVER_BOARDS = ["Yassir"];
+// "econstruct" (e.construct, an engineering firm with Cairo and Dubai
+// offices) and "soum" (a Riyadh-based re-commerce marketplace) were both
+// individually verified via their live Lever feeds to have real, current
+// Gulf/Levant listings — soum in particular is the first real source with
+// actual Riyadh/Saudi Arabia postings, which the curated fallback list
+// alone couldn't provide. Lever's board slug is case-sensitive and often
+// lowercase/abbreviated, so (like Greenhouse/Ashby above) it's paired with
+// its own display name rather than shown to users as-is.
+const LEVER_BOARDS = [
+  { slug: "Yassir", company: "Yassir" },
+  { slug: "econstruct", company: "e.construct" },
+  { slug: "soum", company: "Soum" },
+];
 const ASHBY_BOARDS = [{ slug: "leantech", company: "Lean Technologies" }];
 
 // Location filter options exposed in the UI. Also used as the set of
@@ -181,16 +193,16 @@ type LeverPosting = {
   applyUrl?: string;
 };
 
-async function fetchLeverJobs(company: string): Promise<Job[]> {
+async function fetchLeverJobs(slug: string, company: string): Promise<Job[]> {
   try {
-    const res = await fetch(`https://api.lever.co/v0/postings/${company}?mode=json`, {
+    const res = await fetch(`https://api.lever.co/v0/postings/${slug}?mode=json`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
     const data: LeverPosting[] = await res.json();
     return (data ?? []).slice(0, 8).map((p, idx) =>
       finalize({
-        id: `lever-${company}-${p.id ?? idx}`,
+        id: `lever-${slug}-${p.id ?? idx}`,
         title: p.text ?? "Untitled role",
         company,
         location: p.categories?.location ?? "Remote",
@@ -247,13 +259,21 @@ async function fetchJoobleJobs(apiKey: string, keywords: string, location: strin
     const res = await fetch(`https://jooble.org/api/${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keywords, location }),
+      // ResultOnPage explicitly asks Jooble for more results per call — this
+      // used to rely on whatever Jooble's unstated default page size is and
+      // then truncate to 8, which meant the single biggest real source of
+      // volume in this whole route was capped well below what it could
+      // actually return. 25 per (query × location) combination, across up
+      // to 9 locations, is the main lever for going from "a handful of
+      // jobs" to genuinely broad Gulf/Levant coverage once JOOBLE_API_KEY
+      // is configured.
+      body: JSON.stringify({ keywords, location, ResultOnPage: 25 }),
       next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
     const data = await res.json();
     const jobs: JoobleJob[] = data.jobs ?? [];
-    return jobs.slice(0, 8).map((j, idx) =>
+    return jobs.slice(0, 25).map((j, idx) =>
       finalize({
         id: `jooble-${location}-${j.id ?? idx}`,
         title: j.title ?? "Untitled role",
@@ -306,7 +326,7 @@ export async function GET(request: NextRequest) {
   try {
     const [greenhouseResults, leverResults, ashbyResults] = await Promise.all([
       Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host))),
-      Promise.all(LEVER_BOARDS.map(fetchLeverJobs)),
+      Promise.all(LEVER_BOARDS.map((b) => fetchLeverJobs(b.slug, b.company))),
       Promise.all(ASHBY_BOARDS.map((b) => fetchAshbyJobs(b.slug, b.company))),
     ]);
     realJobs = realJobs.concat(greenhouseResults.flat(), leverResults.flat(), ashbyResults.flat());
