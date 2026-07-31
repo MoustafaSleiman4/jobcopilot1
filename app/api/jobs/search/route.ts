@@ -42,11 +42,18 @@ type Job = {
 // listings) rather than guessed — most well-known regional companies
 // actually run on other ATS platforms (Workable, Zoho Recruit, Teamtailor,
 // in-house portals) that don't expose a public read API, which is why this
-// list is short rather than exhaustive.
+// list is short rather than exhaustive. ~25 other plausible Gulf/MENA
+// companies (Property Finder, Tabby, Huspy, Kitopi, Trella, Vezeeta, Salla,
+// etc.) were checked and excluded because their public board now 404s
+// (migrated ATS or closed the public board) — better to leave them out than
+// ship a slug that silently returns nothing.
+//
+// Correction from an earlier version of this file: Ziina's board is on
+// Ashby, not Greenhouse — the Greenhouse slug 404s and was silently
+// returning zero jobs for that company this whole time.
 const GREENHOUSE_BOARDS = [
   { slug: "careem", host: "boards-api.greenhouse.io" },
   { slug: "tamara", host: "boards-api.greenhouse.io" },
-  { slug: "ziina", host: "boards-api.eu.greenhouse.io" },
 ];
 // "econstruct" (e.construct, an engineering firm with Cairo and Dubai
 // offices) and "soum" (a Riyadh-based re-commerce marketplace) were both
@@ -60,8 +67,17 @@ const LEVER_BOARDS = [
   { slug: "Yassir", company: "Yassir" },
   { slug: "econstruct", company: "e.construct" },
   { slug: "soum", company: "Soum" },
+  { slug: "Bosta", company: "Bosta" }, // Egypt logistics, ~20 live listings
+  { slug: "rewaatech", company: "Rewaa" }, // Riyadh retail/inventory SaaS
 ];
-const ASHBY_BOARDS = [{ slug: "leantech", company: "Lean Technologies" }];
+const ASHBY_BOARDS = [
+  { slug: "leantech", company: "Lean Technologies" },
+  { slug: "ziina", company: "Ziina" }, // moved here from Greenhouse — see note above
+  { slug: "checkout.com", company: "Checkout.com" }, // several Saudi/UAE-based roles
+  { slug: "mexdigital", company: "MultiBank Group" },
+  { slug: "thndr", company: "Thndr" }, // Egyptian fintech
+  { slug: "rain", company: "Rain" }, // Bahrain-based, CBB-regulated crypto exchange
+];
 
 // Location filter options exposed in the UI. Also used as the set of
 // locations queried against Jooble when no specific one is requested. Not
@@ -168,7 +184,7 @@ async function fetchGreenhouseJobs(slug: string, host: string): Promise<Job[]> {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.jobs ?? []).slice(0, 8).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) =>
+    return (data.jobs ?? []).slice(0, 25).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) =>
       finalize({
         id: `${slug}-${j.id}`,
         title: j.title,
@@ -200,7 +216,7 @@ async function fetchLeverJobs(slug: string, company: string): Promise<Job[]> {
     });
     if (!res.ok) return [];
     const data: LeverPosting[] = await res.json();
-    return (data ?? []).slice(0, 8).map((p, idx) =>
+    return (data ?? []).slice(0, 25).map((p, idx) =>
       finalize({
         id: `lever-${slug}-${p.id ?? idx}`,
         title: p.text ?? "Untitled role",
@@ -231,7 +247,7 @@ async function fetchAshbyJobs(slug: string, companyName: string): Promise<Job[]>
     if (!res.ok) return [];
     const data = await res.json();
     const postings: AshbyPosting[] = data.jobs ?? [];
-    return postings.slice(0, 8).map((p, idx) =>
+    return postings.slice(0, 25).map((p, idx) =>
       finalize({
         id: `ashby-${slug}-${p.id ?? idx}`,
         title: p.title ?? "Untitled role",
@@ -254,7 +270,12 @@ type JoobleJob = {
   link?: string;
 };
 
-async function fetchJoobleJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
+async function fetchJoobleJobsPage(
+  apiKey: string,
+  keywords: string,
+  location: string,
+  page: number
+): Promise<Job[]> {
   try {
     const res = await fetch(`https://jooble.org/api/${apiKey}`, {
       method: "POST",
@@ -267,15 +288,15 @@ async function fetchJoobleJobs(apiKey: string, keywords: string, location: strin
       // to 9 locations, is the main lever for going from "a handful of
       // jobs" to genuinely broad Gulf/Levant coverage once JOOBLE_API_KEY
       // is configured.
-      body: JSON.stringify({ keywords, location, ResultOnPage: 25 }),
+      body: JSON.stringify({ keywords, location, ResultOnPage: 25, page }),
       next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
     const data = await res.json();
     const jobs: JoobleJob[] = data.jobs ?? [];
-    return jobs.slice(0, 25).map((j, idx) =>
+    return jobs.map((j, idx) =>
       finalize({
-        id: `jooble-${location}-${j.id ?? idx}`,
+        id: `jooble-${location}-p${page}-${j.id ?? idx}`,
         title: j.title ?? "Untitled role",
         company: j.company || "—",
         location: j.location || location,
@@ -290,6 +311,75 @@ async function fetchJoobleJobs(apiKey: string, keywords: string, location: strin
     return [];
   }
 }
+
+// Jooble supports a documented `page` parameter for pagination, on top of
+// `ResultOnPage` — pulling 2 pages per (keyword × location) combination
+// roughly doubles Jooble's yield (up to 50 per location instead of 25)
+// without needing an undocumented, unverified ResultOnPage ceiling. This is
+// the single biggest source of real volume in this whole route once
+// JOOBLE_API_KEY is actually set.
+async function fetchJoobleJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
+  const [page1, page2] = await Promise.all([
+    fetchJoobleJobsPage(apiKey, keywords, location, 1),
+    fetchJoobleJobsPage(apiKey, keywords, location, 2),
+  ]);
+  return [...page1, ...page2];
+}
+
+type CareerjetJob = {
+  url?: string;
+  title?: string;
+  company?: string;
+  locations?: string;
+};
+
+// Careerjet is a second, independent job aggregator (separate company from
+// Jooble, sourcing from a different mix of boards/employers) with confirmed
+// locale support for the UAE, Saudi Arabia, Kuwait, Oman, and Qatar — real
+// redundancy rather than being 100% dependent on Jooble alone. Requires a
+// free affiliate ID from careerjet.com/partners/api (CAREERJET_AFFID env
+// var) — gracefully does nothing until that's set, same pattern as Jooble.
+// NOTE: this integration is built from Careerjet's official client-library
+// source (github.com/careerjet) rather than a live-tested call, since this
+// sandbox's network policy blocks careerjet.net entirely — verify the base
+// URL/response shape against a real request once CAREERJET_AFFID is set,
+// before relying on this as a primary source.
+async function fetchCareerjetJobs(affid: string, keywords: string, locale: string): Promise<Job[]> {
+  try {
+    const params = new URLSearchParams({
+      keywords,
+      affid,
+      user_ip: "0.0.0.0",
+      user_agent: "Mozilla/5.0 (GulfJobCopilot server-side job search)",
+      url: "https://gulfjobcopilot.com/dashboard/jobs",
+      locale_code: locale,
+      pagesize: "25",
+    });
+    const res = await fetch(`http://public.api.careerjet.net/search?${params.toString()}`, {
+      next: { revalidate: 1800 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const jobs: CareerjetJob[] = data.jobs ?? [];
+    return jobs.map((j, idx) =>
+      finalize({
+        id: `careerjet-${locale}-${idx}`,
+        title: j.title ?? "Untitled role",
+        company: j.company || "—",
+        location: j.locations || locale,
+        applyUrl: j.url ?? "#",
+        applyType: "external" as const,
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// Careerjet locale codes with confirmed Gulf coverage (en_AE, en_SA, en_KW,
+// en_OM, en_QA) — Bahrain, Lebanon, Jordan, and Egypt aren't in Careerjet's
+// locale list, so those keep relying on Jooble + the curated fallback list.
+const CAREERJET_LOCALES = ["en_AE", "en_SA", "en_KW", "en_OM", "en_QA"];
 
 export async function GET(request: NextRequest) {
   const qRaw = request.nextUrl.searchParams.get("q") ?? "";
@@ -316,6 +406,31 @@ export async function GET(request: NextRequest) {
     try {
       const results = await Promise.all(
         joobleLocations.map((loc) => fetchJoobleJobs(joobleKey, qRaw, loc))
+      );
+      realJobs = realJobs.concat(results.flat());
+    } catch {
+      // ignore — fall through to other sources
+    }
+  }
+
+  const careerjetAffid = process.env.CAREERJET_AFFID;
+  if (careerjetAffid) {
+    // Country name -> Careerjet locale code, so the same locationFilter used
+    // for Jooble/curated filtering also narrows which Careerjet locales get
+    // queried.
+    const COUNTRY_TO_CAREERJET_LOCALE: Record<string, string> = {
+      "United Arab Emirates": "en_AE",
+      "Saudi Arabia": "en_SA",
+      Kuwait: "en_KW",
+      Oman: "en_OM",
+      Qatar: "en_QA",
+    };
+    const careerjetLocales = locationFilter
+      ? [COUNTRY_TO_CAREERJET_LOCALE[locationFilter]].filter(Boolean)
+      : CAREERJET_LOCALES;
+    try {
+      const results = await Promise.all(
+        careerjetLocales.map((locale) => fetchCareerjetJobs(careerjetAffid, qRaw, locale))
       );
       realJobs = realJobs.concat(results.flat());
     } catch {
@@ -384,7 +499,11 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    jobs: jobs.slice(0, 60),
+    // Raised from 60 now that real sources (Jooble pagination, more verified
+    // ATS boards, Careerjet) can genuinely return enough volume to make a
+    // higher cap meaningful — 60 was leaving real results on the table
+    // whenever more than one source returned a healthy number of jobs.
+    jobs: jobs.slice(0, 120),
     industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
     locations: LOCATIONS,
     workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],
