@@ -303,7 +303,49 @@
       "aiError": "AI rewrite failed — please try again.",
       "loading": "Loading...",
       "loadError": "Couldn't load this resume — try refreshing the page.",
-      "notFound": "This resume couldn't be found — it may have been deleted."
+      "notFound": "This resume couldn't be found — it may have been deleted.",
+      "resumeFormatSection": "Resume format",
+      "resumeFormatHelp": "Changes the order and emphasis of your sections — nothing you've written is ever hidden or deleted when you switch.",
+      "formats": {
+        "reverse-chronological": {
+          "label": "Reverse-Chronological",
+          "description": "The standard, most widely expected format — skills, then your work history, most recent first."
+        },
+        "functional": {
+          "label": "Functional / Skills-Based",
+          "description": "Leads with skills and any custom sections (e.g. key projects) — good for career changes or employment gaps."
+        },
+        "combination": {
+          "label": "Combination / Hybrid",
+          "description": "Full work history up front, blended with a strong skills section — the modern all-purpose default."
+        },
+        "ats-friendly": {
+          "label": "ATS-Friendly",
+          "description": "Plain, single-column layout with no colors or graphics — built to parse cleanly through automated screening."
+        },
+        "academic-cv": {
+          "label": "Academic CV",
+          "description": "Education leads, with room for publications, research, and teaching experience right after it."
+        },
+        "executive": {
+          "label": "Executive",
+          "description": "Key achievements get top billing right after your summary — built for senior/leadership roles."
+        }
+      },
+      "customSectionsSection": "Custom sections",
+      "customSectionsHelp": "Add your own tables or lists — publications, key achievements, board memberships, anything the built-in sections don't cover.",
+      "addTable": "Add table",
+      "addList": "Add list",
+      "customSectionTitlePlaceholder": "Section title (e.g. Publications)",
+      "removeSection": "Remove this section",
+      "column": "Column",
+      "removeColumn": "Remove column",
+      "addColumn": "Add column",
+      "removeRow": "Remove row",
+      "addRow": "Add row",
+      "listItemPlaceholder": "List item",
+      "addListItem": "Add item",
+      "noCustomSectionsYet": "No custom sections yet — add a table or list above."
     },
     "jobs": {
       "title": "Job search",

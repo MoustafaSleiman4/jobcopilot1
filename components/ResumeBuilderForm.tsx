@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { downloadResumePdf } from "@/lib/resume-pdf";
-import { emptyStructuredResume, type StructuredResume } from "@/lib/resume-types";
+import { emptyStructuredResume, RESUME_FORMATS, type CustomSection, type StructuredResume } from "@/lib/resume-types";
 import ResumePreview from "@/components/ResumePreview";
 import {
   ArrowLeft,
@@ -23,7 +23,16 @@ import {
   PenSquare,
   X,
   AlertCircle,
+  Table2,
+  List,
+  Columns,
 } from "lucide-react";
+
+function newSectionId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 type ResumeContent = {
   original?: string | null;
@@ -223,6 +232,67 @@ export default function ResumeBuilderForm() {
     );
   }
 
+  // --- Custom sections (tables + lists) ---
+  const customSections = structured.customSections ?? [];
+  function addCustomSection(type: "table" | "list") {
+    const section: CustomSection =
+      type === "table"
+        ? { id: newSectionId(), title: "", type: "table", columns: [t("column"), t("column")], rows: [["", ""]] }
+        : { id: newSectionId(), title: "", type: "list", columns: [], rows: [[""]] };
+    update("customSections", [...customSections, section]);
+  }
+  function updateCustomSection(id: string, patch: Partial<CustomSection>) {
+    update(
+      "customSections",
+      customSections.map((cs) => (cs.id === id ? { ...cs, ...patch } : cs))
+    );
+  }
+  function removeCustomSection(id: string) {
+    update(
+      "customSections",
+      customSections.filter((cs) => cs.id !== id)
+    );
+  }
+  function addCustomColumn(id: string) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    updateCustomSection(id, {
+      columns: [...cs.columns, t("column")],
+      rows: cs.rows.map((row) => [...row, ""]),
+    });
+  }
+  function removeCustomColumn(id: string, colIndex: number) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs || cs.columns.length <= 1) return;
+    updateCustomSection(id, {
+      columns: cs.columns.filter((_, i) => i !== colIndex),
+      rows: cs.rows.map((row) => row.filter((_, i) => i !== colIndex)),
+    });
+  }
+  function updateCustomColumnHeader(id: string, colIndex: number, value: string) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    updateCustomSection(id, { columns: cs.columns.map((c, i) => (i === colIndex ? value : c)) });
+  }
+  function addCustomRow(id: string) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    const width = cs.type === "table" ? Math.max(cs.columns.length, 1) : 1;
+    updateCustomSection(id, { rows: [...cs.rows, Array(width).fill("")] });
+  }
+  function updateCustomCell(id: string, rowIndex: number, colIndex: number, value: string) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    updateCustomSection(id, {
+      rows: cs.rows.map((row, ri) => (ri === rowIndex ? row.map((cell, ci) => (ci === colIndex ? value : cell)) : row)),
+    });
+  }
+  function removeCustomRow(id: string, rowIndex: number) {
+    const cs = customSections.find((c) => c.id === id);
+    if (!cs) return;
+    updateCustomSection(id, { rows: cs.rows.filter((_, ri) => ri !== rowIndex) });
+  }
+
   // --- AI assist (shares the same 1-free-action quota as the full AI
   // enhance on the upload flow, so a free-plan user can't get unlimited AI
   // rewrites just by using the manual builder instead). ---
@@ -394,6 +464,33 @@ export default function ResumeBuilderForm() {
           placeholder={t("untitledResume")}
           className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("resumeFormatSection")}</h3>
+        <p className="mt-1 text-xs text-foreground/50">{t("resumeFormatHelp")}</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {RESUME_FORMATS.map((format) => {
+            const active = (structured.format ?? "reverse-chronological") === format;
+            return (
+              <button
+                key={format}
+                type="button"
+                onClick={() => update("format", format)}
+                className={`rounded-xl border p-3 text-start transition-colors ${
+                  active
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-border bg-background hover:border-emerald-300"
+                }`}
+              >
+                <p className={`text-sm font-semibold ${active ? "text-emerald-700" : "text-foreground"}`}>
+                  {t(`formats.${format}.label`)}
+                </p>
+                <p className="mt-0.5 text-xs text-foreground/50">{t(`formats.${format}.description`)}</p>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5">
@@ -736,6 +833,164 @@ export default function ResumeBuilderForm() {
               </button>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("customSectionsSection")}</h3>
+            <p className="mt-1 text-xs text-foreground/50">{t("customSectionsHelp")}</p>
+          </div>
+          <div className="flex flex-none gap-2">
+            <button
+              type="button"
+              onClick={() => addCustomSection("table")}
+              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-sand-100"
+            >
+              <Table2 size={12} />
+              {t("addTable")}
+            </button>
+            <button
+              type="button"
+              onClick={() => addCustomSection("list")}
+              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-sand-100"
+            >
+              <List size={12} />
+              {t("addList")}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-5">
+          {customSections.map((cs) => (
+            <div key={cs.id} className="rounded-xl border border-border p-4">
+              <div className="flex items-start gap-2">
+                <input
+                  value={cs.title}
+                  onChange={(e) => updateCustomSection(cs.id, { title: e.target.value })}
+                  placeholder={t("customSectionTitlePlaceholder")}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeCustomSection(cs.id)}
+                  aria-label={t("removeSection")}
+                  className="flex flex-none items-center justify-center rounded-lg p-2 text-foreground/40 hover:text-red-500"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+
+              {cs.type === "table" ? (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[420px] text-sm">
+                    <thead>
+                      <tr>
+                        {cs.columns.map((col, ci) => (
+                          <th key={ci} className="p-1">
+                            <div className="flex items-center gap-1">
+                              <input
+                                value={col}
+                                onChange={(e) => updateCustomColumnHeader(cs.id, ci, e.target.value)}
+                                placeholder={t("column")}
+                                className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-bold focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              />
+                              {cs.columns.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeCustomColumn(cs.id, ci)}
+                                  aria-label={t("removeColumn")}
+                                  className="flex-none text-foreground/30 hover:text-red-500"
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                        <th className="w-8 p-1">
+                          <button
+                            type="button"
+                            onClick={() => addCustomColumn(cs.id)}
+                            title={t("addColumn")}
+                            className="flex items-center justify-center rounded-lg p-1.5 text-foreground/40 hover:bg-sand-100 hover:text-emerald-700"
+                          >
+                            <Columns size={14} />
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cs.rows.map((row, ri) => (
+                        <tr key={ri}>
+                          {row.map((cell, ci) => (
+                            <td key={ci} className="p-1">
+                              <input
+                                value={cell}
+                                onChange={(e) => updateCustomCell(cs.id, ri, ci, e.target.value)}
+                                className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              />
+                            </td>
+                          ))}
+                          <td className="w-8 p-1">
+                            <button
+                              type="button"
+                              onClick={() => removeCustomRow(cs.id, ri)}
+                              aria-label={t("removeRow")}
+                              className="flex items-center justify-center rounded-lg p-1.5 text-foreground/40 hover:text-red-500"
+                            >
+                              <X size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button
+                    type="button"
+                    onClick={() => addCustomRow(cs.id)}
+                    className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                  >
+                    <Plus size={12} />
+                    {t("addRow")}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {cs.rows.map((row, ri) => (
+                    <div key={ri} className="flex items-center gap-2">
+                      <input
+                        value={row[0] ?? ""}
+                        onChange={(e) => updateCustomCell(cs.id, ri, 0, e.target.value)}
+                        placeholder={t("listItemPlaceholder")}
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeCustomRow(cs.id, ri)}
+                        aria-label={t("removeRow")}
+                        className="flex flex-none items-center justify-center rounded-lg p-1.5 text-foreground/40 hover:text-red-500"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addCustomRow(cs.id)}
+                    className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                  >
+                    <Plus size={12} />
+                    {t("addListItem")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {customSections.length === 0 && (
+            <p className="text-sm text-foreground/50">{t("noCustomSectionsYet")}</p>
+          )}
         </div>
       </section>
 

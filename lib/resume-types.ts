@@ -1,3 +1,56 @@
+// The 6 formats below were chosen as the meaningfully distinct subset of a
+// much longer list a user asked for (30+ named "resume types" — Chronological,
+// Reverse-Chronological, Functional, Skills-Based, Combination, Hybrid,
+// Targeted, Mini, Infographic, Profile, Achievement-Based, ATS-Friendly,
+// One-Page, Two-Page, Academic CV, CV, Federal, Executive, Technical,
+// Creative, Portfolio, Video, Online, Web, Europass, Canadian, US, UK,
+// Australian, Graduate/Entry-Level, Career Change, Military-to-Civilian,
+// Project-Based, Freelance/Consultant, Executive Bio). Most of those are
+// either near-duplicates of each other (Chronological ≈ Reverse-Chronological;
+// Functional ≈ Skills-Based; CV ≈ Academic CV; regional variants like
+// US/UK/Canadian/Australian are formatting conventions, not structural
+// differences), length constraints rather than formats (One-Page/Two-Page),
+// or not a document format at all (Video/Online/Web resume, Executive Bio).
+// These 6 are the ones that genuinely reorder/re-emphasize sections and
+// cover the real range of what Gulf/MEA job seekers using this tool need.
+export type ResumeFormat =
+  | "reverse-chronological"
+  | "functional"
+  | "combination"
+  | "ats-friendly"
+  | "academic-cv"
+  | "executive";
+
+export const RESUME_FORMATS: ResumeFormat[] = [
+  "reverse-chronological",
+  "functional",
+  "combination",
+  "ats-friendly",
+  "academic-cv",
+  "executive",
+];
+
+/**
+ * A user-added section beyond the fixed built-in ones (Summary, Skills,
+ * Experience, Education, Certifications, Languages) — the general mechanism
+ * for "let me add a table" as well as format-specific content the fixed
+ * schema doesn't have a dedicated field for (Publications, Key Achievements,
+ * Board Memberships, Research, Awards, etc.), without needing a bespoke
+ * field per resume type.
+ *
+ * `type: "table"` renders `columns` as a header row and `rows` as the body.
+ * `type: "list"` ignores `columns` and renders each row's first cell as a
+ * bullet — the two share the same `rows` shape so the builder UI and
+ * renderers don't need two parallel data structures.
+ */
+export type CustomSection = {
+  id: string;
+  title: string;
+  type: "table" | "list";
+  columns: string[];
+  rows: string[][];
+};
+
 export type StructuredResume = {
   fullName: string;
   title: string;
@@ -16,6 +69,11 @@ export type StructuredResume = {
   links?: string; // free text — LinkedIn/portfolio/GitHub, comma or newline separated
   certifications?: { name: string; issuer: string; year: string }[];
   languages?: { name: string; level: string }[];
+  // Format + custom sections — optional/defaulted the same way, so resumes
+  // saved before this feature existed still load fine as
+  // "reverse-chronological" with no custom sections.
+  format?: ResumeFormat;
+  customSections?: CustomSection[];
 };
 
 /** A fully-populated empty resume — the one place every optional field gets
@@ -34,5 +92,7 @@ export function emptyStructuredResume(): StructuredResume {
     links: "",
     certifications: [],
     languages: [],
+    format: "reverse-chronological",
+    customSections: [],
   };
 }
