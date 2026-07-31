@@ -18,11 +18,17 @@ export interface CheckoutSession {
 
 export interface BillingProvider {
   name: string;
-  /** Creates a hosted checkout session URL for the given plan and user. */
+  /**
+   * Creates a hosted checkout session URL for the given plan and user.
+   * `redirectUrl`, when given, is where the provider should send the buyer
+   * back to after a successful payment — without it, the buyer is left on
+   * the provider's own generic receipt page with no way back into the app.
+   */
   createCheckoutSession(params: {
     planId: PlanId;
     userId: string;
     email: string;
+    redirectUrl?: string;
   }): Promise<CheckoutSession>;
   /** Verifies and parses an inbound webhook payload into a normalized event. */
   parseWebhookEvent(params: {

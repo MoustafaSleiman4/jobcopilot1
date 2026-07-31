@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
 import Logo from "@/components/Logo";
@@ -10,6 +10,7 @@ import { useAuthUser } from "@/lib/useAuthUser";
 
 export default function SignupForm() {
   const t = useTranslations("auth.signup");
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: checkingSession } = useAuthUser();
@@ -48,10 +49,11 @@ export default function SignupForm() {
       const uid = data.user?.id;
       if (pendingPlan && uid) {
         try {
+          const redirectUrl = `${window.location.origin}/${locale}/dashboard?upgraded=1`;
           const res = await fetch("/api/billing/checkout", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ planId: pendingPlan, userId: uid, email }),
+            body: JSON.stringify({ planId: pendingPlan, userId: uid, email, redirectUrl }),
           });
           const checkout = await res.json();
           if (res.ok && checkout.url) {

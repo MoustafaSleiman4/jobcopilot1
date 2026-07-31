@@ -56,10 +56,15 @@ async function loadDashboardData() {
   }
 }
 
-export default async function DashboardOverviewPage() {
+export default async function DashboardOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>;
+}) {
   const t = await getTranslations("dashboard.overview");
   const tApps = await getTranslations("dashboard.applications");
   const data = await loadDashboardData();
+  const { upgraded } = await searchParams;
 
   const stats = [
     { key: "statResumes", value: data.resumes, icon: FileText },
@@ -69,6 +74,18 @@ export default async function DashboardOverviewPage() {
 
   return (
     <div>
+      {upgraded === "1" && (
+        <div
+          className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${
+            data.plan === "pro"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-gold-400/40 bg-gold-50 text-gold-700"
+          }`}
+        >
+          {data.plan === "pro" ? t("upgradedSuccess") : t("upgradedPending")}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

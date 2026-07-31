@@ -24,20 +24,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, note: "Webhook verification not configured yet" });
   }
 
+  let admin: ReturnType<typeof createAdminClient>;
   try {
-    const admin = createAdminClient();
+    admin = createAdminClient();
+  } catch (err) {
+    // SUPABASE_SERVICE_ROLE_KEY missing/misconfigured — nothing below can
+    // run without it. Log loudly and 200 the webhook so the provider
+    // doesn't retry forever; fix the env var and the next event will apply.
+    console.error("Billing webhook: admin client not configured", err);
+    return NextResponse.json({ received: true });
+  }
 
-    // Best-effort lookup so the notification email can mention who paid —
-    // never let a failure here block updating the user's actual plan.
-    let userEmail = "unknown";
+  // Each side effect gets its own try/catch and runs independently. This
+  // used to be one big try block where a failed `subscriptions` upsert (it
+  // was missing a unique constraint on user_id, which `onConflict: "user_id"`
+  // requires — see supabase/subscriptions-upgrade.sql) would throw and skip
+  // the `profiles.plan` update entirely, silently stranding a paying user on
+  // the free plan even though the webhook itself returned 200. The plan
+  // update is the one thing that actually matters to the user, so it must
+  // never be blocked by a failure in a less critical write.
+  if (event.type === "subscription.created" || event.type === "subscription.renewed") {
     try {
-      const { data } = await admin.auth.admin.getUserById(event.userId);
-      userEmail = data.user?.email ?? "unknown";
-    } catch {
-      // service role key issue or user not found — proceed without the email
+      await admin.from("profiles").update({ plan: "pro" }).eq("id", event.userId);
+    } catch (err) {
+      console.error("Billing webhook: failed to upgrade profiles.plan to pro", event.userId, err);
     }
 
-    if (event.type === "subscription.created" || event.type === "subscription.renewed") {
+    try {
       await admin
         .from("subscriptions")
         .upsert(
@@ -49,8 +62,18 @@ export async function POST(request: NextRequest) {
           },
           { onConflict: "user_id" }
         );
-      await admin.from("profiles").update({ plan: "pro" }).eq("id", event.userId);
+    } catch (err) {
+      console.error("Billing webhook: failed to upsert subscriptions row", event.userId, err);
+    }
 
+    try {
+      let userEmail = "unknown";
+      try {
+        const { data } = await admin.auth.admin.getUserById(event.userId);
+        userEmail = data.user?.email ?? "unknown";
+      } catch {
+        // Best-effort lookup — don't let it block the notification email.
+      }
       const isNew = event.type === "subscription.created";
       await sendAdminNotification(
         isNew ? "New GulfJobCopilot Pro subscriber" : "GulfJobCopilot subscription renewed",
@@ -59,23 +82,37 @@ export async function POST(request: NextRequest) {
          <p><strong>Plan:</strong> ${event.plan}</p>
          <p><strong>Provider:</strong> ${provider.name}</p>`
       );
-    } else if (event.type === "subscription.cancelled") {
-      await admin
-        .from("subscriptions")
-        .update({ status: "cancelled" })
-        .eq("user_id", event.userId);
+    } catch (err) {
+      console.error("Billing webhook: failed to send admin notification", err);
+    }
+  } else if (event.type === "subscription.cancelled") {
+    try {
       await admin.from("profiles").update({ plan: "free" }).eq("id", event.userId);
+    } catch (err) {
+      console.error("Billing webhook: failed to downgrade profiles.plan to free", event.userId, err);
+    }
 
+    try {
+      await admin.from("subscriptions").update({ status: "cancelled" }).eq("user_id", event.userId);
+    } catch (err) {
+      console.error("Billing webhook: failed to mark subscriptions row cancelled", event.userId, err);
+    }
+
+    try {
+      let userEmail = "unknown";
+      try {
+        const { data } = await admin.auth.admin.getUserById(event.userId);
+        userEmail = data.user?.email ?? "unknown";
+      } catch {
+        // Best-effort lookup — don't let it block the notification email.
+      }
       await sendAdminNotification(
         "GulfJobCopilot subscription cancelled",
         `<p>A Pro subscription was just cancelled.</p><p><strong>Email:</strong> ${userEmail}</p>`
       );
+    } catch (err) {
+      console.error("Billing webhook: failed to send admin notification", err);
     }
-  } catch (err) {
-    // Admin client not configured yet (SUPABASE_SERVICE_ROLE_KEY missing) —
-    // log and still 200 the webhook so the provider doesn't keep retrying;
-    // fix the env var and the next event will apply correctly.
-    console.error("Billing webhook: failed to update Supabase", err);
   }
 
   return NextResponse.json({ received: true });

@@ -15,7 +15,7 @@ const VARIANT_IDS: Record<PlanId, string | undefined> = {
 export const lemonSqueezyProvider: BillingProvider = {
   name: "lemonsqueezy",
 
-  async createCheckoutSession({ planId, userId, email }) {
+  async createCheckoutSession({ planId, userId, email, redirectUrl }) {
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const variantId = VARIANT_IDS[planId];
@@ -41,6 +41,14 @@ export const lemonSqueezyProvider: BillingProvider = {
               email,
               custom: { user_id: userId },
             },
+            // Without this, Lemon Squeezy leaves the buyer on its own
+            // generic "thank you" page after payment with no way back into
+            // the app — they'd have to navigate back to gulfjobcopilot.com
+            // manually, which is exactly what was reported as "nothing
+            // happened when I come back to the system."
+            ...(redirectUrl && {
+              product_options: { redirect_url: redirectUrl },
+            }),
           },
           relationships: {
             store: { data: { type: "stores", id: storeId } },

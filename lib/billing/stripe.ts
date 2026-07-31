@@ -13,7 +13,7 @@ const PRICE_IDS: Record<PlanId, string | undefined> = {
 export const stripeProvider: BillingProvider = {
   name: "stripe",
 
-  async createCheckoutSession({ planId, userId, email }) {
+  async createCheckoutSession({ planId, userId, email, redirectUrl }) {
     const secretKey = process.env.STRIPE_SECRET_KEY;
     const priceId = PRICE_IDS[planId];
 
@@ -29,7 +29,7 @@ export const stripeProvider: BillingProvider = {
       "line_items[0][quantity]": "1",
       customer_email: email,
       "metadata[user_id]": userId,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard?checkout=success`,
+      success_url: redirectUrl ?? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard?upgraded=1`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/pricing`,
     });
 

@@ -68,7 +68,11 @@ create table if not exists public.applications (
   unique (user_id, source_job_id)
 );
 
--- Subscriptions: mirrors the active billing provider's state
+-- Subscriptions: mirrors the active billing provider's state.
+-- `unique (user_id)` is required — the billing webhook upserts into this
+-- table with `onConflict: "user_id"`, and Postgres rejects an ON CONFLICT
+-- upsert with no matching unique constraint. Without it, that upsert throws
+-- on every payment.
 create table if not exists public.subscriptions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -77,7 +81,8 @@ create table if not exists public.subscriptions (
   plan text not null check (plan in ('monthly', 'yearly')),
   status text not null default 'active' check (status in ('active', 'past_due', 'cancelled')),
   renews_at timestamptz,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (user_id)
 );
 
 -- Chat history for the AI job-search assistant

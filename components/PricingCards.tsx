@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useAuthUser } from "@/lib/useAuthUser";
 
 export default function PricingCards() {
   const t = useTranslations("pricing");
+  const locale = useLocale();
   const router = useRouter();
   const { user, loading: checkingSession } = useAuthUser();
   const [yearly, setYearly] = useState(false);
@@ -34,10 +35,11 @@ export default function PricingCards() {
     setCheckingOut(true);
     setCheckoutError(null);
     try {
+      const redirectUrl = `${window.location.origin}/${locale}/dashboard?upgraded=1`;
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, userId: user.id, email: user.email }),
+        body: JSON.stringify({ planId, userId: user.id, email: user.email, redirectUrl }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {

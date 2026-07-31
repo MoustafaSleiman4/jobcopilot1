@@ -166,7 +166,9 @@
       "upgrade": "Upgrade to Pro",
       "recentActivity": "Recent activity",
       "viewAll": "View all",
-      "noActivity": "Nothing tracked yet. Save or apply to a job to see it here."
+      "noActivity": "Nothing tracked yet. Save or apply to a job to see it here.",
+      "upgradedSuccess": "You're on Pro now — unlimited applications, AI enhancement, and one-click apply are all unlocked.",
+      "upgradedPending": "Payment received — we're finishing setting up your Pro plan. This is usually instant; refresh in a minute if it's still showing here."
     },
     "resume": {
       "title": "Resume builder",

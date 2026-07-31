@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBillingProvider, type PlanId } from "@/lib/billing";
 
 export async function POST(request: NextRequest) {
-  const { planId, userId, email } = (await request.json()) as {
+  const { planId, userId, email, redirectUrl } = (await request.json()) as {
     planId: PlanId;
     userId: string;
     email: string;
+    redirectUrl?: string;
   };
 
   if (!planId || !userId || !email) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const provider = getBillingProvider();
-    const session = await provider.createCheckoutSession({ planId, userId, email });
+    const session = await provider.createCheckoutSession({ planId, userId, email, redirectUrl });
     return NextResponse.json(session);
   } catch (err) {
     return NextResponse.json(
