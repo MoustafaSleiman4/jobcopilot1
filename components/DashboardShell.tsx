@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Mail,
   BarChart3,
+  GraduationCap,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { key: "jobs", href: "/dashboard/jobs", icon: Search },
   { key: "applications", href: "/dashboard/applications", icon: KanbanSquare },
   { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
+  { key: "certifications", href: "/dashboard/certifications", icon: GraduationCap },
   { key: "reports", href: "/dashboard/reports", icon: BarChart3 },
 ] as const;
 

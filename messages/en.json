@@ -228,6 +228,7 @@
       "planPro": "Pro plan",
       "signOut": "Sign out",
       "coverLetter": "Cover letter",
+      "certifications": "Certifications",
       "reports": "Reports"
     },
     "overview": {
@@ -588,6 +589,41 @@
       "downloadPdf": "Download PDF",
       "editableNote": "Feel free to edit the text above before copying or downloading.",
       "pdfTitle": "Cover Letter"
+    },
+    "certifications": {
+      "title": "Recommended certifications",
+      "subtitle": "AI-picked certifications based on your resume — what to earn next, why it matters, and where to start.",
+      "loading": "Loading...",
+      "lockedTitle": "Certification recommendations are a Pro feature",
+      "lockedBody": "Upgrade to Pro to get AI-powered certification recommendations tailored to your resume, with reasoning and study links.",
+      "upgradeCta": "Upgrade to Pro",
+      "untitledResume": "Untitled resume",
+      "noResumesYet": "You don't have a saved resume yet — build one first so we can recommend certifications based on it.",
+      "goBuildResume": "Go build your resume",
+      "resumeLabel": "Resume version",
+      "analyzing": "Analyzing your resume...",
+      "regenerate": "Regenerate",
+      "generateCta": "Get recommendations",
+      "noResumeSelected": "Select a resume version first.",
+      "generateError": "Couldn't generate recommendations — please try again.",
+      "addToResumeError": "Couldn't add this certification to your resume — please try again.",
+      "currentHeading": "Your current certifications",
+      "emptyTitle": "See what to learn next",
+      "emptySubtitle": "Click \"Get recommendations\" and we'll analyze your resume to suggest certifications that will move the needle for your target role.",
+      "recommendedHeading": "{count} recommended for you",
+      "priority": {
+        "high": "High impact",
+        "medium": "Worth it",
+        "low": "Optional"
+      },
+      "level": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "startStudying": "Start studying",
+      "addToResume": "Add to my resume",
+      "addedToResume": "Added"
     },
     "reports": {
       "title": "Reports",
