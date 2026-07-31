@@ -200,7 +200,7 @@ export default function JobSearchPage() {
     setTrackedIds((prev) => new Set(prev).add(job.id));
     try {
       const supabase = createClient();
-      await supabase.from("applications").insert({
+      const { error } = await supabase.from("applications").insert({
         user_id: userId,
         source_job_id: job.id,
         resume_id: defaultResumeId,
@@ -210,10 +210,16 @@ export default function JobSearchPage() {
         apply_url: job.applyUrl || null,
         status: "saved",
       });
-    } catch {
-      // A duplicate-key error here just means it was already saved
-      // (e.g. from another tab) — the optimistic UI state already reflects
-      // "saved" either way, so there's nothing more to do.
+      // Supabase query calls resolve successfully (no throw) even when the
+      // database rejects the write — the error comes back as `error`, not
+      // as an exception. A duplicate-key error (23505) here just means it
+      // was already saved (e.g. from another tab); anything else is a real
+      // failure and needs to be visible, not silently swallowed.
+      if (error && error.code !== "23505") {
+        console.error("[jobs] failed to save job:", error);
+      }
+    } catch (err) {
+      console.error("[jobs] failed to save job (network):", err);
     }
   }
 
@@ -222,19 +228,22 @@ export default function JobSearchPage() {
     setTrackedIds((prev) => new Set(prev).add(job.id));
     try {
       const supabase = createClient();
-      const { data: existing } = await supabase
+      const { data: existing, error: selectError } = await supabase
         .from("applications")
         .select("id, status")
         .eq("user_id", userId)
         .eq("source_job_id", job.id)
         .maybeSingle();
+      if (selectError) {
+        console.error("[jobs] failed to check existing application:", selectError);
+      }
 
       if (existing) {
         // Only advance "saved" -> "applied". If it's already further along
         // the pipeline (interview/offer/rejected), clicking Apply again
         // shouldn't silently regress the tracker.
         if (existing.status === "saved") {
-          await supabase
+          const { error } = await supabase
             .from("applications")
             .update({
               status: "applied",
@@ -242,9 +251,10 @@ export default function JobSearchPage() {
               resume_id: defaultResumeId,
             })
             .eq("id", existing.id);
+          if (error) console.error("[jobs] failed to mark application applied:", error);
         }
       } else {
-        await supabase.from("applications").insert({
+        const { error } = await supabase.from("applications").insert({
           user_id: userId,
           source_job_id: job.id,
           resume_id: defaultResumeId,
@@ -255,10 +265,12 @@ export default function JobSearchPage() {
           status: "applied",
           applied_at: new Date().toISOString(),
         });
+        if (error) console.error("[jobs] failed to record application:", error);
       }
-    } catch {
-      // Best-effort tracking — the application still went through in the
-      // browser tab that opened either way.
+    } catch (err) {
+      // Network-level failure only reaches here — DB-level errors are
+      // caught and logged above, since Supabase calls don't throw for those.
+      console.error("[jobs] failed to record application (network):", err);
     }
   }
 
