@@ -542,6 +542,7 @@
       "addApplication": "Add application",
       "editApplication": "Edit application",
       "demoNotice": "You're viewing sample data. Log in to track your real applications.",
+      "historyUnavailableNotice": "Your applications are loading, but status timelines aren't available yet for this account. This clears up automatically once a pending database update finishes.",
       "searchPlaceholder": "Search by company or title",
       "totalCount": "{count, plural, =0 {No applications} one {# application} other {# applications}}",
       "loading": "Loading your applications…",

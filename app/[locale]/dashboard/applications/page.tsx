@@ -116,6 +116,10 @@ export default function ApplicationsPage() {
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // True once the initial load hits a missing `status_history` column (see
+  // the 42703 handling below) — surfaced as a small note so it's clear
+  // *why* timelines aren't showing, instead of it just looking broken.
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
 
   const isDemo = !userLoading && (!configured || !user);
 
@@ -135,9 +139,39 @@ export default function ApplicationsPage() {
           .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at, status_history")
           .eq("user_id", user!.id)
           .order("updated_at", { ascending: false });
-        if (error) throw error;
+        if (error) {
+          // Postgres 42703 = "column does not exist" — happens whenever
+          // `supabase/applications-history-upgrade.sql` hasn't been run yet
+          // (status_history is one of the columns it adds). Before this
+          // fallback, that one missing column made the WHOLE select throw,
+          // which this effect's catch block turned into an empty array with
+          // zero indication anything was wrong — so a user who'd genuinely
+          // applied to jobs (the insert side doesn't touch status_history,
+          // so those writes succeed fine) would see an apparently-empty,
+          // seemingly-broken tracker with no error visible anywhere. Retry
+          // once without the column so real rows still show up; the history
+          // timeline itself just won't be available until that migration
+          // runs, same as it wasn't for any row before this session either.
+          if (error.code === "42703") {
+            const fallback = await supabase
+              .from("applications")
+              .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at")
+              .eq("user_id", user!.id)
+              .order("updated_at", { ascending: false });
+            if (fallback.error) throw fallback.error;
+            if (!cancelled) {
+              setApplications(
+                (fallback.data ?? []).map((row) => ({ ...row, status_history: [] })) as Application[]
+              );
+              setHistoryUnavailable(true);
+            }
+            return;
+          }
+          throw error;
+        }
         if (!cancelled) setApplications((data ?? []) as Application[]);
-      } catch {
+      } catch (err) {
+        console.error("[applications] failed to load applications:", err);
         if (!cancelled) setApplications([]);
       } finally {
         if (!cancelled) setLoading(false);
@@ -300,8 +334,27 @@ export default function ApplicationsPage() {
           .insert({ ...payload, user_id: user!.id })
           .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at, status_history")
           .single();
-        if (error) throw error;
-        if (data) setApplications((prev) => [data as Application, ...prev]);
+        if (error) {
+          // Same 42703 (missing column) case as the initial load above. An
+          // INSERT ... RETURNING <missing column> fails as ONE atomic
+          // statement — nothing was actually written — so the fix here is
+          // to retry the insert itself with a safe RETURNING list, not to
+          // go looking for a row that was never created.
+          if (error.code === "42703") {
+            const retry = await supabase
+              .from("applications")
+              .insert({ ...payload, user_id: user!.id })
+              .select("id, company, title, location, apply_url, status, notes, applied_at, updated_at")
+              .single();
+            if (retry.error) throw retry.error;
+            setHistoryUnavailable(true);
+            setApplications((prev) => [{ ...retry.data, status_history: [] } as Application, ...prev]);
+          } else {
+            throw error;
+          }
+        } else if (data) {
+          setApplications((prev) => [data as Application, ...prev]);
+        }
       }
       setForm(null);
     } catch (err) {
@@ -334,6 +387,12 @@ export default function ApplicationsPage() {
       {isDemo && (
         <p className="mt-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700">
           {t("demoNotice")}
+        </p>
+      )}
+
+      {historyUnavailable && (
+        <p className="mt-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700">
+          {t("historyUnavailableNotice")}
         </p>
       )}
 
