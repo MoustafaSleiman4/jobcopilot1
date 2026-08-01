@@ -36,6 +36,30 @@ function parseStructuredResume(raw: string): StructuredResume | null {
             period: typeof ed.period === "string" ? ed.period : "",
           }))
         : [],
+      // Previously missing from both this schema and the demo fallback below
+      // — a resume that clearly stated "PMP certified" would come back with
+      // an empty certifications list every time, since nothing ever asked
+      // for it. Certifications are often mentioned inline (in the summary
+      // or a job bullet) rather than under their own heading, so `issuer`
+      // and `year` are frequently unknown from the source text; leave them
+      // blank rather than guessing.
+      certifications: Array.isArray(parsed.certifications)
+        ? parsed.certifications
+            .map((c: Record<string, unknown>) => ({
+              name: typeof c.name === "string" ? c.name : "",
+              issuer: typeof c.issuer === "string" ? c.issuer : "",
+              year: typeof c.year === "string" ? c.year : "",
+            }))
+            .filter((c: { name: string }) => c.name.trim().length > 0)
+        : [],
+      languages: Array.isArray(parsed.languages)
+        ? parsed.languages
+            .map((l: Record<string, unknown>) => ({
+              name: typeof l.name === "string" ? l.name : "",
+              level: typeof l.level === "string" ? l.level : "",
+            }))
+            .filter((l: { name: string }) => l.name.trim().length > 0)
+        : [],
     };
   } catch {
     return null;
@@ -43,12 +67,57 @@ function parseStructuredResume(raw: string): StructuredResume | null {
 }
 
 const CONTACT_LINE_RE = /@|https?:\/\/|linkedin\.com|\+?\d[\d\s().-]{6,}\d/i;
-const SECTION_HEADERS: Record<"summary" | "skills" | "experience" | "education", RegExp> = {
+const SECTION_HEADERS: Record<
+  "summary" | "skills" | "experience" | "education" | "certifications" | "languages",
+  RegExp
+> = {
   summary: /^(summary|profile|professional summary|about)\s*:?$/i,
   skills: /^(skills|core skills|key skills|technical skills|competencies)\s*:?$/i,
   experience: /^(experience|work experience|employment|professional experience)\s*:?$/i,
   education: /^(education|academic background|qualifications)\s*:?$/i,
+  certifications: /^(certifications?|certificates?|licenses?\s*(&|and)?\s*certifications?)\s*:?$/i,
+  languages: /^languages?\s*:?$/i,
 };
+
+// A resume very often mentions a certification inline ("PMP certified",
+// "AWS Certified Solutions Architect") in the summary or a job bullet
+// rather than under its own heading — a section-header-only scan would
+// miss exactly the case a user reported ("it contains i'm PMP certified,
+// but the certifications box showed empty"). This is a best-effort net
+// of well-known, widely-recognized certifications run across the *whole*
+// resume text, independent of section headers, used only by the no-AI
+// demo fallback below (the real AI path is instructed to find these
+// itself and isn't limited to this fixed list).
+const KNOWN_CERTIFICATIONS: { name: string; pattern: RegExp }[] = [
+  { name: "PMP (Project Management Professional)", pattern: /\bPMP\b|project management professional/i },
+  { name: "CAPM", pattern: /\bCAPM\b/ },
+  { name: "PMI-ACP", pattern: /\bPMI-?ACP\b/i },
+  { name: "PRINCE2", pattern: /\bPRINCE2\b/i },
+  { name: "Certified ScrumMaster (CSM)", pattern: /\bCSM\b|certified scrummaster/i },
+  { name: "Professional Scrum Master (PSM)", pattern: /\bPSM\b|professional scrum master/i },
+  { name: "Six Sigma", pattern: /six sigma/i },
+  { name: "ITIL", pattern: /\bITIL\b/ },
+  { name: "CISSP", pattern: /\bCISSP\b/ },
+  { name: "CISA", pattern: /\bCISA\b/ },
+  { name: "CISM", pattern: /\bCISM\b/ },
+  { name: "CEH (Certified Ethical Hacker)", pattern: /\bCEH\b|certified ethical hacker/i },
+  { name: "CompTIA Security+", pattern: /comptia\s*security\+?/i },
+  { name: "CompTIA A+", pattern: /comptia\s*a\+/i },
+  { name: "CCNA", pattern: /\bCCNA\b/ },
+  { name: "CCNP", pattern: /\bCCNP\b/ },
+  { name: "AWS Certified Solutions Architect", pattern: /aws certified solutions architect/i },
+  { name: "AWS Certified", pattern: /\bAWS Certified\b/i },
+  { name: "Microsoft Certified: Azure", pattern: /microsoft certified.{0,20}azure|azure certified/i },
+  { name: "Google Cloud Certified", pattern: /google cloud certified/i },
+  { name: "CFA (Chartered Financial Analyst)", pattern: /\bCFA\b|chartered financial analyst/i },
+  { name: "CPA (Certified Public Accountant)", pattern: /\bCPA\b|certified public accountant/i },
+  { name: "ACCA", pattern: /\bACCA\b/ },
+  { name: "SHRM-CP", pattern: /\bSHRM-?CP\b/i },
+  { name: "PHR (Professional in Human Resources)", pattern: /\bPHR\b|professional in human resources/i },
+  { name: "Google Ads Certification", pattern: /google ads certifi/i },
+  { name: "HubSpot Certification", pattern: /hubspot certifi/i },
+  { name: "LEED Certification", pattern: /\bLEED\b/ },
+];
 
 /** Lightweight heuristic structuring used as a fallback: when no
  * ANTHROPIC_API_KEY is configured yet, and also as a safety net if a real AI
@@ -90,11 +159,16 @@ function demoStructure(text: string, demoLabel = true): StructuredResume {
   const rest = lines.slice(cursor);
 
   // Split the remaining lines into sections using common resume headers.
-  const buckets: Record<"summary" | "skills" | "experience" | "education", string[]> = {
+  const buckets: Record<
+    "summary" | "skills" | "experience" | "education" | "certifications" | "languages",
+    string[]
+  > = {
     summary: [],
     skills: [],
     experience: [],
     education: [],
+    certifications: [],
+    languages: [],
   };
   let current: keyof typeof buckets = "summary";
   for (const line of rest) {
@@ -137,6 +211,46 @@ function demoStructure(text: string, demoLabel = true): StructuredResume {
     return { degree: parts[0] ?? line, school: parts[1] ?? "", period: parts[2] ?? "" };
   });
 
+  // Certifications: lines under an explicit "Certifications" heading are
+  // trusted directly (split on common list delimiters, one cert per
+  // fragment). On top of that — not instead of it — the KNOWN_CERTIFICATIONS
+  // list is matched against the *entire* source text, so a certification
+  // mentioned in a summary or bullet ("...and I'm PMP certified") is still
+  // captured even with no dedicated section at all.
+  const certifications: StructuredResume["certifications"] = [];
+  const seenCertNames = new Set<string>();
+  for (const line of buckets.certifications) {
+    for (const fragment of line.split(/[,•|]/)) {
+      const trimmed = fragment.trim();
+      if (!trimmed || trimmed.length > 80) continue;
+      const parts = trimmed.split(/\s*[-–—]\s*/);
+      const name = parts[0].trim();
+      const key = name.toLowerCase();
+      if (!name || seenCertNames.has(key)) continue;
+      seenCertNames.add(key);
+      certifications.push({ name, issuer: parts[1]?.trim() ?? "", year: "" });
+    }
+  }
+  for (const known of KNOWN_CERTIFICATIONS) {
+    const key = known.name.toLowerCase();
+    if (seenCertNames.has(key)) continue;
+    if (known.pattern.test(text)) {
+      seenCertNames.add(key);
+      certifications.push({ name: known.name, issuer: "", year: "" });
+    }
+  }
+
+  const languages: StructuredResume["languages"] = buckets.languages
+    .flatMap((line) => line.split(/[,•|]/))
+    .map((fragment) => {
+      const trimmed = fragment.trim();
+      // "English (Fluent)" / "English - Fluent" / "Arabic: Native" formats.
+      const match = trimmed.match(/^([^()\-–:]+)[\s(:\-–]+([A-Za-z]+)\)?$/);
+      if (match) return { name: match[1].trim(), level: match[2].trim() };
+      return trimmed ? { name: trimmed, level: "" } : null;
+    })
+    .filter((l): l is { name: string; level: string } => l !== null && l.name.length > 0 && l.name.length < 40);
+
   const summaryText = buckets.summary.join(" ").trim();
   const demoSuffix = demoLabel
     ? " (Demo AI pass) Delivered measurable results by combining data-driven decision making with clear, action-oriented communication."
@@ -149,6 +263,8 @@ function demoStructure(text: string, demoLabel = true): StructuredResume {
     skills,
     experience,
     education,
+    certifications,
+    languages,
   };
 }
 
@@ -187,9 +303,11 @@ Return ONLY a single JSON object — no markdown fences, no commentary before or
   "summary": string,
   "skills": string[],
   "experience": [{ "role": string, "company": string, "location": string, "period": string, "bullets": string[] }],
-  "education": [{ "degree": string, "school": string, "period": string }]
+  "education": [{ "degree": string, "school": string, "period": string }],
+  "certifications": [{ "name": string, "issuer": string, "year": string }],
+  "languages": [{ "name": string, "level": string }]
 }
-If you can't determine a field from the source text, use an empty string or empty array for it rather than inventing content — but keep the JSON structurally complete and valid.
+Look carefully for certifications and languages EVEN WHEN they're only mentioned in passing in the summary or a bullet point (e.g. "PMP certified", "fluent in French") rather than listed under their own heading — don't limit yourself to an explicit "Certifications" or "Languages" section. If a certification's issuing body or year isn't stated, leave "issuer"/"year" as an empty string rather than guessing. If you can't determine a field from the source text, use an empty string or empty array for it rather than inventing content — but keep the JSON structurally complete and valid.
 
 Resume text:
 ---

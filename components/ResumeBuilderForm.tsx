@@ -497,6 +497,15 @@ export default function ResumeBuilderForm() {
         skills: result.skills.length > 0 ? result.skills : structured.skills,
         experience: result.experience.length > 0 ? result.experience : structured.experience,
         education: result.education.length > 0 ? result.education : structured.education,
+        // Previously left out entirely (the enhance API didn't extract
+        // these yet either — see that route's changelog), which is exactly
+        // why a resume that clearly said "PMP certified" still showed an
+        // empty certifications box after upload. Same non-destructive rule
+        // as every other field here: only fill in from the upload when the
+        // user hasn't already entered their own.
+        certifications:
+          (result.certifications?.length ?? 0) > 0 ? result.certifications : structured.certifications,
+        languages: (result.languages?.length ?? 0) > 0 ? result.languages : structured.languages,
       };
       setStructured(merged);
       setDirty(true);
