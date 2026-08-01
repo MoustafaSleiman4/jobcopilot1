@@ -29,6 +29,8 @@
     ],
     "features": {
       "title": "Everything you need to get hired, faster",
+      "proBadge": "Pro",
+      "proNote": "Reports, Certifications, and the AI Cover Letter generator are part of the Pro plan. <link>Compare plans</link>.",
       "resume": {
         "title": "Build & enhance your resume",
         "desc": "Upload an existing resume or build one from scratch. Our AI rewrites bullet points, tailors it to each job, and checks it against ATS keyword filters."
@@ -41,9 +43,21 @@
         "title": "One-click apply",
         "desc": "Apply instantly where supported, or get a pre-filled application ready in one extra click on the source site — never a blind auto-submit bot."
       },
+      "coverLetter": {
+        "title": "AI cover letter generator",
+        "desc": "Generate a tailored cover letter for any job in seconds — matched to the role, the company, and your own resume, in a tone you choose."
+      },
       "tracker": {
         "title": "Application tracker",
         "desc": "See every application's status in one board: saved, applied, interview, offer."
+      },
+      "reports": {
+        "title": "Reports & job-market insights",
+        "desc": "Track your response rate and application funnel over time, see which resume version performs best, and get a live snapshot of top hiring companies and locations for your target role. Export to CSV or PDF anytime."
+      },
+      "certifications": {
+        "title": "AI-recommended certifications",
+        "desc": "Get a short list of real, in-demand certifications tailored to your resume and target role — each with why it matters, how long it takes, and a link to start studying. Add earned ones straight to your resume."
       },
       "chatbot": {
         "title": "AI job-search assistant",
@@ -147,6 +161,8 @@
         "AI cover letter generator",
         "AI job-search chatbot",
         "Application tracker",
+        "AI-recommended certifications",
+        "Application reports & job-market insights",
         "Mock interview practice",
         "Priority support"
       ],

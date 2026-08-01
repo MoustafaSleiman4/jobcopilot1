@@ -14,16 +14,34 @@ import {
   Languages,
   Star,
   Quote,
+  Mail,
+  Award,
+  BarChart3,
 } from "lucide-react";
 
 const featureIcons = {
   resume: FileText,
   search: Search,
   apply: MousePointerClick,
+  coverLetter: Mail,
   tracker: KanbanSquare,
+  reports: BarChart3,
+  certifications: Award,
   chatbot: MessageCircleMore,
   bilingual: Languages,
 } as const;
+
+// The three features that only unlock on the Pro plan (each dashboard page
+// itself enforces this — see app/[locale]/dashboard/{cover-letter,reports,
+// certifications}/page.tsx, which all render a locked/upgrade view when
+// profile.plan !== "pro"). Surfacing that on the landing page is honest
+// (nobody clicks through expecting these free) and doubles as a preview of
+// what upgrading actually gets you, right next to the pricing link above.
+const PRO_FEATURE_KEYS = new Set<keyof typeof featureIcons>([
+  "coverLetter",
+  "reports",
+  "certifications",
+]);
 
 // Reuses the same icons as the features grid below — each step in "How it
 // works" maps to the feature it's demonstrating, so the two sections read
@@ -175,15 +193,23 @@ export default async function HomePage({
             <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {featureKeys.map((key) => {
                 const Icon = featureIcons[key];
+                const isPro = PRO_FEATURE_KEYS.has(key);
                 return (
                   <div
                     key={key}
                     className="rounded-2xl border border-border bg-background p-7 shadow-sm transition-shadow hover:shadow-md"
                   >
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                      <Icon className="h-5.5 w-5.5" size={22} />
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <Icon className="h-5.5 w-5.5" size={22} />
+                      </div>
+                      {isPro && (
+                        <span className="rounded-full bg-gold-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gold-700">
+                          {t("features.proBadge")}
+                        </span>
+                      )}
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">
                       {t(`features.${key}.title`)}
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-foreground/60">
@@ -193,6 +219,15 @@ export default async function HomePage({
                 );
               })}
             </div>
+            <p className="mt-8 text-center text-sm text-foreground/50">
+              {t.rich("features.proNote", {
+                link: (chunks) => (
+                  <Link href="/pricing" className="font-semibold text-emerald-600 hover:underline">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
           </div>
         </section>
 
