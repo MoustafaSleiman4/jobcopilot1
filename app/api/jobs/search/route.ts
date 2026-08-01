@@ -34,14 +34,18 @@ type Job = {
 //   - Jooble's REST API (jooble.org/api) — a licensed job-search aggregator
 //     with a free developer key, covering the UAE, Saudi Arabia, Qatar,
 //     Kuwait, Bahrain and more. Enabled once JOOBLE_API_KEY is set.
+//   - Careerjet's v4 search API (search.api.careerjet.net/v4/query) — a free
+//     API key from careerjet.com/partners/api, HTTP Basic Auth (key as
+//     username, empty password). Enabled once CAREERJET_API_KEY is set.
 //   - SerpApi's Google Jobs engine (serpapi.com, engine=google_jobs) — this
 //     is what actually replaces the old "Search on LinkedIn" outbound button
 //     with real inline result cards. It does NOT call LinkedIn directly (that
 //     would violate their ToS, same reasoning as above); instead it reads
 //     Google's own Jobs search index, which aggregates postings from many
 //     boards including LinkedIn, Indeed, Bayt, etc. Enabled once SERPAPI_KEY
-//     is set — a paid key from serpapi.com (no free tier meaningful at this
-//     app's expected volume). Nothing changes in the UI until that key is
+//     is set — SerpApi's free tier is 250 searches/month, enough to validate
+//     result quality before deciding whether a paid tier is worth it at this
+//     app's expected volume. Nothing changes in the UI until that key is
 //     set; this source is a silent no-op until then, same pattern as Jooble
 //     and Careerjet above.
 // A curated fallback list keeps the page populated with real Gulf/Levant
@@ -346,26 +350,36 @@ type CareerjetJob = {
 // Careerjet is a second, independent job aggregator (separate company from
 // Jooble, sourcing from a different mix of boards/employers) with confirmed
 // locale support for the UAE, Saudi Arabia, Kuwait, Oman, and Qatar — real
-// redundancy rather than being 100% dependent on Jooble alone. Requires a
-// free affiliate ID from careerjet.com/partners/api (CAREERJET_AFFID env
-// var) — gracefully does nothing until that's set, same pattern as Jooble.
-// NOTE: this integration is built from Careerjet's official client-library
-// source (github.com/careerjet) rather than a live-tested call, since this
-// sandbox's network policy blocks careerjet.net entirely — verify the base
-// URL/response shape against a real request once CAREERJET_AFFID is set,
-// before relying on this as a primary source.
-async function fetchCareerjetJobs(affid: string, keywords: string, locale: string): Promise<Job[]> {
+// redundancy rather than being 100% dependent on Jooble alone.
+//
+// Corrected this session: Careerjet has retired the old affid-based
+// `public.api.careerjet.net/search` endpoint this integration was originally
+// built against (that older client-library pattern is no longer what their
+// own partner API page documents) in favor of a v4 API at
+// `search.api.careerjet.net/v4/query`, authenticated with HTTP Basic Auth
+// (the API key as the username, empty password) rather than an `affid` query
+// param — confirmed directly against careerjet.com/partners/api. The env var
+// is now CAREERJET_API_KEY (a free key from the same signup page), not
+// CAREERJET_AFFID. Still gracefully does nothing until that's set, same
+// no-op-until-configured pattern as Jooble/SerpApi. NOTE: still not
+// live-tested end to end (this sandbox's network policy blocks
+// careerjet.net), so verify a real response shape once CAREERJET_API_KEY is
+// set, before relying on this as a primary source.
+async function fetchCareerjetJobs(apiKey: string, keywords: string, locale: string): Promise<Job[]> {
   try {
     const params = new URLSearchParams({
       keywords,
-      affid,
       user_ip: "0.0.0.0",
       user_agent: "Mozilla/5.0 (GulfJobCopilot server-side job search)",
-      url: "https://gulfjobcopilot.com/dashboard/jobs",
       locale_code: locale,
-      pagesize: "25",
+      page_size: "25",
     });
-    const res = await fetch(`http://public.api.careerjet.net/search?${params.toString()}`, {
+    const res = await fetch(`https://search.api.careerjet.net/v4/query?${params.toString()}`, {
+      headers: {
+        // Base64("<api-key>:") — Careerjet's v4 API uses the key as the Basic
+        // Auth username with an empty password, not a bearer token.
+        Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`,
+      },
       next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
@@ -481,8 +495,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const careerjetAffid = process.env.CAREERJET_AFFID;
-  if (careerjetAffid) {
+  const careerjetApiKey = process.env.CAREERJET_API_KEY;
+  if (careerjetApiKey) {
     // Country name -> Careerjet locale code, so the same locationFilter used
     // for Jooble/curated filtering also narrows which Careerjet locales get
     // queried.
@@ -498,7 +512,7 @@ export async function GET(request: NextRequest) {
       : CAREERJET_LOCALES;
     try {
       const results = await Promise.all(
-        careerjetLocales.map((locale) => fetchCareerjetJobs(careerjetAffid, qRaw, locale))
+        careerjetLocales.map((locale) => fetchCareerjetJobs(careerjetApiKey, qRaw, locale))
       );
       realJobs = realJobs.concat(results.flat());
     } catch {
