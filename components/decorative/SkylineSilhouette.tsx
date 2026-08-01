@@ -37,18 +37,44 @@ export default function SkylineSilhouette({ className = "" }: { className?: stri
         <rect x="10" y="200" width="28" height="60" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
         <rect x="46" y="180" width="20" height="80" fillOpacity={0.28} strokeOpacity={0.5} strokeWidth={1.5} />
 
-        {/* Al Faisaliah Tower (Riyadh) — a slender, STRAIGHT-sided obelisk
-            (an earlier version used a curved Q-bezier taper that bowed
-            outward into a "bell"/parachute silhouette at real render size —
-            caught only by actually screenshotting it, not from reading the
-            coordinates — a straight linear taper reads far more crisply as
-            a needle-like tower), closing to a point capped by its
-            signature gold sphere, with the thin spire mast rising above
-            the sphere exactly as on the real building. */}
+        {/* Al Faisaliah Tower (Riyadh) — redrawn against real reference
+            photos (user-supplied) after the previous pass still read as
+            too generic/unclear. The real building is unmistakable for
+            three features together, so all three are drawn explicitly
+            rather than left as a plain triangular fill: (1) a ribbed,
+            banded glass facade running the height of the tapering body,
+            (2) a large gold sphere sitting snugly ON the tower's tip
+            (not floating above it on a gap), braced by short diagonal
+            struts exactly as the real cross-bracing under the ball, and
+            (3) a long needle spire continuing above the sphere, capped
+            by a small finial. */}
         <g>
+          {/* tapering body */}
           <path d="M117,260 L131,100 L149,100 L163,260 Z" />
-          <circle cx="140" cy="79" r="17" />
-          <rect x="138" y="18" width="4" height="42" />
+          {/* horizontal facade ribs — thinner/fainter than the main
+              outline so they read as glazing bands, not extra outline */}
+          <g strokeWidth={1.1} strokeOpacity={0.4}>
+            <line x1="129.7" y1="115" x2="150.3" y2="115" />
+            <line x1="127.9" y1="135" x2="152.1" y2="135" />
+            <line x1="126.2" y1="155" x2="153.8" y2="155" />
+            <line x1="124.4" y1="175" x2="155.6" y2="175" />
+            <line x1="122.7" y1="195" x2="157.3" y2="195" />
+            <line x1="120.9" y1="215" x2="159.1" y2="215" />
+            <line x1="119.2" y1="235" x2="160.8" y2="235" />
+            <line x1="117.4" y1="255" x2="162.6" y2="255" />
+          </g>
+          {/* faint center fold line, hinting at the building's triangular
+              (three-sided) plan without needing a full 3D render */}
+          <line x1="140" y1="100" x2="140" y2="259" strokeWidth={1.1} strokeOpacity={0.35} />
+          {/* diagonal braces connecting the tower's tip to the sphere,
+              matching the real building's visible cross-bracing */}
+          <line x1="131" y1="101" x2="126" y2="86" strokeWidth={1.6} />
+          <line x1="149" y1="101" x2="154" y2="86" strokeWidth={1.6} />
+          {/* the signature gold sphere, sitting on the tip */}
+          <circle cx="140" cy="80" r="19" />
+          {/* needle spire rising above the sphere, capped with a small finial */}
+          <rect x="138.3" y="14" width="3.4" height="47" />
+          <circle cx="140" cy="12" r="2.6" />
         </g>
 
         {/* Kingdom Centre / Al Mamlakah Tower — "bottle-opener" silhouette,
