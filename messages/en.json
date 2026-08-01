@@ -440,6 +440,7 @@
       "location": "Location",
       "industry": "Industry",
       "clearFilters": "Clear filters",
+      "searchOnLinkedIn": "Search on LinkedIn",
       "noResults": "No matching jobs found — try a different search or filters.",
       "resultsCount": "{count, plural, one {# job found} other {# jobs found}}",
       "matchedToResume": "Showing roles matched to your resume title, \"{title}\" — search to see more.",

@@ -218,6 +218,21 @@ export default function JobSearchPage() {
     setWorkType("");
   }
 
+  // There is no public LinkedIn API for job search (and no ToS-compliant
+  // way to build one — see the codebase note atop app/api/jobs/search/
+  // route.ts), so this can't be a real in-app data source the way
+  // Greenhouse/Lever/Ashby/Jooble are. What it CAN be, with zero API and
+  // zero scraping, is a plain outbound deep link into LinkedIn's own public
+  // jobs-search results, pre-filled with whatever the user has already
+  // typed here — a one-click bridge to LinkedIn's listings rather than a
+  // dead end.
+  function linkedInSearchUrl(): string {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("keywords", query.trim());
+    if (location.trim()) params.set("location", location.trim());
+    return `https://www.linkedin.com/jobs/search/?${params.toString()}`;
+  }
+
   // Snapshot the listing's own fields into `applications` rather than
   // relying on a `job_id` foreign key — live results come from external ATS
   // APIs and an in-memory fallback list, not from rows in the `jobs` table,
@@ -519,6 +534,16 @@ export default function JobSearchPage() {
             {t("clearFilters")}
           </button>
         )}
+
+        <a
+          href={linkedInSearchUrl()}
+          target="_blank"
+          rel="noreferrer"
+          className="ms-auto flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-sm font-medium text-foreground/70 hover:border-emerald-400 hover:text-emerald-700"
+        >
+          {t("searchOnLinkedIn")}
+          <ExternalLink size={13} />
+        </a>
       </div>
 
       {!loading && (

@@ -440,6 +440,7 @@
       "location": "الموقع",
       "industry": "القطاع",
       "clearFilters": "مسح الفلاتر",
+      "searchOnLinkedIn": "ابحث في LinkedIn",
       "noResults": "لا توجد وظائف مطابقة — جرّب بحثًا أو فلاتر مختلفة.",
       "resultsCount": "{count, plural, one {وظيفة واحدة} other {# وظيفة}}",
       "matchedToResume": "نعرض وظائف مطابقة لمسمى سيرتك الذاتية، \"{title}\" — ابحث لرؤية المزيد.",
