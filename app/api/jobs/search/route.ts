@@ -46,6 +46,12 @@ type Job = {
 //   - Lever's public postings API (api.lever.co) — same idea, free and
 //     public, used by a number of Gulf/MENA startups.
 //   - Ashby's public job-board API (api.ashbyhq.com) — ditto.
+//   - RemoteOK's public API (remoteok.com/api) — no signup, no key, always
+//     on. Global remote-jobs board rather than Gulf-specific, so it mostly
+//     adds volume to the "remote" work-type filter. Considered and skipped:
+//     Adzuna (free, but none of its 12 covered countries are in this app's
+//     Gulf/Levant/MEA region) and Indeed's Publisher API (closed to new
+//     signups since 2022, no self-serve path).
 //   - Jooble's REST API (jooble.org/api) — a licensed job-search aggregator
 //     with a free developer key, covering the UAE, Saudi Arabia, Qatar,
 //     Kuwait, Bahrain and more. Enabled once JOOBLE_API_KEY is set.
@@ -283,6 +289,60 @@ async function fetchAshbyJobs(slug: string, companyName: string): Promise<Job[]>
         company: companyName,
         location: p.location ?? "Remote",
         applyUrl: p.applyUrl ?? p.jobUrl ?? "#",
+        applyType: "external" as const,
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+type RemoteOkJob = {
+  id?: string;
+  slug?: string;
+  position?: string;
+  company?: string;
+  location?: string;
+  url?: string;
+  apply_url?: string;
+};
+
+// RemoteOK's public API (remoteok.com/api) — added when the user asked for
+// another genuinely free source after Careerjet's signup wasn't working.
+// Considered and rejected first: Adzuna (free, but its 12-country coverage
+// — GB/US/DE/FR/AU/NZ/CA/IN/PL/BR/AT/ZA — has zero Gulf/Levant/MEA overlap,
+// so it wouldn't add anything relevant here) and Indeed's Publisher API
+// (closed to new signups since October 2022, still closed as of 2026 per
+// their own current documentation — no self-serve path at all anymore).
+// RemoteOK needs NO signup and NO API key whatsoever — it's a fully public
+// endpoint — so unlike every other source in this file it's not gated
+// behind an env var; it's just always on. Trade-off: it's a global
+// remote-jobs board, not Gulf-specific, so it mostly adds volume to the
+// "remote" work-type filter rather than local UAE/Saudi/etc. postings the
+// way Jooble/Careerjet/SerpApi do.
+// Their terms require linking back to the job's page on remoteok.com
+// itself (not silently deep-linking straight to the employer) — applyUrl
+// below deliberately uses `url` (RemoteOK's own posting page, which has its
+// own real Apply button) rather than `apply_url`, to actually satisfy that.
+async function fetchRemoteOkJobs(): Promise<Job[]> {
+  try {
+    const res = await fetch("https://remoteok.com/api", {
+      headers: { "User-Agent": "GulfJobCopilot (https://gulfjobcopilot.com)" },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const data: RemoteOkJob[] = await res.json();
+    // The first element of RemoteOK's response is a legal/notice object, not
+    // a job — filtering on a real `position` string (rather than assuming
+    // array index 0 is always the notice) is a safer way to skip it.
+    const jobs = data.filter((j) => typeof j.position === "string" && j.position.length > 0);
+    return jobs.slice(0, 40).map((j, idx) =>
+      finalize({
+        id: `remoteok-${j.id ?? j.slug ?? idx}`,
+        title: j.position ?? "Untitled role",
+        company: j.company || "—",
+        location: j.location || "Remote",
+        applyUrl: j.url ?? j.apply_url ?? "#",
         applyType: "external" as const,
       })
     );
@@ -603,12 +663,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [greenhouseResults, leverResults, ashbyResults] = await Promise.all([
+    const [greenhouseResults, leverResults, ashbyResults, remoteOkResults] = await Promise.all([
       Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host))),
       Promise.all(LEVER_BOARDS.map((b) => fetchLeverJobs(b.slug, b.company))),
       Promise.all(ASHBY_BOARDS.map((b) => fetchAshbyJobs(b.slug, b.company))),
+      fetchRemoteOkJobs(),
     ]);
-    realJobs = realJobs.concat(greenhouseResults.flat(), leverResults.flat(), ashbyResults.flat());
+    realJobs = realJobs.concat(
+      greenhouseResults.flat(),
+      leverResults.flat(),
+      ashbyResults.flat(),
+      remoteOkResults
+    );
   } catch {
     // ignore — fall through to other sources
   }
