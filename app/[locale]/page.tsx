@@ -31,13 +31,24 @@ const featureIcons = {
   bilingual: Languages,
 } as const;
 
-// The three features that only unlock on the Pro plan (each dashboard page
-// itself enforces this — see app/[locale]/dashboard/{cover-letter,reports,
-// certifications}/page.tsx, which all render a locked/upgrade view when
-// profile.plan !== "pro"). Surfacing that on the landing page is honest
-// (nobody clicks through expecting these free) and doubles as a preview of
-// what upgrading actually gets you, right next to the pricing link above.
+// Features that only unlock on the Pro plan (each dashboard page itself
+// enforces this — see the `plan !== "pro"` check in app/[locale]/dashboard/
+// {jobs,cover-letter,reports,certifications}/page.tsx, which all render a
+// locked/upgrade view, and the same check inside handleApply/handleBulkApply
+// on the jobs page for one-click/bulk apply specifically). Surfacing that on
+// the landing page is honest (nobody clicks through expecting these free)
+// and doubles as a preview of what upgrading actually gets you, right next
+// to the pricing link above.
+//
+// Keep this in sync with the actual `plan !== "pro"` gates in code, not with
+// what the pricing page's copy happens to list — those two have drifted
+// before (Reports/Certifications were built and gated but never appeared in
+// pricing copy; conversely "Application tracker" is listed as Pro on
+// pricing but isn't actually gated in code, so it's deliberately left out of
+// this set — see the open decision logged in the project status doc).
 const PRO_FEATURE_KEYS = new Set<keyof typeof featureIcons>([
+  "search",
+  "apply",
   "coverLetter",
   "reports",
   "certifications",
@@ -221,6 +232,11 @@ export default async function HomePage({
             </div>
             <p className="mt-8 text-center text-sm text-foreground/50">
               {t.rich("features.proNote", {
+                badge: (chunks) => (
+                  <span className="rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-700">
+                    {chunks}
+                  </span>
+                ),
                 link: (chunks) => (
                   <Link href="/pricing" className="font-semibold text-emerald-600 hover:underline">
                     {chunks}
