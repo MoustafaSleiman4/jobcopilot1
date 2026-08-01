@@ -7,6 +7,26 @@
     "dashboard": "Dashboard",
     "signOut": "Sign out"
   },
+  "seo": {
+    "pricing": {
+      "title": "Pricing",
+      "description": "Simple, transparent pricing for GulfJobCopilot. Start free with 1 resume and 1 AI enhancement, or go Pro for unlimited AI resume tools, smart job search, one-click apply, and application tracking across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
+    },
+    "login": {
+      "title": "Log in",
+      "description": "Log in to your GulfJobCopilot account to keep building your AI-optimized resume and applying to real jobs across the Gulf, Lebanon and the Middle East."
+    },
+    "signup": {
+      "title": "Create your free account",
+      "description": "Sign up free for GulfJobCopilot — build an AI-optimized resume, get matched to real openings across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region, and apply in one click."
+    },
+    "forgotPassword": {
+      "title": "Reset your password"
+    },
+    "resetPassword": {
+      "title": "Set a new password"
+    }
+  },
   "home": {
     "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
     "title": "Your AI copilot for landing the next job",
