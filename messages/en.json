@@ -13,6 +13,7 @@
     "subtitle": "Build a standout resume, get matched to real openings across the Gulf, Lebanon, and the wider Middle East & Africa region, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "See pricing",
+    "goToDashboard": "Go to dashboard",
     "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi, Beirut, Cairo, Amman & beyond",
     "regionsLabel": "Proudly serving job seekers across",
     "regions": [
@@ -349,6 +350,8 @@
       "languagesSection": "Languages",
       "addLanguage": "Add language",
       "languageName": "Language",
+      "languageOther": "Other",
+      "languageOtherPlaceholder": "Type the language",
       "level": "Proficiency level",
       "removeLanguage": "Remove",
       "themeSection": "Style",

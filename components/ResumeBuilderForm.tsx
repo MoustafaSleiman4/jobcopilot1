@@ -71,6 +71,34 @@ const FONT_SIZES: { key: "compact" | "standard" | "large"; labelKey: string }[] 
   { key: "large", labelKey: "sizeLarge" },
 ];
 
+// Preset language options, led by the three most relevant to this app's
+// Gulf/Levant/MEA job market (Arabic, English, French) plus the other
+// languages most commonly seen on resumes in the region (South Asian and
+// Southeast Asian languages given the size of that expat workforce in the
+// Gulf, plus a handful of other major world languages). These are stored
+// verbatim as the resume's actual printed content (same as every other
+// resume field), not translated per dashboard UI language — a resume
+// written in English should say "French", not whatever Arabic-UI label was
+// active when it was picked. "Other" reveals a free-text field below so a
+// language outside this list is never a dead end.
+const LANGUAGE_NAME_PRESETS = [
+  "Arabic",
+  "English",
+  "French",
+  "Hindi",
+  "Urdu",
+  "Tagalog",
+  "Spanish",
+  "German",
+  "Turkish",
+  "Russian",
+  "Mandarin Chinese",
+];
+
+// Kept to exactly 3 tiers, matching the standard "how well do you speak
+// this" resume convention.
+const LANGUAGE_LEVEL_PRESETS = ["Basic", "Intermediate", "Fluent"];
+
 export default function ResumeBuilderForm() {
   const t = useTranslations("dashboard.resumeBuilder");
   const searchParams = useSearchParams();
@@ -986,30 +1014,65 @@ export default function ResumeBuilderForm() {
           </button>
         </div>
         <div className="mt-4 space-y-3">
-          {languages.map((l, i) => (
-            <div key={i} className="grid gap-2 rounded-xl border border-border p-4 sm:grid-cols-[1fr_1fr_auto]">
-              <input
-                value={l.name}
-                onChange={(e) => updateLanguage(i, { name: e.target.value })}
-                placeholder={t("languageName")}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-              <input
-                value={l.level}
-                onChange={(e) => updateLanguage(i, { level: e.target.value })}
-                placeholder={t("level")}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-              <button
-                type="button"
-                onClick={() => removeLanguage(i)}
-                aria-label={t("removeLanguage")}
-                className="flex items-center justify-center rounded-lg p-2 text-foreground/40 hover:text-red-500"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+          {languages.map((l, i) => {
+            // A saved language whose name isn't one of the presets (typed
+            // before this became a dropdown, or picked as "Other") stays
+            // editable as free text rather than silently disappearing.
+            const nameIsCustom = Boolean(l.name) && !LANGUAGE_NAME_PRESETS.includes(l.name);
+            return (
+              <div key={i} className="grid gap-2 rounded-xl border border-border p-4 sm:grid-cols-[1fr_1fr_auto]">
+                <div className="space-y-2">
+                  <select
+                    value={nameIsCustom ? "__other__" : l.name}
+                    onChange={(e) =>
+                      updateLanguage(i, { name: e.target.value === "__other__" ? "" : e.target.value })
+                    }
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="" disabled>
+                      {t("languageName")}
+                    </option>
+                    {LANGUAGE_NAME_PRESETS.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                    <option value="__other__">{t("languageOther")}</option>
+                  </select>
+                  {nameIsCustom && (
+                    <input
+                      value={l.name}
+                      onChange={(e) => updateLanguage(i, { name: e.target.value })}
+                      placeholder={t("languageOtherPlaceholder")}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  )}
+                </div>
+                <select
+                  value={l.level}
+                  onChange={(e) => updateLanguage(i, { level: e.target.value })}
+                  className="h-fit rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="" disabled>
+                    {t("level")}
+                  </option>
+                  {LANGUAGE_LEVEL_PRESETS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => removeLanguage(i)}
+                  aria-label={t("removeLanguage")}
+                  className="flex h-fit items-center justify-center rounded-lg p-2 text-foreground/40 hover:text-red-500"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </section>
 

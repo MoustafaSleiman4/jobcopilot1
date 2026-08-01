@@ -70,6 +70,18 @@ type ContactInfo = {
 
 const WORK_TYPES: WorkType[] = ["remote", "hybrid", "onsite"];
 
+// lucide-react has no LinkedIn glyph (brand icons were dropped from the
+// library), so the recognizable "in" mark is drawn inline here — used only
+// as a small badge next to an outbound link to linkedin.com itself, the
+// same way any site links out to LinkedIn.
+function LinkedInGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45Z" />
+    </svg>
+  );
+}
+
 export default function JobSearchPage() {
   const t = useTranslations("dashboard.jobs");
   const [query, setQuery] = useState("");
@@ -539,10 +551,11 @@ export default function JobSearchPage() {
           href={linkedInSearchUrl()}
           target="_blank"
           rel="noreferrer"
-          className="ms-auto flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-sm font-medium text-foreground/70 hover:border-emerald-400 hover:text-emerald-700"
+          className="ms-auto flex items-center gap-2 rounded-full bg-[#0A66C2] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0A66C2]/25 transition-all hover:bg-[#004182] hover:shadow-lg hover:shadow-[#0A66C2]/35"
         >
+          <LinkedInGlyph className="h-4 w-4 shrink-0" />
           {t("searchOnLinkedIn")}
-          <ExternalLink size={13} />
+          <ExternalLink size={13} className="opacity-80" />
         </a>
       </div>
 

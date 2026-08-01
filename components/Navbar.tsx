@@ -45,47 +45,62 @@ export default function Navbar() {
               buttons rather than flashing a loading state — if a session
               exists it swaps in a moment later. */}
           {!loading && user ? (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 ps-1.5 pe-3 text-sm font-medium text-foreground/80 hover:border-emerald-300"
+            <>
+              {/* Always-visible Dashboard button — previously the only way
+                  back into the dashboard from the marketing site was
+                  opening the account dropdown below, which a logged-in
+                  user landing on the homepage had no reason to think to
+                  click. A direct, always-shown button removes that hunt. */}
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                  {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
-                </span>
-                <span className="hidden max-w-[10rem] truncate sm:inline">
-                  {user.fullName || user.email}
-                </span>
-              </button>
+                <LayoutDashboard size={15} />
+                <span className="hidden sm:inline">{t("dashboard")}</span>
+              </Link>
 
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute end-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
-                    <div className="truncate px-3 py-2 text-xs text-foreground/50">
-                      {user.email}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 ps-1.5 pe-3 text-sm font-medium text-foreground/80 hover:border-emerald-300"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                    {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden max-w-[10rem] truncate sm:inline">
+                    {user.fullName || user.email}
+                  </span>
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute end-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+                      <div className="truncate px-3 py-2 text-xs text-foreground/50">
+                        {user.email}
+                      </div>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                      >
+                        <LayoutDashboard size={15} />
+                        {t("dashboard")}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut size={15} />
+                        {t("signOut")}
+                      </button>
                     </div>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-sand-100"
-                    >
-                      <LayoutDashboard size={15} />
-                      {t("dashboard")}
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={handleSignOut}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut size={15} />
-                      {t("signOut")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            </>
           ) : (
             <>
               <Link

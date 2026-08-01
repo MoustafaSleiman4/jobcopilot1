@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import AuthAwareCta from "@/components/AuthAwareCta";
 import DuneDivider from "@/components/decorative/DuneDivider";
 import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
 import {
@@ -105,12 +106,12 @@ export default async function HomePage({
               {t("subtitle")}
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/signup"
+              <AuthAwareCta
+                loggedOutHref="/signup"
+                loggedOutLabel={t("ctaPrimary")}
+                loggedInLabel={t("goToDashboard")}
                 className="w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/20 transition-colors hover:bg-emerald-700 sm:w-auto"
-              >
-                {t("ctaPrimary")}
-              </Link>
+              />
               <Link
                 href="/pricing"
                 className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-colors hover:bg-sand-100 sm:w-auto"
@@ -242,12 +243,12 @@ export default async function HomePage({
           <div className="relative mx-auto max-w-2xl px-6">
             <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
             <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
-            <Link
-              href="/signup"
+            <AuthAwareCta
+              loggedOutHref="/signup"
+              loggedOutLabel={t("finalCta.button")}
+              loggedInLabel={t("goToDashboard")}
               className="mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 shadow-lg transition-colors hover:bg-gold-500"
-            >
-              {t("finalCta.button")}
-            </Link>
+            />
           </div>
         </section>
       </main>
