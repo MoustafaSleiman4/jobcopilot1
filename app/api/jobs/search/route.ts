@@ -34,6 +34,16 @@ type Job = {
 //   - Jooble's REST API (jooble.org/api) — a licensed job-search aggregator
 //     with a free developer key, covering the UAE, Saudi Arabia, Qatar,
 //     Kuwait, Bahrain and more. Enabled once JOOBLE_API_KEY is set.
+//   - SerpApi's Google Jobs engine (serpapi.com, engine=google_jobs) — this
+//     is what actually replaces the old "Search on LinkedIn" outbound button
+//     with real inline result cards. It does NOT call LinkedIn directly (that
+//     would violate their ToS, same reasoning as above); instead it reads
+//     Google's own Jobs search index, which aggregates postings from many
+//     boards including LinkedIn, Indeed, Bayt, etc. Enabled once SERPAPI_KEY
+//     is set — a paid key from serpapi.com (no free tier meaningful at this
+//     app's expected volume). Nothing changes in the UI until that key is
+//     set; this source is a silent no-op until then, same pattern as Jooble
+//     and Careerjet above.
 // A curated fallback list keeps the page populated with real Gulf/Levant
 // employer links even before any of those is configured.
 //
@@ -381,6 +391,64 @@ async function fetchCareerjetJobs(affid: string, keywords: string, locale: strin
 // locale list, so those keep relying on Jooble + the curated fallback list.
 const CAREERJET_LOCALES = ["en_AE", "en_SA", "en_KW", "en_OM", "en_QA"];
 
+type SerpApiJobResult = {
+  job_id?: string;
+  title?: string;
+  company_name?: string;
+  location?: string;
+  via?: string; // e.g. "via LinkedIn", "via Indeed" — the original source board
+  apply_options?: { title?: string; link?: string }[];
+  share_link?: string;
+};
+
+// SerpApi's Google Jobs engine — the source that lets a Gulf/MEA job seeker
+// see real, live postings (including ones Google has indexed from LinkedIn)
+// as native cards on our own jobs page, with no navigation to linkedin.com
+// required just to see what's out there. Clicking "Apply" still goes to
+// wherever the original posting actually lives (LinkedIn, the employer's own
+// site, Indeed, etc.) — same as every other source in this file — because
+// actually submitting an application on a third-party site can only happen
+// on that site; this route only ever fetches indexed search results, never
+// authenticated or account-specific data.
+async function fetchSerpApiJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
+  try {
+    const params = new URLSearchParams({
+      engine: "google_jobs",
+      q: keywords ? `${keywords} jobs in ${location}` : `jobs in ${location}`,
+      location,
+      api_key: apiKey,
+      hl: "en",
+    });
+    const res = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
+      next: { revalidate: 1800 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const results: SerpApiJobResult[] = data.jobs_results ?? [];
+    return results.map((j, idx) => {
+      // Prefer a direct apply link if SerpApi surfaced one; fall back to the
+      // Google Jobs share link (still a real, working destination) rather
+      // than a dead "#" — every other source in this file always resolves
+      // to a real URL, so this one should too.
+      const applyUrl = j.apply_options?.[0]?.link ?? j.share_link ?? "#";
+      // "via" comes back as "via LinkedIn" / "via Indeed" / etc. — stripped
+      // down to just the board name so it can be shown as a small source
+      // badge on the card without the leading "via ".
+      const sourceBoard = j.via?.replace(/^via\s+/i, "").trim();
+      return finalize({
+        id: `serpapi-${location}-${j.job_id ?? idx}`,
+        title: j.title ?? "Untitled role",
+        company: (j.company_name || sourceBoard) || "—",
+        location: j.location || location,
+        applyUrl,
+        applyType: "external" as const,
+      });
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   const qRaw = request.nextUrl.searchParams.get("q") ?? "";
   const q = qRaw.toLowerCase();
@@ -431,6 +499,21 @@ export async function GET(request: NextRequest) {
     try {
       const results = await Promise.all(
         careerjetLocales.map((locale) => fetchCareerjetJobs(careerjetAffid, qRaw, locale))
+      );
+      realJobs = realJobs.concat(results.flat());
+    } catch {
+      // ignore — fall through to other sources
+    }
+  }
+
+  const serpApiKey = process.env.SERPAPI_KEY;
+  if (serpApiKey) {
+    // Same locationFilter-narrowing logic as Jooble above: if the user picked
+    // one country, only spend one SerpApi call on it instead of nine.
+    const serpApiLocations = locationFilter ? [locationFilter] : LOCATIONS;
+    try {
+      const results = await Promise.all(
+        serpApiLocations.map((loc) => fetchSerpApiJobs(serpApiKey, qRaw, loc))
       );
       realJobs = realJobs.concat(results.flat());
     } catch {
