@@ -107,6 +107,14 @@ export default async function HomePage({
       "@type": "Organization",
       name: "GulfJobCopilot",
       url: SITE_URL,
+      // Square (512x512) render of the same Burj Khalifa mark used in
+      // Logo.tsx, generated via Playwright straight from the site's own
+      // brand gradient (globals.css --emerald-500/--emerald-700) and gold
+      // accent — Google's Organization/Knowledge Panel logo guidance wants
+      // a roughly square image, which the site's actual wordmark logo
+      // (wide aspect) isn't, so this is a separate square-cropped asset
+      // rather than reusing the wordmark.
+      logo: `${SITE_URL}/logo-mark.png`,
     },
   };
 
