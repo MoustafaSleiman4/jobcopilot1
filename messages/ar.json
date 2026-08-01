@@ -461,10 +461,13 @@
       "location": "الموقع",
       "industry": "القطاع",
       "clearFilters": "مسح الفلاتر",
+      "searchButton": "بحث",
       "searchOnLinkedIn": "ابحث في LinkedIn",
       "noResults": "لا توجد وظائف مطابقة — جرّب بحثًا أو فلاتر مختلفة.",
       "resultsCount": "{count, plural, one {وظيفة واحدة} other {# وظيفة}}",
       "matchedToResume": "نعرض وظائف مطابقة لمسمى سيرتك الذاتية، \"{title}\" — ابحث لرؤية المزيد.",
+      "searchesRemainingToday": "تبقّى {count} من {limit} عمليات بحث اليوم",
+      "searchLimitReachedToday": "لقد استخدمت عمليات بحث اليوم — نعرض فقط نتائج المصادر المجانية. سيتوفر المزيد غدًا.",
       "upgradeCta": "الترقية إلى الاحترافي",
       "workTypes": {
         "remote": "عن بُعد",

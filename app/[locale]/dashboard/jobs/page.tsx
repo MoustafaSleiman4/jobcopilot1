@@ -56,6 +56,7 @@ type SearchResponse = {
   industries: string[];
   locations: string[];
   workTypes: WorkType[];
+  meta: { used: number; limit: number; remaining: number } | null;
 };
 
 type ResumeContent = {
@@ -84,10 +85,30 @@ function LinkedInGlyph({ className }: { className?: string }) {
 
 export default function JobSearchPage() {
   const t = useTranslations("dashboard.jobs");
+  // `query`/`location`/`industry`/`workType` are the COMMITTED search
+  // params — the only ones the fetch effect below depends on, and the only
+  // ones actually sent to the API. The `*Draft` twins are what the inputs
+  // are bound to. Search used to re-fetch on every keystroke (up to 9
+  // SerpApi calls per character typed, once that source was configured),
+  // which is a real problem against a metered free-tier quota — now nothing
+  // is sent until the Search button is clicked (or Enter pressed), so
+  // typing/picking filters is free and only an explicit search spends one
+  // of the day's searches (see the server-side daily cap in
+  // app/api/jobs/search/route.ts).
   const [query, setQuery] = useState("");
+  const [queryDraft, setQueryDraft] = useState("");
   const [location, setLocation] = useState("");
+  const [locationDraft, setLocationDraft] = useState("");
   const [industry, setIndustry] = useState("");
+  const [industryDraft, setIndustryDraft] = useState("");
   const [workType, setWorkType] = useState<WorkType | "">("");
+  const [workTypeDraft, setWorkTypeDraft] = useState<WorkType | "">("");
+  // Populated only for a signed-in Pro user once the search-quota migration
+  // has been run (see app/api/jobs/search/route.ts) — null means "don't
+  // show a quota indicator at all", not "unlimited".
+  const [searchQuota, setSearchQuota] = useState<{ used: number; limit: number; remaining: number } | null>(
+    null
+  );
   const [jobs, setJobs] = useState<Job[]>([]);
   const [industries, setIndustries] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
@@ -190,7 +211,10 @@ export default function JobSearchPage() {
         const title = structured?.title;
         if (title) {
           setResumeTitle(title);
-          if (!userTypedRef.current) setQuery(title);
+          if (!userTypedRef.current) {
+            setQuery(title);
+            setQueryDraft(title);
+          }
         }
       } catch {
         // Not logged in / Supabase not configured — fall back to an
@@ -224,6 +248,7 @@ export default function JobSearchPage() {
         setJobs(data.jobs ?? []);
         if (data.industries?.length) setIndustries(data.industries);
         if (data.locations?.length) setLocations(data.locations);
+        setSearchQuota(data.meta ?? null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -231,8 +256,25 @@ export default function JobSearchPage() {
   }, [query, location, industry, workType, defaultQueryReady]);
 
   const hasActiveFilters = Boolean(location || industry || workType);
+  // Reflects whatever's currently typed/selected but not yet searched —
+  // used to grey out "Search" when there's nothing new to run.
+  const hasUnappliedChanges =
+    queryDraft !== query || locationDraft !== location || industryDraft !== industry || workTypeDraft !== workType;
+
+  // Commits the draft query/filters and runs one search — the only thing
+  // that actually spends a search from today's quota, along with Clear
+  // below (both change the committed state the fetch effect depends on).
+  function applySearch() {
+    setQuery(queryDraft.trim());
+    setLocation(locationDraft);
+    setIndustry(industryDraft);
+    setWorkType(workTypeDraft);
+  }
 
   function clearFilters() {
+    setLocationDraft("");
+    setIndustryDraft("");
+    setWorkTypeDraft("");
     setLocation("");
     setIndustry("");
     setWorkType("");
@@ -248,8 +290,8 @@ export default function JobSearchPage() {
   // dead end.
   function linkedInSearchUrl(): string {
     const params = new URLSearchParams();
-    if (query.trim()) params.set("keywords", query.trim());
-    if (location.trim()) params.set("location", location.trim());
+    if (queryDraft.trim()) params.set("keywords", queryDraft.trim());
+    if (locationDraft.trim()) params.set("location", locationDraft.trim());
     return `https://www.linkedin.com/jobs/search/?${params.toString()}`;
   }
 
@@ -514,94 +556,122 @@ export default function JobSearchPage() {
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
 
-      <div className="relative mt-6 max-w-lg">
-        <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-        <input
-          value={query}
-          onChange={(e) => {
-            userTypedRef.current = true;
-            setQuery(e.target.value);
-          }}
-          placeholder={t("searchPlaceholder")}
-          className="w-full rounded-full border border-border bg-surface py-3 ps-11 pe-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        />
-      </div>
-
-      {resumeTitle && !userTypedRef.current && query === resumeTitle && (
-        <p className="mt-2 text-xs text-foreground/50">
-          {t("matchedToResume", { title: resumeTitle })}
-        </p>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-foreground/50">
-          <SlidersHorizontal size={15} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          applySearch();
+        }}
+      >
+        <div className="relative mt-6 max-w-lg">
+          <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+          <input
+            value={queryDraft}
+            onChange={(e) => {
+              userTypedRef.current = true;
+              setQueryDraft(e.target.value);
+            }}
+            placeholder={t("searchPlaceholder")}
+            className="w-full rounded-full border border-border bg-surface py-3 ps-11 pe-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          />
         </div>
 
-        <select
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        >
-          <option value="">{t("allLocations")}</option>
-          {locations.map((loc) => (
-            <option key={loc} value={loc}>
-              {t.has(`locationNames.${loc}`) ? t(`locationNames.${loc}`) : loc}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-          className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        >
-          <option value="">{t("allIndustries")}</option>
-          {industries.map((ind) => (
-            <option key={ind} value={ind}>
-              {t.has(`industryNames.${ind}`) ? t(`industryNames.${ind}`) : ind}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={workType}
-          onChange={(e) => setWorkType(e.target.value as WorkType | "")}
-          className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        >
-          <option value="">{t("allWorkTypes")}</option>
-          {WORK_TYPES.map((wt) => (
-            <option key={wt} value={wt}>
-              {t(`workTypes.${wt}`)}
-            </option>
-          ))}
-        </select>
-
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/60 hover:text-foreground"
-          >
-            <X size={14} />
-            {t("clearFilters")}
-          </button>
+        {resumeTitle && !userTypedRef.current && query === resumeTitle && (
+          <p className="mt-2 text-xs text-foreground/50">
+            {t("matchedToResume", { title: resumeTitle })}
+          </p>
         )}
 
-        <a
-          href={linkedInSearchUrl()}
-          target="_blank"
-          rel="noreferrer"
-          className="ms-auto flex items-center gap-2 rounded-full bg-[#0A66C2] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0A66C2]/25 transition-all hover:bg-[#004182] hover:shadow-lg hover:shadow-[#0A66C2]/35"
-        >
-          <LinkedInGlyph className="h-4 w-4 shrink-0" />
-          {t("searchOnLinkedIn")}
-          <ExternalLink size={13} className="opacity-80" />
-        </a>
-      </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-foreground/50">
+            <SlidersHorizontal size={15} />
+          </div>
+
+          <select
+            value={locationDraft}
+            onChange={(e) => setLocationDraft(e.target.value)}
+            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="">{t("allLocations")}</option>
+            {locations.map((loc) => (
+              <option key={loc} value={loc}>
+                {t.has(`locationNames.${loc}`) ? t(`locationNames.${loc}`) : loc}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={industryDraft}
+            onChange={(e) => setIndustryDraft(e.target.value)}
+            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="">{t("allIndustries")}</option>
+            {industries.map((ind) => (
+              <option key={ind} value={ind}>
+                {t.has(`industryNames.${ind}`) ? t(`industryNames.${ind}`) : ind}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={workTypeDraft}
+            onChange={(e) => setWorkTypeDraft(e.target.value as WorkType | "")}
+            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="">{t("allWorkTypes")}</option>
+            {WORK_TYPES.map((wt) => (
+              <option key={wt} value={wt}>
+                {t(`workTypes.${wt}`)}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="submit"
+            disabled={loading || !hasUnappliedChanges}
+            className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Search size={14} />
+            {t("searchButton")}
+          </button>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+            >
+              <X size={14} />
+              {t("clearFilters")}
+            </button>
+          )}
+
+          <a
+            href={linkedInSearchUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="ms-auto flex items-center gap-2 rounded-full bg-[#0A66C2] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0A66C2]/25 transition-all hover:bg-[#004182] hover:shadow-lg hover:shadow-[#0A66C2]/35"
+          >
+            <LinkedInGlyph className="h-4 w-4 shrink-0" />
+            {t("searchOnLinkedIn")}
+            <ExternalLink size={13} className="opacity-80" />
+          </a>
+        </div>
+      </form>
 
       {!loading && (
         <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: jobs.length })}</p>
+      )}
+
+      {searchQuota && (
+        <p
+          className={`mt-1 text-xs ${
+            searchQuota.remaining === 0 ? "text-gold-700" : "text-foreground/40"
+          }`}
+        >
+          {searchQuota.remaining > 0
+            ? t("searchesRemainingToday", { count: searchQuota.remaining, limit: searchQuota.limit })
+            : t("searchLimitReachedToday")}
+        </p>
       )}
 
       {selectedIds.size > 0 && (

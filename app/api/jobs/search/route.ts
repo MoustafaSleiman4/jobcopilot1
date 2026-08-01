@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
+
+// Job Search is an entirely Pro-gated page in the UI (see
+// app/[locale]/dashboard/jobs/page.tsx), but this API route itself has no
+// auth requirement — anyone who found the URL could otherwise call it
+// directly and burn through the paid/keyed sources (SerpApi's free tier in
+// particular is capped at 250 searches/month, shared across every user).
+// DAILY_SEARCH_LIMIT caps how many times a single signed-in Pro user can
+// trigger a real search per day; requires supabase/job-search-rate-limit.sql
+// to actually enforce (fails open — no limiting at all — if that migration
+// hasn't been run, same as every other optional migration in this repo).
+// Note: app/[locale]/dashboard/reports/page.tsx also calls this same route
+// for its job-market snapshot, so those calls share this same daily quota.
+const DAILY_SEARCH_LIMIT = 10;
 
 type WorkType = "remote" | "hybrid" | "onsite";
 
@@ -474,6 +489,58 @@ export async function GET(request: NextRequest) {
       ? workTypeParam
       : "";
 
+  // --- Auth + daily quota (see DAILY_SEARCH_LIMIT above) ---
+  // `quota` is only populated for a signed-in Pro user with the migration
+  // applied — it's what the client shows as "N searches left today".
+  // `skipPaidSources` gates Jooble/Careerjet/SerpApi specifically: it's true
+  // whenever the caller isn't a verified, under-quota Pro user, so an
+  // unauthenticated or free-plan request (bypassing the UI's Pro gate
+  // directly) never spends any of the paid/keyed quota, and a Pro user past
+  // today's limit still gets real results — just from the always-free
+  // Greenhouse/Lever/Ashby boards and the curated fallback list, not a hard
+  // error.
+  let quota: { used: number; limit: number; remaining: number } | null = null;
+  let skipPaidSources = true;
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.plan === "pro") {
+        const admin = createAdminClient();
+        const { data: usedToday, error: usageError } = await admin.rpc(
+          "increment_job_search_usage",
+          { p_user_id: user.id }
+        );
+        if (!usageError && typeof usedToday === "number") {
+          quota = {
+            used: usedToday,
+            limit: DAILY_SEARCH_LIMIT,
+            remaining: Math.max(0, DAILY_SEARCH_LIMIT - usedToday),
+          };
+          skipPaidSources = usedToday > DAILY_SEARCH_LIMIT;
+        } else {
+          // supabase/job-search-rate-limit.sql hasn't been run yet (or some
+          // other RPC failure) — fail open on the LIMIT (don't block a real
+          // Pro user over a missing migration), but we still can't show a
+          // quota, and there's no enforcement happening either way.
+          skipPaidSources = false;
+        }
+      }
+    }
+  } catch {
+    // Supabase not configured, or the lookup failed for some other reason —
+    // leave skipPaidSources at its default `true`. Never block the request
+    // entirely over this; the curated + free-board sources still return.
+  }
+
   let realJobs: Job[] = [];
 
   // When the user picked a specific location, only query Jooble for that
@@ -484,7 +551,7 @@ export async function GET(request: NextRequest) {
     : LOCATIONS;
 
   const joobleKey = process.env.JOOBLE_API_KEY;
-  if (joobleKey) {
+  if (joobleKey && !skipPaidSources) {
     try {
       const results = await Promise.all(
         joobleLocations.map((loc) => fetchJoobleJobs(joobleKey, qRaw, loc))
@@ -496,7 +563,7 @@ export async function GET(request: NextRequest) {
   }
 
   const careerjetApiKey = process.env.CAREERJET_API_KEY;
-  if (careerjetApiKey) {
+  if (careerjetApiKey && !skipPaidSources) {
     // Country name -> Careerjet locale code, so the same locationFilter used
     // for Jooble/curated filtering also narrows which Careerjet locales get
     // queried.
@@ -521,7 +588,7 @@ export async function GET(request: NextRequest) {
   }
 
   const serpApiKey = process.env.SERPAPI_KEY;
-  if (serpApiKey) {
+  if (serpApiKey && !skipPaidSources) {
     // Same locationFilter-narrowing logic as Jooble above: if the user picked
     // one country, only spend one SerpApi call on it instead of nine.
     const serpApiLocations = locationFilter ? [locationFilter] : LOCATIONS;
@@ -604,5 +671,10 @@ export async function GET(request: NextRequest) {
     industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
     locations: LOCATIONS,
     workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],
+    // Only set for a signed-in Pro user once supabase/job-search-rate-limit.sql
+    // has been run — null otherwise (not signed in, not Pro, or the
+    // migration hasn't been applied yet), which the client treats as "don't
+    // show a quota indicator at all" rather than as "0 remaining".
+    meta: quota,
   });
 }
