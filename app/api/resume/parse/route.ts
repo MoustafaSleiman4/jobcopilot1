@@ -32,7 +32,19 @@ export async function POST(request: NextRequest) {
 
     if (name.endsWith(".pdf")) {
       const { PDFParse } = await import("pdf-parse");
-      const parser = new PDFParse({ data: buffer });
+      // pdf-parse's default DOMCanvasFactory assumes a DOMMatrix global that
+      // only exists in real browsers/jsdom. In this Vercel serverless build,
+      // pdf-parse and @napi-rs/canvas are marked as serverExternalPackages
+      // (see next.config.ts) so pdfjs-dist's bundled worker never gets the
+      // chance to set that global up itself, which was crashing every
+      // production upload with "ReferenceError: DOMMatrix is not defined"
+      // (confirmed via Vercel runtime error logs — this never reproduced in
+      // local dev, only in the deployed serverless function). Passing the
+      // package's own Node CanvasFactory (backed directly by @napi-rs/canvas,
+      // no DOM globals needed) is pdf-parse's documented fix for exactly this
+      // Vercel/Next.js deployment error.
+      const { CanvasFactory } = await import("pdf-parse/worker");
+      const parser = new PDFParse({ data: buffer, CanvasFactory });
       try {
         const result = await parser.getText();
         text = result.text;

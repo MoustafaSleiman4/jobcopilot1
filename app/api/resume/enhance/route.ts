@@ -36,6 +36,15 @@ function parseStructuredResume(raw: string): StructuredResume | null {
             period: typeof ed.period === "string" ? ed.period : "",
           }))
         : [],
+      // Same bug class as certifications/languages below ("resume clearly
+      // has an email/phone at the top but the Contact Details fields come
+      // back empty after upload"): these were never in the AI's JSON schema
+      // and were silently dropped even when the model returned them, since
+      // this function only ever read the 8 keys above off `parsed`.
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone : "",
+      location: typeof parsed.location === "string" ? parsed.location : "",
+      links: typeof parsed.links === "string" ? parsed.links : "",
       // Previously missing from both this schema and the demo fallback below
       // — a resume that clearly stated "PMP certified" would come back with
       // an empty certifications list every time, since nothing ever asked
@@ -151,11 +160,59 @@ function demoStructure(text: string, demoLabel = true): StructuredResume {
     title = lines[cursor];
     cursor++;
   }
-  // Skip a contact-info line right after the header (email/phone/location).
-  while (lines[cursor] && CONTACT_LINE_RE.test(lines[cursor]) && lines[cursor].length < 120) {
+  // Contact block: email/phone/location/links usually sit directly under
+  // the name/title, one item per line (or a couple crammed onto one line).
+  // This used to only *skip* lines that looked like email/phone/url without
+  // ever capturing them into a field, and a bare location line (no digits
+  // or "@", e.g. "Beirut, Lebanon") didn't even match the skip check, so it
+  // silently leaked into the summary text instead of populating Contact
+  // Details. Now each piece is pulled out, mirroring the AI-path schema
+  // above, and a short line that's neither email/phone/url is read as the
+  // location — right up until something that looks like a real section
+  // header (e.g. an ALL-CAPS "EXECUTIVE SUMMARY" line) or an actual
+  // paragraph of content is reached.
+  const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const PHONE_RE = /\+?\d[\d\s().-]{6,}\d/;
+  const LINK_RE = /https?:\/\/\S+|(?:www\.)?linkedin\.com\/\S+|(?:www\.)?github\.com\/\S+/gi;
+
+  let email = "";
+  let phone = "";
+  let location = "";
+  const linkFragments: string[] = [];
+  const CONTACT_WINDOW = 5; // generous cap so this loop can never run away into the rest of the document
+  let consumed = 0;
+
+  while (lines[cursor] && consumed < CONTACT_WINDOW) {
+    const line = lines[cursor];
+    // A shouty short line ("EXECUTIVE SUMMARY", "CORE COMPETENCIES") is
+    // almost certainly the next real section starting, not contact info.
+    const looksLikeHeader = line.length > 3 && line === line.toUpperCase() && line !== line.toLowerCase();
+    if (looksLikeHeader) break;
+
+    const isContactLine = CONTACT_LINE_RE.test(line);
+    const isBareLocation =
+      !isContactLine && line.length < 60 && /^[A-Za-z][A-Za-z\s.,'-]*$/.test(line) && line.split(/\s+/).length <= 6;
+
+    if (!isContactLine && !isBareLocation) break; // real paragraph content starts here
+
+    if (isContactLine) {
+      const emailMatch = line.match(EMAIL_RE);
+      if (emailMatch && !email) email = emailMatch[0];
+
+      const linkMatches = line.match(LINK_RE);
+      if (linkMatches) linkFragments.push(...linkMatches);
+
+      const phoneMatch = line.replace(LINK_RE, " ").match(PHONE_RE);
+      if (phoneMatch && !phone) phone = phoneMatch[0].trim();
+    } else if (!location) {
+      location = line;
+    }
+
     cursor++;
+    consumed++;
   }
 
+  const links = linkFragments.join(", ");
   const rest = lines.slice(cursor);
 
   // Split the remaining lines into sections using common resume headers.
@@ -259,6 +316,10 @@ function demoStructure(text: string, demoLabel = true): StructuredResume {
   return {
     fullName: fullName || "Your Name",
     title: title || "Professional",
+    email,
+    phone,
+    location,
+    links,
     summary: (summaryText || rest.join(" ").trim()) + demoSuffix,
     skills,
     experience,
@@ -300,6 +361,10 @@ Return ONLY a single JSON object — no markdown fences, no commentary before or
 {
   "fullName": string,
   "title": string,
+  "email": string,
+  "phone": string,
+  "location": string,
+  "links": string,
   "summary": string,
   "skills": string[],
   "experience": [{ "role": string, "company": string, "location": string, "period": string, "bullets": string[] }],
@@ -307,6 +372,7 @@ Return ONLY a single JSON object — no markdown fences, no commentary before or
   "certifications": [{ "name": string, "issuer": string, "year": string }],
   "languages": [{ "name": string, "level": string }]
 }
+The contact block at the very top of the resume (near the name/title, often on one or two lines) almost always has an email address, a phone number, and a city/country — pull those into "email", "phone", and "location" exactly as written (keep phone formatting/country code as-is, don't reformat it). If there's a LinkedIn/GitHub/portfolio URL anywhere in that block, put it in "links" (join multiple with ", " if there's more than one). Leave any of these four as an empty string only if that piece of contact info genuinely isn't present anywhere in the source text.
 Look carefully for certifications and languages EVEN WHEN they're only mentioned in passing in the summary or a bullet point (e.g. "PMP certified", "fluent in French") rather than listed under their own heading — don't limit yourself to an explicit "Certifications" or "Languages" section. If a certification's issuing body or year isn't stated, leave "issuer"/"year" as an empty string rather than guessing. If you can't determine a field from the source text, use an empty string or empty array for it rather than inventing content — but keep the JSON structurally complete and valid.
 
 Resume text:

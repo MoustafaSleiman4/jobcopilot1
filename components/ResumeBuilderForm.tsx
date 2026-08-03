@@ -506,6 +506,15 @@ export default function ResumeBuilderForm() {
         certifications:
           (result.certifications?.length ?? 0) > 0 ? result.certifications : structured.certifications,
         languages: (result.languages?.length ?? 0) > 0 ? result.languages : structured.languages,
+        // Same story again for the Contact Details fields: the enhance API
+        // now extracts email/phone/location/links from the resume's header
+        // block (previously it didn't ask for them at all, so an uploaded
+        // CV with a real email/phone at the top still left these boxes
+        // blank). Non-destructive like everything else above.
+        email: result.email || structured.email,
+        phone: result.phone || structured.phone,
+        location: result.location || structured.location,
+        links: result.links || structured.links,
       };
       setStructured(merged);
       setDirty(true);
@@ -1377,9 +1386,14 @@ export default function ResumeBuilderForm() {
         </div>
       )}
 
-      {/* Mobile: tabbed edit/preview since side-by-side doesn't fit; desktop
-          shows both at once with the preview sticky alongside the form. */}
-      <div className="mt-6 flex gap-2 lg:hidden">
+      {/* Phone-width screens: tabbed edit/preview since side-by-side doesn't
+          fit there; from tablet width up, show both at once, split evenly
+          (resume viewer half the width, form fields the other half), with
+          the preview sticky alongside the form. Previously this split only
+          kicked in at the `lg` breakpoint (1024px), so anything narrower —
+          including many laptop windows and tablets — fell back to the
+          single-column tabbed view with no visible half/half split at all. */}
+      <div className="mt-6 flex gap-2 md:hidden">
         <button
           type="button"
           onClick={() => setMobileTab("edit")}
@@ -1402,10 +1416,10 @@ export default function ResumeBuilderForm() {
         </button>
       </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1fr]">
-        <div className={mobileTab === "edit" ? "block" : "hidden lg:block"}>{editPane}</div>
-        <div className={mobileTab === "preview" ? "block" : "hidden lg:block"}>
-          <div className="lg:sticky lg:top-6">
+      <div className="mt-6 grid gap-8 md:grid-cols-[1fr_1fr]">
+        <div className={mobileTab === "edit" ? "block" : "hidden md:block"}>{editPane}</div>
+        <div className={mobileTab === "preview" ? "block" : "hidden md:block"}>
+          <div className="md:sticky md:top-6">
             <ResumePreview resume={structured} labels={previewLabels} />
           </div>
         </div>
