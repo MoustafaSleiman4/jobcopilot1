@@ -1416,9 +1416,9 @@ export default function ResumeBuilderForm() {
         </button>
       </div>
 
-      <div className="mt-6 grid gap-8 md:grid-cols-[1fr_1fr]">
-        <div className={mobileTab === "edit" ? "block" : "hidden md:block"}>{editPane}</div>
-        <div className={mobileTab === "preview" ? "block" : "hidden md:block"}>
+      <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className={`min-w-0 ${mobileTab === "edit" ? "block" : "hidden md:block"}`}>{editPane}</div>
+        <div className={`min-w-0 ${mobileTab === "preview" ? "block" : "hidden md:block"}`}>
           <div className="md:sticky md:top-6">
             <ResumePreview resume={structured} labels={previewLabels} />
           </div>
