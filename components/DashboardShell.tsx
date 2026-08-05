@@ -19,12 +19,14 @@ import {
   Mail,
   BarChart3,
   GraduationCap,
+  Zap,
 } from "lucide-react";
 
 const navItems = [
   { key: "overview", href: "/dashboard", icon: LayoutDashboard },
   { key: "resume", href: "/dashboard/resume", icon: FileText },
   { key: "jobs", href: "/dashboard/jobs", icon: Search },
+  { key: "autoApply", href: "/dashboard/auto-apply", icon: Zap },
   { key: "applications", href: "/dashboard/applications", icon: KanbanSquare },
   { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
   { key: "certifications", href: "/dashboard/certifications", icon: GraduationCap },

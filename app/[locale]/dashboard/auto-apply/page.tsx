@@ -1,0 +1,520 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { LOCATIONS } from "@/lib/jobSources";
+import {
+  Lock,
+  Zap,
+  Loader2,
+  Check,
+  Copy,
+  ExternalLink,
+  X,
+  AlertTriangle,
+  Sparkles,
+  Info,
+} from "lucide-react";
+
+type WorkType = "remote" | "hybrid" | "onsite";
+const WORK_TYPES: WorkType[] = ["remote", "hybrid", "onsite"];
+
+type Preferences = {
+  enabled: boolean;
+  daily_cap: number;
+  keywords: string;
+  location: string;
+  work_type: WorkType | null;
+  excluded_companies: string[];
+};
+
+const DEFAULT_PREFS: Preferences = {
+  enabled: false,
+  daily_cap: 5,
+  keywords: "",
+  location: "",
+  work_type: null,
+  excluded_companies: [],
+};
+
+type QueueItem = {
+  id: string;
+  source_job_id: string;
+  title: string;
+  company: string;
+  location: string | null;
+  apply_url: string;
+  match_score: number;
+  cover_letter: string;
+  status: "pending" | "sent" | "dismissed";
+  created_at: string;
+};
+
+export default function AutoApplyPage() {
+  const t = useTranslations("dashboard.autoApply");
+  const tJobs = useTranslations("dashboard.jobs");
+
+  const [checking, setChecking] = useState(true);
+  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [defaultResumeId, setDefaultResumeId] = useState<string | null>(null);
+  const [hasResume, setHasResume] = useState(false);
+
+  const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
+  const [excludedText, setExcludedText] = useState("");
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [popupBlockedId, setPopupBlockedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        const uid = data.user?.id;
+        if (!uid || cancelled) {
+          setChecking(false);
+          setLoadingQueue(false);
+          return;
+        }
+        setUserId(uid);
+
+        const { data: profile } = await supabase.from("profiles").select("plan").eq("id", uid).single();
+        if (cancelled) return;
+        const isPro = profile?.plan === "pro";
+        if (isPro) setPlan("pro");
+        setChecking(false);
+        if (!isPro) {
+          setLoadingQueue(false);
+          return;
+        }
+
+        const { data: resume } = await supabase
+          .from("resumes")
+          .select("id")
+          .eq("user_id", uid)
+          .order("is_primary", { ascending: false })
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled) return;
+        if (resume?.id) {
+          setDefaultResumeId(resume.id as string);
+          setHasResume(true);
+        }
+
+        const { data: prefsRow } = await supabase
+          .from("auto_apply_preferences")
+          .select("enabled, daily_cap, keywords, location, work_type, excluded_companies")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (cancelled) return;
+        if (prefsRow) {
+          const loaded: Preferences = {
+            enabled: prefsRow.enabled,
+            daily_cap: prefsRow.daily_cap,
+            keywords: prefsRow.keywords ?? "",
+            location: prefsRow.location ?? "",
+            work_type: (prefsRow.work_type as WorkType | null) ?? null,
+            excluded_companies: prefsRow.excluded_companies ?? [],
+          };
+          setPrefs(loaded);
+          setExcludedText(loaded.excluded_companies.join("\n"));
+        }
+
+        const { data: queueRows } = await supabase
+          .from("auto_apply_queue")
+          .select("id, source_job_id, title, company, location, apply_url, match_score, cover_letter, status, created_at")
+          .eq("user_id", uid)
+          .eq("status", "pending")
+          .order("match_score", { ascending: false })
+          .order("created_at", { ascending: false });
+        if (!cancelled && queueRows) setQueue(queueRows as QueueItem[]);
+      } catch {
+        // Not logged in / Supabase not configured.
+      } finally {
+        if (!cancelled) {
+          setChecking(false);
+          setLoadingQueue(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSavePrefs() {
+    if (!userId) return;
+    setSavingPrefs(true);
+    setSaveState("idle");
+    const excludedCompanies = excludedText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("auto_apply_preferences").upsert(
+        {
+          user_id: userId,
+          enabled: prefs.enabled,
+          daily_cap: prefs.daily_cap,
+          keywords: prefs.keywords,
+          location: prefs.location,
+          work_type: prefs.work_type,
+          excluded_companies: excludedCompanies,
+        },
+        { onConflict: "user_id" }
+      );
+      if (error) throw error;
+      setPrefs((p) => ({ ...p, excluded_companies: excludedCompanies }));
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 2500);
+    } catch {
+      setSaveState("error");
+    } finally {
+      setSavingPrefs(false);
+    }
+  }
+
+  // Reuses the exact same one-click pattern as the Job Search page's
+  // handleApply: open the real application synchronously inside the click
+  // handler (the only way browsers allow it), then record it in the
+  // background. The cover letter here was already generated by the cron —
+  // no extra AI call or "prepare" step needed, which is the whole point of
+  // the queue existing.
+  async function handleSend(item: QueueItem) {
+    const win = window.open(item.apply_url, "_blank", "noreferrer");
+    setPopupBlockedId(win ? null : item.id);
+    setSendingId(item.id);
+    setQueue((prev) => prev.filter((q) => q.id !== item.id));
+
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("auto_apply_queue")
+        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .eq("id", item.id);
+
+      if (userId) {
+        const { data: existing } = await supabase
+          .from("applications")
+          .select("id, status")
+          .eq("user_id", userId)
+          .eq("source_job_id", item.source_job_id)
+          .maybeSingle();
+
+        if (existing) {
+          if (existing.status === "saved") {
+            await supabase
+              .from("applications")
+              .update({ status: "applied", applied_at: new Date().toISOString(), resume_id: defaultResumeId })
+              .eq("id", existing.id);
+          }
+        } else {
+          await supabase.from("applications").insert({
+            user_id: userId,
+            source_job_id: item.source_job_id,
+            resume_id: defaultResumeId,
+            company: item.company,
+            title: item.title,
+            location: item.location,
+            apply_url: item.apply_url,
+            status: "applied",
+            applied_at: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[auto-apply] failed to record sent application:", err);
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  async function handleDismiss(item: QueueItem) {
+    setQueue((prev) => prev.filter((q) => q.id !== item.id));
+    try {
+      const supabase = createClient();
+      await supabase.from("auto_apply_queue").update({ status: "dismissed" }).eq("id", item.id);
+    } catch {
+      // Non-critical — worst case it reappears if the page is reloaded before this lands.
+    }
+  }
+
+  async function handleCopy(item: QueueItem) {
+    try {
+      await navigator.clipboard.writeText(item.cover_letter);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // Not critical.
+    }
+  }
+
+  if (checking) {
+    return <p className="text-sm text-foreground/50">{t("loading")}</p>;
+  }
+
+  if (plan !== "pro") {
+    return (
+      <div className="max-w-2xl">
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
+
+        <div className="mt-8 flex flex-col items-start gap-4 rounded-2xl border border-gold-400/40 bg-gold-50 p-6">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-100 text-gold-600">
+            <Lock size={20} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">{t("lockedTitle")}</h2>
+            <p className="mt-1 text-sm text-foreground/70">{t("lockedBody")}</p>
+          </div>
+          <Link
+            href="/pricing"
+            className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            {t("upgradeCta")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+        <Zap className="text-emerald-600" size={22} />
+        {t("title")}
+      </h1>
+      <p className="mt-1 max-w-2xl text-sm text-foreground/60">{t("subtitle")}</p>
+
+      <p className="mt-4 flex max-w-2xl items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-800">
+        <Info size={14} className="mt-0.5 flex-none" />
+        {t("howItWorks")}
+      </p>
+
+      {!hasResume && (
+        <p className="mt-4 flex max-w-2xl items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
+          <AlertTriangle size={14} className="mt-0.5 flex-none" />
+          {t("queue.noResume")}
+        </p>
+      )}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+        {/* Settings */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-sm font-bold text-foreground">{t("settings.heading")}</h2>
+
+          <label className="mt-4 flex items-center justify-between gap-3">
+            <span>
+              <span className="block text-sm font-medium text-foreground">{t("settings.enableLabel")}</span>
+              <span className="block text-xs text-foreground/50">{t("settings.enableHint")}</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={prefs.enabled}
+              onClick={() => setPrefs((p) => ({ ...p, enabled: !p.enabled }))}
+              className={`relative h-6 w-11 flex-none rounded-full transition-colors ${
+                prefs.enabled ? "bg-emerald-600" : "bg-sand-200"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  prefs.enabled ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0.5 rtl:-translate-x-0.5"
+                }`}
+              />
+            </button>
+          </label>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("settings.dailyCapLabel")}</label>
+            <p className="text-xs text-foreground/50">{t("settings.dailyCapHint")}</p>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={prefs.daily_cap}
+              onChange={(e) =>
+                setPrefs((p) => ({ ...p, daily_cap: Math.min(20, Math.max(1, Number(e.target.value) || 1)) }))
+              }
+              className="mt-1.5 w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("settings.keywordsLabel")}</label>
+            <input
+              value={prefs.keywords}
+              onChange={(e) => setPrefs((p) => ({ ...p, keywords: e.target.value }))}
+              placeholder={t("settings.keywordsPlaceholder")}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("settings.locationLabel")}</label>
+            <select
+              value={prefs.location}
+              onChange={(e) => setPrefs((p) => ({ ...p, location: e.target.value }))}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">{t("settings.anyLocation")}</option>
+              {LOCATIONS.map((loc) => (
+                <option key={loc} value={loc}>
+                  {tJobs.has(`locationNames.${loc}`) ? tJobs(`locationNames.${loc}`) : loc}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("settings.workTypeLabel")}</label>
+            <select
+              value={prefs.work_type ?? ""}
+              onChange={(e) => setPrefs((p) => ({ ...p, work_type: (e.target.value || null) as WorkType | null }))}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">{t("settings.anyWorkType")}</option>
+              {WORK_TYPES.map((wt) => (
+                <option key={wt} value={wt}>
+                  {tJobs(`workTypes.${wt}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("settings.excludedCompaniesLabel")}</label>
+            <textarea
+              value={excludedText}
+              onChange={(e) => setExcludedText(e.target.value)}
+              placeholder={t("settings.excludedCompaniesPlaceholder")}
+              rows={3}
+              className="mt-1.5 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSavePrefs}
+            disabled={savingPrefs}
+            className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {savingPrefs ? (
+              <Loader2 className="animate-spin" size={15} />
+            ) : saveState === "saved" ? (
+              <Check size={15} />
+            ) : null}
+            {saveState === "saved" ? t("settings.saved") : t("settings.saveButton")}
+          </button>
+          {saveState === "error" && <p className="mt-2 text-xs text-red-600">{t("settings.saveError")}</p>}
+        </div>
+
+        {/* Queue */}
+        <div>
+          <h2 className="text-sm font-bold text-foreground">{t("queue.heading")}</h2>
+          <div className="mt-3 space-y-3">
+            {loadingQueue && <p className="text-sm text-foreground/50">{t("loading")}</p>}
+            {!loadingQueue && queue.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-foreground/50">
+                {t("queue.empty")}
+              </p>
+            )}
+            {!loadingQueue &&
+              queue.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-border bg-surface p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground">{item.title}</h3>
+                      <p className="mt-0.5 text-sm text-foreground/60">
+                        {item.company}
+                        {item.location ? ` · ${item.location}` : ""}
+                      </p>
+                    </div>
+                    <span className="flex flex-none items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      <Sparkles size={12} />
+                      {t("queue.matchScore", { score: item.match_score })}
+                    </span>
+                  </div>
+
+                  {popupBlockedId === item.id && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
+                      <span className="flex items-start gap-1.5">
+                        <AlertTriangle size={14} className="mt-0.5 flex-none" />
+                        {t("queue.popupBlocked")}
+                      </span>
+                      <a
+                        href={item.apply_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 rounded-full bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700"
+                      >
+                        {t("queue.openAgain")}
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  )}
+
+                  {item.cover_letter && (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                        {t("queue.coverLetterHeading")}
+                      </summary>
+                      <textarea
+                        readOnly
+                        value={item.cover_letter}
+                        rows={6}
+                        className="mt-2 w-full resize-y rounded-lg border border-border bg-background p-2.5 text-xs leading-relaxed text-foreground"
+                      />
+                      <button
+                        onClick={() => handleCopy(item)}
+                        className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-foreground/60 hover:text-foreground"
+                      >
+                        {copiedId === item.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                        {copiedId === item.id ? t("queue.copied") : t("queue.copy")}
+                      </button>
+                    </details>
+                  )}
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSend(item)}
+                      disabled={sendingId === item.id}
+                      className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-70"
+                    >
+                      {sendingId === item.id ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <ExternalLink size={14} />
+                      )}
+                      {t("queue.sendCta")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDismiss(item)}
+                      className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/50 hover:text-foreground"
+                    >
+                      <X size={14} />
+                      {t("queue.dismissCta")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

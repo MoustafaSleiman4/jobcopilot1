@@ -266,7 +266,8 @@
       "signOut": "Sign out",
       "coverLetter": "Cover letter",
       "certifications": "Certifications",
-      "reports": "Reports"
+      "reports": "Reports",
+      "autoApply": "Auto Apply"
     },
     "overview": {
       "title": "Welcome back",
@@ -711,6 +712,47 @@
       "pdfApplications": "applications",
       "pdfInterviewsOrBetter": "interviews/offers",
       "pdfNoData": "No resume-linked applications yet."
+    },
+    "autoApply": {
+      "title": "Auto Apply",
+      "subtitle": "Set your criteria once — we'll find new matching jobs every day, prepare a tailored cover letter for each, and queue them for your one-click send.",
+      "loading": "Loading...",
+      "lockedTitle": "Auto Apply is a Pro feature",
+      "lockedBody": "Upgrade to Pro to have GulfJobCopilot search for new matching jobs every day and prepare ready-to-send applications for you to approve.",
+      "upgradeCta": "Upgrade to Pro",
+      "howItWorks": "Every day, we search for new jobs matching your criteria below, score them against your resume, and prepare a tailored cover letter for the best matches — up to your daily limit. Nothing is ever sent without you clicking Send: no job source here lets an app submit applications on your behalf, so review-then-send keeps you in full control of every application.",
+      "settings": {
+        "heading": "Your criteria",
+        "enableLabel": "Auto Apply is on",
+        "enableHint": "Turn off any time — nothing new gets queued while this is off.",
+        "dailyCapLabel": "New matches per day",
+        "dailyCapHint": "How many ready-to-send matches to prepare each day (1–20).",
+        "keywordsLabel": "Job title / keywords",
+        "keywordsPlaceholder": "e.g. Product Manager, Data Analyst",
+        "locationLabel": "Location",
+        "anyLocation": "Any location",
+        "workTypeLabel": "Work type",
+        "anyWorkType": "Any work type",
+        "excludedCompaniesLabel": "Companies to skip (optional)",
+        "excludedCompaniesPlaceholder": "One per line",
+        "saveButton": "Save settings",
+        "saved": "Saved",
+        "saveError": "Couldn't save your settings — try again."
+      },
+      "queue": {
+        "heading": "Ready to send",
+        "empty": "No matches queued yet — once Auto Apply is on, new matches will show up here within a day.",
+        "matchScore": "{score}% match",
+        "coverLetterHeading": "Cover letter",
+        "sendCta": "Send application",
+        "dismissCta": "Dismiss",
+        "sending": "Opening…",
+        "copy": "Copy",
+        "copied": "Copied",
+        "noResume": "Build a resume first so we can match jobs and write cover letters for you.",
+        "popupBlocked": "Your browser blocked the new tab — open it manually below.",
+        "openAgain": "Open application"
+      }
     }
   },
   "footer": {
