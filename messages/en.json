@@ -751,7 +751,11 @@
         "copied": "Copied",
         "noResume": "Build a resume first so we can match jobs and write cover letters for you.",
         "popupBlocked": "Your browser blocked the new tab — open it manually below.",
-        "openAgain": "Open application"
+        "openAgain": "Open application",
+        "runNow": "Run now",
+        "running": "Checking…",
+        "nextRunIn": "Next check in {time}",
+        "runError": "Couldn't run Auto Apply — please try again."
       }
     }
   },

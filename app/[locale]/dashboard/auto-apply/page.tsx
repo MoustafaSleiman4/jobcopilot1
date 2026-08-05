@@ -16,7 +16,14 @@ import {
   AlertTriangle,
   Sparkles,
   Info,
+  Play,
+  Clock,
 } from "lucide-react";
+
+// Must match RUN_NOW_COOLDOWN_MS in lib/autoApplyRun.ts — duplicated here
+// rather than imported because that file pulls in server-only Supabase
+// admin/cover-letter code that can't end up in the client bundle.
+const RUN_NOW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 type WorkType = "remote" | "hybrid" | "onsite";
 const WORK_TYPES: WorkType[] = ["remote", "hybrid", "onsite"];
@@ -73,6 +80,37 @@ export default function AutoApplyPage() {
   const [popupBlockedId, setPopupBlockedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // nextRunAt drives both the countdown display and whether "Run now" is
+  // clickable. Set directly from whatever the server last told us (initial
+  // load's last_run_at + 24h, or the nextRunAt a run-now call returns on
+  // success or on a 429 cooldown) rather than recomputed client-side from a
+  // separately-tracked lastRunAt, so it never drifts from the server's
+  // 24h-cooldown source of truth.
+  const [nextRunAt, setNextRunAt] = useState<number | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  // Ticks once a minute purely to force the countdown text to re-render —
+  // nextRunAt itself doesn't change just because time passes. Initialized
+  // lazily (not in an effect) so the first render already has a real value.
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function loadQueue(uid: string) {
+    const supabase = createClient();
+    const { data: queueRows } = await supabase
+      .from("auto_apply_queue")
+      .select("id, source_job_id, title, company, location, apply_url, match_score, cover_letter, status, created_at")
+      .eq("user_id", uid)
+      .eq("status", "pending")
+      .order("match_score", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (queueRows) setQueue(queueRows as QueueItem[]);
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -113,7 +151,7 @@ export default function AutoApplyPage() {
 
         const { data: prefsRow } = await supabase
           .from("auto_apply_preferences")
-          .select("enabled, daily_cap, keywords, location, work_type, excluded_companies")
+          .select("enabled, daily_cap, keywords, location, work_type, excluded_companies, last_run_at")
           .eq("user_id", uid)
           .maybeSingle();
         if (cancelled) return;
@@ -128,16 +166,12 @@ export default function AutoApplyPage() {
           };
           setPrefs(loaded);
           setExcludedText(loaded.excluded_companies.join("\n"));
+          if (prefsRow.last_run_at) {
+            setNextRunAt(new Date(prefsRow.last_run_at as string).getTime() + RUN_NOW_COOLDOWN_MS);
+          }
         }
 
-        const { data: queueRows } = await supabase
-          .from("auto_apply_queue")
-          .select("id, source_job_id, title, company, location, apply_url, match_score, cover_letter, status, created_at")
-          .eq("user_id", uid)
-          .eq("status", "pending")
-          .order("match_score", { ascending: false })
-          .order("created_at", { ascending: false });
-        if (!cancelled && queueRows) setQueue(queueRows as QueueItem[]);
+        await loadQueue(uid);
       } catch {
         // Not logged in / Supabase not configured.
       } finally {
@@ -179,10 +213,43 @@ export default function AutoApplyPage() {
       setPrefs((p) => ({ ...p, excluded_companies: excludedCompanies }));
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2500);
+      // "Turn it on and it runs right away" instead of only ever running on
+      // tomorrow's 6am UTC cron: if Auto Apply is (now) on, try an immediate
+      // run right after saving. handleRunNow no-ops quietly (via `silent`)
+      // if the 24h cooldown is still active — e.g. re-saving settings the
+      // same day the cron or a prior "Run now" already ran — so this is
+      // safe to fire on every save, not just the first time it's enabled.
+      if (prefs.enabled) {
+        handleRunNow({ silent: true });
+      }
     } catch {
       setSaveState("error");
     } finally {
       setSavingPrefs(false);
+    }
+  }
+
+  async function handleRunNow(opts: { silent?: boolean } = {}) {
+    if (!userId || running) return;
+    if (nextRunAt && Date.now() < nextRunAt) return; // still in cooldown — button shouldn't be clickable anyway
+    setRunning(true);
+    if (!opts.silent) setRunError(null);
+    try {
+      const res = await fetch("/api/auto-apply/run-now", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (body?.nextRunAt) setNextRunAt(new Date(body.nextRunAt as string).getTime());
+        if (!opts.silent) setRunError(body?.error === "cooldown" ? null : t("queue.runError"));
+        return;
+      }
+      if (body?.nextRunAt) setNextRunAt(new Date(body.nextRunAt as string).getTime());
+      // Show results immediately rather than waiting for the next full page
+      // load — this is the whole point of an on-demand trigger.
+      await loadQueue(userId);
+    } catch {
+      if (!opts.silent) setRunError(t("queue.runError"));
+    } finally {
+      setRunning(false);
     }
   }
 
@@ -260,6 +327,18 @@ export default function AutoApplyPage() {
       // Not critical.
     }
   }
+
+  // null once nextRunAt has passed (or was never set) — "Run now" is
+  // clickable. Otherwise an "Xh Ym" / "Xm" string for the countdown.
+  const countdownText =
+    nextRunAt && nextRunAt > nowTick
+      ? (() => {
+          const totalMinutes = Math.ceil((nextRunAt - nowTick) / 60_000);
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        })()
+      : null;
 
   if (checking) {
     return <p className="text-sm text-foreground/50">{t("loading")}</p>;
@@ -423,7 +502,32 @@ export default function AutoApplyPage() {
 
         {/* Queue */}
         <div>
-          <h2 className="text-sm font-bold text-foreground">{t("queue.heading")}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-foreground">{t("queue.heading")}</h2>
+            {prefs.enabled &&
+              (countdownText ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-sand-100 px-3 py-1.5 text-xs font-medium text-foreground/60">
+                  <Clock size={13} />
+                  {t("queue.nextRunIn", { time: countdownText })}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRunNow()}
+                  disabled={running}
+                  className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                >
+                  {running ? <Loader2 className="animate-spin" size={13} /> : <Play size={13} />}
+                  {running ? t("queue.running") : t("queue.runNow")}
+                </button>
+              ))}
+          </div>
+          {runError && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
+              <AlertTriangle size={13} />
+              {runError}
+            </p>
+          )}
           <div className="mt-3 space-y-3">
             {loadingQueue && <p className="text-sm text-foreground/50">{t("loading")}</p>}
             {!loadingQueue && queue.length === 0 && (
