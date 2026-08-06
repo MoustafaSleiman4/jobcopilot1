@@ -89,6 +89,12 @@ export default function AutoApplyPage() {
   const [nextRunAt, setNextRunAt] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  // Distinct from runError: not a failure, just an explanation for why a
+  // successful run queued zero matches (missing resume name, daily cap
+  // already spent, or genuinely nothing matched this run) — shown even when
+  // the run was triggered silently after saving, since "why did nothing
+  // happen" is exactly the confusion this is meant to head off.
+  const [runNote, setRunNote] = useState<string | null>(null);
   // Ticks once a minute purely to force the countdown text to re-render —
   // nextRunAt itself doesn't change just because time passes. Initialized
   // lazily (not in an effect) so the first render already has a real value.
@@ -234,6 +240,7 @@ export default function AutoApplyPage() {
     if (nextRunAt && Date.now() < nextRunAt) return; // still in cooldown — button shouldn't be clickable anyway
     setRunning(true);
     if (!opts.silent) setRunError(null);
+    setRunNote(null);
     try {
       const res = await fetch("/api/auto-apply/run-now", { method: "POST" });
       const body = await res.json().catch(() => ({}));
@@ -243,6 +250,12 @@ export default function AutoApplyPage() {
         return;
       }
       if (body?.nextRunAt) setNextRunAt(new Date(body.nextRunAt as string).getTime());
+      // A successful run that queued nothing still deserves an explanation —
+      // shown even when this call was the silent auto-run-after-save, since
+      // that's exactly when a user is most likely to wonder why the queue
+      // stayed empty. Real errors (network, unexpected failure) stay gated
+      // behind `!opts.silent` above; this is informational, not a failure.
+      if (body?.reason) setRunNote(t(`queue.reason.${body.reason}`));
       // Show results immediately rather than waiting for the next full page
       // load — this is the whole point of an on-demand trigger.
       await loadQueue(userId);
@@ -526,6 +539,24 @@ export default function AutoApplyPage() {
             <p className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
               <AlertTriangle size={13} />
               {runError}
+            </p>
+          )}
+          {runNote && (
+            <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle size={13} className="shrink-0" />
+              <span>
+                {runNote}
+                {/* Only the missing-resume-name case has a concrete, one-click fix — link straight to it
+                    rather than making the user go find the Resume page themselves. */}
+                {runNote === t("queue.reason.no_resume") && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/resume" className="font-semibold underline underline-offset-2">
+                      {t("queue.reason.fixResumeLink")}
+                    </Link>
+                  </>
+                )}
+              </span>
             </p>
           )}
           <div className="mt-3 space-y-3">

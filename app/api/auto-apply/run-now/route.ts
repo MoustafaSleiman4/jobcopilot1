@@ -63,7 +63,11 @@ export async function POST() {
   }
 
   const candidateJobs = await fetchFreeSourceJobs();
-  const queued = await runAutoApplyForUser(admin, prefsRow as AutoApplyPreferences, candidateJobs);
+  const result = await runAutoApplyForUser(admin, prefsRow as AutoApplyPreferences, candidateJobs);
 
-  return NextResponse.json({ queued, nextRunAt: new Date(now + RUN_NOW_COOLDOWN_MS).toISOString() });
+  return NextResponse.json({
+    queued: result.queued,
+    reason: result.reason,
+    nextRunAt: new Date(now + RUN_NOW_COOLDOWN_MS).toISOString(),
+  });
 }

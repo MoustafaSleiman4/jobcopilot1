@@ -755,7 +755,13 @@
         "runNow": "Run now",
         "running": "Checking…",
         "nextRunIn": "Next check in {time}",
-        "runError": "Couldn't run Auto Apply — please try again."
+        "runError": "Couldn't run Auto Apply — please try again.",
+        "reason": {
+          "no_resume": "No matches yet — your resume needs your full name saved before Auto Apply can match jobs or write cover letters for you.",
+          "daily_cap_reached": "You've already hit today's match limit. Check back tomorrow, or raise your daily limit above.",
+          "no_matches": "No jobs matched your current criteria this time — try widening your location, work type, or keywords.",
+          "fixResumeLink": "Go to Resume Builder"
+        }
       }
     }
   },

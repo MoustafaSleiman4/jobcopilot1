@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
 
   for (const prefs of preferences) {
     try {
-      totalQueued += await runAutoApplyForUser(admin, prefs, candidateJobs);
+      const result = await runAutoApplyForUser(admin, prefs, candidateJobs);
+      totalQueued += result.queued;
     } catch (err) {
       // One user's failure (bad resume shape, transient DB error) shouldn't
       // abort matching for every other opted-in user in this run.

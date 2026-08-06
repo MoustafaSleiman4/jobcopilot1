@@ -90,21 +90,30 @@ export function matchesPreferences(job: Job, prefs: AutoApplyPreferences): boole
   return true;
 }
 
+// Surfaced to the user (via the on-demand run-now response) whenever a run
+// finds zero matches, so "Auto Apply found nothing" doesn't read as a broken
+// search when it's actually one of a few specific, fixable reasons. Keep
+// this list in sync with the early-return points below.
+export type AutoApplyRunReason = "no_resume" | "daily_cap_reached" | "no_matches";
+
+export type AutoApplyRunResult = { queued: number; reason?: AutoApplyRunReason };
+
 /**
- * Matches + queues jobs for a single user and returns how many were queued.
- * Called once per opted-in user by the daily cron (with candidateJobs
- * fetched once and shared across every user that run), and once for a
- * single user by the on-demand "Run now" route. Safe to call more than once
- * per day for the same user — `daily_cap` is enforced by counting today's
- * already-queued rows, regardless of which caller queued them, so a manual
- * run-now after the cron already ran just tops up any remaining headroom
- * instead of double-queueing.
+ * Matches + queues jobs for a single user and returns how many were queued
+ * (plus, when zero, why — see AutoApplyRunReason). Called once per opted-in
+ * user by the daily cron (with candidateJobs fetched once and shared across
+ * every user that run), and once for a single user by the on-demand "Run
+ * now" route. Safe to call more than once per day for the same user —
+ * `daily_cap` is enforced by counting today's already-queued rows,
+ * regardless of which caller queued them, so a manual run-now after the
+ * cron already ran just tops up any remaining headroom instead of
+ * double-queueing.
  */
 export async function runAutoApplyForUser(
   admin: SupabaseClient,
   prefs: AutoApplyPreferences,
   candidateJobs: Job[]
-): Promise<number> {
+): Promise<AutoApplyRunResult> {
   // Record that a run happened for this user right away — this is what
   // drives the "next check in Xh" countdown on the Auto Apply page and
   // rate-limits the on-demand trigger. Set unconditionally, even if this
@@ -126,7 +135,7 @@ export async function runAutoApplyForUser(
     .gte("created_at", startOfToday.toISOString());
 
   const remainingCapToday = prefs.daily_cap - (queuedToday ?? 0);
-  if (remainingCapToday <= 0) return 0;
+  if (remainingCapToday <= 0) return { queued: 0, reason: "daily_cap_reached" };
 
   const { data: resumeRow } = await admin
     .from("resumes")
@@ -137,7 +146,13 @@ export async function runAutoApplyForUser(
     .limit(1)
     .maybeSingle<ResumeRow>();
   const structured = resumeRow?.content?.structured;
-  if (!structured || !structured.fullName) return 0; // nothing to match/write a cover letter against yet
+  // Deliberately require a real, named resume before matching or writing a
+  // cover letter — a resume file existing on its own isn't enough if it was
+  // never run through the builder/enhancement step that fills in
+  // structured.fullName, since every downstream cover letter references the
+  // applicant's name. Reported back as "no_resume" so the UI can tell the
+  // user exactly what to fix instead of a bare "no matches found."
+  if (!structured || !structured.fullName) return { queued: 0, reason: "no_resume" };
 
   const [{ data: appliedRows }, { data: queuedRows }] = await Promise.all([
     admin.from("applications").select("source_job_id").eq("user_id", prefs.user_id).not("source_job_id", "is", null),
@@ -184,5 +199,5 @@ export async function runAutoApplyForUser(
     if (!insertError) queuedCount += 1;
   }
 
-  return queuedCount;
+  return queuedCount > 0 ? { queued: queuedCount } : { queued: 0, reason: "no_matches" };
 }
