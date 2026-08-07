@@ -192,20 +192,23 @@ export default async function HomePage({
             aria-hidden="true"
           />
           <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
-          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
+          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-8 text-center sm:pb-64 sm:pt-10">
             {/* 3D centerpiece — an animated Gulf skyline (Al Faisaliah
-                Tower, Kingdom Centre, Burj Khalifa) with an AI "copilot"
-                orb hovering above it. Its own block above the badge/
-                headline rather than a full-bleed background behind the
-                text, so it never competes with text legibility — it's the
-                first thing seen, then the eye flows down into the copy. */}
+                Tower on the left, Burj Khalifa on the right) with an AI
+                "copilot" orb hovering above it. Its own block above the
+                badge/headline rather than a full-bleed background behind
+                the text, so it never competes with text legibility — it's
+                the first thing seen, then the eye flows down into the copy.
+                Kept short (rather than the taller block this used to be)
+                so the animation and the headline/subtitle both sit in view
+                together instead of pushing the copy below the fold. */}
             <ScrollReveal direction="none">
-              <div className="relative mx-auto h-64 w-full max-w-3xl sm:h-80 md:h-[26rem]">
+              <div className="relative mx-auto h-36 w-full max-w-3xl sm:h-44 md:h-52">
                 <Hero3DLoader />
               </div>
             </ScrollReveal>
             <ScrollReveal direction="none">
-              <div className="relative mt-4 inline-block">
+              <div className="relative mt-1 inline-block">
                 {/* Confetti layer — deliberately OUTSIDE the pill's own
                     overflow-hidden (that's only there to clip the shine
                     sweep to the pill's rounded shape) so pieces can fly
@@ -242,17 +245,17 @@ export default async function HomePage({
               </div>
             </ScrollReveal>
             <ScrollReveal delay={150}>
-              <h1 className="gradient-text-sweep mt-6 text-4xl font-extrabold tracking-tight sm:text-6xl">
+              <h1 className="gradient-text-sweep mt-3 text-4xl font-extrabold tracking-tight sm:text-6xl">
                 {t("title")}
               </h1>
             </ScrollReveal>
             <ScrollReveal delay={300}>
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-foreground/70">
+              <p className="mx-auto mt-3 max-w-2xl text-lg leading-relaxed text-foreground/70">
                 {t("subtitle")}
               </p>
             </ScrollReveal>
             <ScrollReveal delay={450}>
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}

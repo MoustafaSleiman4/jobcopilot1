@@ -117,45 +117,6 @@ function buildFaisaliah(): THREE.Group {
   return group;
 }
 
-// ---- Kingdom Centre / Al Mamlakah Tower (Riyadh) — the "bottle-opener"
-// silhouette: twin legs joined by an arch opening, built with a real hole
-// via THREE.Shape.holes so the keyhole reads as genuine negative space. ----
-function buildKingdomCentre(): THREE.Group {
-  const centerX = 360;
-  const outer = new THREE.Shape();
-  outer.moveTo(sx(300, centerX), sy(260));
-  outer.lineTo(sx(306, centerX), sy(145));
-  outer.quadraticCurveTo(sx(310, centerX), sy(95), sx(322, centerX), sy(76));
-  outer.quadraticCurveTo(sx(333, centerX), sy(62), sx(350, centerX), sy(60));
-  outer.lineTo(sx(370, centerX), sy(60));
-  outer.quadraticCurveTo(sx(387, centerX), sy(62), sx(398, centerX), sy(76));
-  outer.quadraticCurveTo(sx(410, centerX), sy(95), sx(414, centerX), sy(145));
-  outer.lineTo(sx(420, centerX), sy(260));
-  outer.closePath();
-
-  const hole = new THREE.Path();
-  hole.moveTo(sx(333, centerX), sy(260));
-  hole.lineTo(sx(337, centerX), sy(165));
-  hole.quadraticCurveTo(sx(339, centerX), sy(115), sx(346, centerX), sy(100));
-  hole.quadraticCurveTo(sx(351, centerX), sy(92), sx(360, centerX), sy(92));
-  hole.quadraticCurveTo(sx(369, centerX), sy(92), sx(374, centerX), sy(100));
-  hole.quadraticCurveTo(sx(381, centerX), sy(115), sx(383, centerX), sy(165));
-  hole.lineTo(sx(387, centerX), sy(260));
-  hole.closePath();
-  outer.holes.push(hole);
-
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x14a878,
-    emissive: 0x0b7754,
-    emissiveIntensity: 0.4,
-    metalness: 0.2,
-    roughness: 0.4,
-  });
-  const group = new THREE.Group();
-  group.add(new THREE.Mesh(extrudeCentered(outer), material));
-  return group;
-}
-
 // ---- Burj Khalifa (Dubai) — tiered, stepped setbacks tapering to a
 // needle-thin spire, traced point-for-point from the flat silhouette. ------
 function buildBurjKhalifa(): THREE.Group {
@@ -320,13 +281,13 @@ function buildOrbitLayer(): { group: THREE.Group; core: THREE.Mesh; coreWire: TH
 }
 
 /**
- * The homepage hero's centerpiece: a stylized, animated 3D rendition of
- * three real Gulf landmarks — Al Faisaliah Tower and Kingdom Centre
- * (Riyadh) and Burj Khalifa (Dubai) — rising into place with a glowing "AI
- * copilot" orb orbited by job-search icon cards hovering above the skyline.
- * Built directly with three.js (no react-three-fiber — this is the only 3D
- * surface in the app, so a full scene-graph wrapper would add abstraction
- * with nothing else to amortize it against).
+ * The homepage hero's centerpiece: a stylized, animated 3D rendition of two
+ * real Gulf landmarks — Al Faisaliah Tower (Riyadh) on the left and Burj
+ * Khalifa (Dubai) on the right — rising into place with a glowing "AI
+ * copilot" orb orbited by job-search icon cards hovering above the skyline
+ * between them. Built directly with three.js (no react-three-fiber — this
+ * is the only 3D surface in the app, so a full scene-graph wrapper would add
+ * abstraction with nothing else to amortize it against).
  *
  * Dynamically imported with `ssr: false` from the homepage (see
  * app/[locale]/page.tsx) — WebGL has no meaning during server rendering,
@@ -363,7 +324,11 @@ export default function Hero3D() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    const baseCameraZ = 12;
+    // Pulled in from 12 now that only two towers need to fit in frame (down
+    // from three) — a tighter shot reads as bigger/closer, which also suits
+    // the shorter canvas this scene now renders into (see the reduced hero
+    // container height in app/[locale]/page.tsx).
+    const baseCameraZ = 10;
     camera.position.set(0, 3.4, baseCameraZ);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
@@ -383,12 +348,13 @@ export default function Hero3D() {
     const worldGroup = new THREE.Group();
     scene.add(worldGroup);
 
+    // Faisaliah on the left, Burj Khalifa on the right — Kingdom Centre
+    // removed from the scene entirely per design feedback, leaving open sky
+    // (and the orbiting copilot layer) between the two remaining towers.
     const faisaliah = buildFaisaliah();
-    faisaliah.position.x = -3.6;
-    const kingdom = buildKingdomCentre();
-    kingdom.position.x = 0;
+    faisaliah.position.x = -2.7;
     const burj = buildBurjKhalifa();
-    burj.position.x = 3.6;
+    burj.position.x = 2.7;
 
     // Rise-up entrance, staggered left to right — each tower's group pivots
     // from the ground (y=0 is the shared ground plane every shape was
@@ -396,8 +362,7 @@ export default function Hero3D() {
     // skyline genuinely building itself up rather than a generic fade-in.
     const towers = [
       { group: faisaliah, delay: 0 },
-      { group: kingdom, delay: 0.15 },
-      { group: burj, delay: 0.3 },
+      { group: burj, delay: 0.2 },
     ];
     towers.forEach((tower) => {
       tower.group.scale.y = 0.0001;
@@ -406,7 +371,6 @@ export default function Hero3D() {
 
     const allLights: WindowLight[] = [
       ...addWindowLights(faisaliah, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)]),
-      ...addWindowLights(kingdom, 10, [sy(110), sy(240)], [sx(312, 360), sx(408, 360)]),
       ...addWindowLights(burj, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]),
     ];
 
@@ -458,9 +422,9 @@ export default function Hero3D() {
       const aspect = width / height;
       camera.aspect = aspect;
       // Narrower/taller containers (mobile) need the camera pulled back
-      // further to keep all three towers in frame — a fixed camera
-      // distance that looks right on a wide desktop hero crops the left
-      // and right towers on a narrow phone viewport.
+      // further to keep both towers in frame — a fixed camera distance
+      // that looks right on a wide desktop hero crops the left and right
+      // towers on a narrow phone viewport.
       camera.position.z = aspect < 1.6 ? baseCameraZ * (1.6 / Math.max(aspect, 0.75)) : baseCameraZ;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
