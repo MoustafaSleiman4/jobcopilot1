@@ -33,6 +33,14 @@ export type Job = {
 export const GREENHOUSE_BOARDS = [
   { slug: "careem", host: "boards-api.greenhouse.io" },
   { slug: "tamara", host: "boards-api.greenhouse.io" },
+  // HALA — Saudi fintech (Riyadh); verified live via boards-api.greenhouse.io
+  // with real openings (AI Engineer, Payment Product Manager, Product
+  // Designer, and others) as of this addition.
+  { slug: "hala", host: "boards-api.greenhouse.io", company: "HALA" },
+  // Cobblestone Energy — Dubai-based algorithmic/energy trading firm;
+  // verified live with real Dubai software/data-engineering openings
+  // (Software Engineer - Automated Trading, Data Scientist, and others).
+  { slug: "cobblestoneenergy1", host: "boards-api.greenhouse.io", company: "Cobblestone Energy" },
 ];
 export const LEVER_BOARDS = [
   { slug: "Yassir", company: "Yassir" },
@@ -135,7 +143,7 @@ export const FALLBACK_JOBS: Job[] = (
   ] satisfies Omit<Job, "industry" | "workType">[]
 ).map(finalize);
 
-export async function fetchGreenhouseJobs(slug: string, host: string): Promise<Job[]> {
+export async function fetchGreenhouseJobs(slug: string, host: string, company?: string): Promise<Job[]> {
   try {
     const res = await fetch(`https://${host}/v1/boards/${slug}/jobs?content=false`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
@@ -144,7 +152,11 @@ export async function fetchGreenhouseJobs(slug: string, host: string): Promise<J
       finalize({
         id: `${slug}-${j.id}`,
         title: j.title,
-        company: slug[0].toUpperCase() + slug.slice(1),
+        // Explicit `company` (see GREENHOUSE_BOARDS) beats the old
+        // capitalize-the-slug fallback — that fallback reads fine for a
+        // clean single-word slug ("careem" -> "Careem") but turns something
+        // like "cobblestoneenergy1" into a garbled display name.
+        company: company ?? slug[0].toUpperCase() + slug.slice(1),
         location: j.location?.name ?? "Remote",
         applyUrl: j.absolute_url,
         applyType: "external" as const,
@@ -237,7 +249,7 @@ export async function fetchRemoteOkJobs(): Promise<Job[]> {
 /** All always-free sources in one call, flattened — the set Auto Apply matches against. */
 export async function fetchFreeSourceJobs(): Promise<Job[]> {
   const [greenhouse, lever, ashby, remoteOk] = await Promise.all([
-    Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host))),
+    Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host, b.company))),
     Promise.all(LEVER_BOARDS.map((b) => fetchLeverJobs(b.slug, b.company))),
     Promise.all(ASHBY_BOARDS.map((b) => fetchAshbyJobs(b.slug, b.company))),
     fetchRemoteOkJobs(),

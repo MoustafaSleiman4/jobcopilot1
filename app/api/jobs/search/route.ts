@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const [greenhouseResults, leverResults, ashbyResults, remoteOkResults] = await Promise.all([
-      Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host))),
+      Promise.all(GREENHOUSE_BOARDS.map((b) => fetchGreenhouseJobs(b.slug, b.host, b.company))),
       Promise.all(LEVER_BOARDS.map((b) => fetchLeverJobs(b.slug, b.company))),
       Promise.all(ASHBY_BOARDS.map((b) => fetchAshbyJobs(b.slug, b.company))),
       fetchRemoteOkJobs(),
