@@ -76,11 +76,17 @@ export async function GET(request: NextRequest) {
   // error.
   let quota: { used: number; limit: number; remaining: number } | null = null;
   let skipPaidSources = true;
-  // Populated for any signed-in user with a usable resume on file (not
-  // gated to Pro — free users just won't reach this route with real
-  // listings to score against, since the page itself is Pro-gated). Used
+  // Job Search is no longer a whole-page Pro gate (see app/[locale]/
+  // dashboard/jobs/page.tsx) — free/logged-out visitors can browse results
+  // now too, just without the company location or the real apply link (see
+  // the masking below), and with Apply disabled client-side. `isPro` is
+  // what decides that masking, checked server-side so a free user can't get
+  // the real location/applyUrl just by inspecting/editing client state.
+  let isPro = false;
+  // Populated for any signed-in user with a usable resume on file — used
   // below to attach a per-job matchScore, the same scoreJob() heuristic
-  // Auto Apply already uses.
+  // Auto Apply already uses. Not gated to Pro; a free user's resume still
+  // scores against the (masked) results they can see.
   let structuredResume: StructuredResume | null = null;
   try {
     const supabase = await createServerSupabaseClient();
@@ -112,6 +118,7 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (profile?.plan === "pro") {
+        isPro = true;
         const admin = createAdminClient();
         const { data: usedToday, error: usageError } = await admin.rpc(
           "increment_job_search_usage",
@@ -235,16 +242,25 @@ export async function GET(request: NextRequest) {
     ? jobs.map((j) => ({ ...j, matchScore: scoreJob(j, structuredResume as StructuredResume) }))
     : jobs;
 
+  // Free/logged-out visitors can browse full results now (title, company,
+  // industry, work type, match score) but not the company location or the
+  // real outbound apply link — stripped server-side (not just hidden in the
+  // UI) so there's nothing to recover by inspecting the response. Filtering
+  // by location above still used the real value, so "browse by country"
+  // still works for everyone; this only blanks what's shown per-job.
+  const responseJobs = isPro ? scoredJobs : scoredJobs.map((j) => ({ ...j, location: "", applyUrl: "" }));
+
   return NextResponse.json({
     // One page of PAGE_SIZE results starting at `offset` — the client keeps
     // requesting the next offset (via "Load more") and appending, rather
     // than everything coming back in one giant response.
-    jobs: scoredJobs.slice(offset, offset + PAGE_SIZE),
+    jobs: responseJobs.slice(offset, offset + PAGE_SIZE),
     // The real total after every filter, not just this page's length — this
     // is what the "N jobs found" count and "more available" logic use.
-    total: scoredJobs.length,
+    total: responseJobs.length,
     offset,
     pageSize: PAGE_SIZE,
+    isPro,
     industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
     locations: LOCATIONS,
     workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],

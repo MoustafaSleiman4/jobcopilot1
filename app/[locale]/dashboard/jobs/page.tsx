@@ -63,6 +63,7 @@ type SearchResponse = {
   total: number;
   offset: number;
   pageSize: number;
+  isPro: boolean;
   industries: string[];
   locations: string[];
   workTypes: WorkType[];
@@ -119,6 +120,12 @@ export default function JobSearchPage() {
   const [searchQuota, setSearchQuota] = useState<{ used: number; limit: number; remaining: number } | null>(
     null
   );
+  // Server-confirmed (see app/api/jobs/search/route.ts's `isPro`) rather than
+  // just mirroring the client's own `plan` state — the location/applyUrl
+  // masking already happened server-side either way, this only drives which
+  // UI (locked vs. real) renders around that data. Defaults to true so the
+  // pre-first-fetch render doesn't flash the "limited results" banner.
+  const [resultsArePro, setResultsArePro] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   // The real filtered count from the server (see app/api/jobs/search/
   // route.ts's `total`), not just how many have been loaded onto the page —
@@ -130,11 +137,13 @@ export default function JobSearchPage() {
   const [locations, setLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Whole-page Pro gate (matches Reports/Certifications/Cover Letter): stays
-  // true until the plan lookup below resolves, so a Pro user never sees a
-  // flash of the locked view before their plan loads in.
+  // Job Search itself no longer has a whole-page Pro gate (see
+  // resultsArePro above, which is what actually drives Pro vs. limited UI —
+  // confirmed per-request from the server rather than this client-only
+  // profile lookup). `checking` still gates the initial loading flash while
+  // the signed-in user's own data (contact info, resume, tracked
+  // applications) loads in.
   const [checking, setChecking] = useState(true);
-  const [plan, setPlan] = useState<"free" | "pro">("free");
   const [userId, setUserId] = useState<string | null>(null);
   const [trackedIds, setTrackedIds] = useState<Set<string>>(new Set());
   const [resumeTitle, setResumeTitle] = useState<string | null>(null);
@@ -197,11 +206,10 @@ export default function JobSearchPage() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("plan, full_name, phone")
+          .select("full_name, phone")
           .eq("id", uid)
           .single();
         if (cancelled) return;
-        if (profile?.plan === "pro") setPlan("pro");
         setChecking(false);
 
         const { data: tracked } = await supabase
@@ -282,6 +290,7 @@ export default function JobSearchPage() {
       .then((data: SearchResponse) => {
         setJobs(data.jobs ?? []);
         setTotalJobs(data.total ?? data.jobs?.length ?? 0);
+        setResultsArePro(data.isPro ?? false);
         if (data.industries?.length) setIndustries(data.industries);
         if (data.locations?.length) setLocations(data.locations);
         setSearchQuota(data.meta ?? null);
@@ -526,12 +535,13 @@ export default function JobSearchPage() {
   // API that would let us submit on the candidate's behalf without
   // becoming an employer/platform partner.
   //
-  // No plan check here: the whole page is now Pro-gated (see the
-  // `plan !== "pro"` early return below the loading check), so anyone who
-  // can reach this function is already on Pro. The redundant per-action
-  // check + upgrade banner this used to have were removed when the page
-  // itself became the gate.
+  // Defensive guard, not the primary gate — the button that calls this is
+  // only ever rendered for Pro results (see resultsArePro in the card
+  // markup below), and job.applyUrl is already stripped to "" server-side
+  // for non-Pro responses either way (see app/api/jobs/search/route.ts), so
+  // there'd be nothing real to open even if this were somehow reached.
   function handleApply(job: Job) {
+    if (!resultsArePro || !job.applyUrl) return;
     const win = window.open(job.applyUrl, "_blank", "noreferrer");
     setPopupBlocked(!win);
     setCoverLetter("");
@@ -589,7 +599,10 @@ export default function JobSearchPage() {
   // every "Open" is its own real click — same total effort as opening tabs,
   // but nothing silently fails.
   async function handleBulkApply() {
-    // No plan check here either — see the comment on handleApply above.
+    // Defensive guard — see the comment on handleApply above. The
+    // select-checkboxes and this whole banner are only rendered when
+    // resultsArePro, so selectedIds should already be empty otherwise.
+    if (!resultsArePro) return;
     const targets = jobs.filter((j) => selectedIds.has(j.id)).slice(0, MAX_BULK_APPLY);
     if (targets.length === 0) return;
     setBulkRunning(true);
@@ -640,40 +653,35 @@ export default function JobSearchPage() {
     return <p className="text-sm text-foreground/50">{t("loading")}</p>;
   }
 
-  // Whole-page Pro gate — same locked-view pattern as Reports, Certifications,
-  // and Cover Letter. Job search (browsing, matching, and applying) used to
-  // be free with only the apply action itself gated; now the entire page
-  // requires Pro, so a free/logged-out visitor never sees real listings at
-  // all rather than getting this far and then hitting a paywall mid-flow.
-  if (plan !== "pro") {
-    return (
-      <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
-
-        <div className="mt-8 flex flex-col items-start gap-4 rounded-2xl border border-gold-400/40 bg-gold-50 p-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-100 text-gold-600">
-            <Lock size={20} />
-          </div>
-          <div>
-            <h2 className="font-semibold text-foreground">{t("lockedTitle")}</h2>
-            <p className="mt-1 text-sm text-foreground/70">{t("lockedBody")}</p>
-          </div>
-          <Link
-            href="/pricing"
-            className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            {t("upgradeCta")}
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
+
+      {/* Job Search used to be a whole-page Pro gate (nothing visible at all
+          below free). Now everyone can browse real results — this banner
+          replaces that full-page lock, explaining what's still Pro-only
+          (location, the real apply link, one-click/bulk apply, cover
+          letters) without blocking the results themselves. */}
+      {!resultsArePro && (
+        <div className="mt-4 flex flex-col items-start gap-3 rounded-2xl border border-gold-400/40 bg-gold-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-gold-100 text-gold-600">
+              <Lock size={16} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">{t("limitedTitle")}</h2>
+              <p className="mt-0.5 text-xs text-foreground/70">{t("limitedBody")}</p>
+            </div>
+          </div>
+          <Link
+            href="/pricing"
+            className="flex-none rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            {t("upgradeCta")}
+          </Link>
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -793,7 +801,7 @@ export default function JobSearchPage() {
         </p>
       )}
 
-      {selectedIds.size > 0 && (
+      {resultsArePro && selectedIds.size > 0 && (
         <div className="sticky top-2 z-30 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 shadow-sm">
           <p className="text-sm font-semibold text-emerald-800">
             {t("bulk.selectedCount", { count: selectedIds.size })}
@@ -847,7 +855,7 @@ export default function JobSearchPage() {
               }`}
             >
               <div className="flex items-start gap-3">
-                {!trackedIds.has(job.id) && (
+                {resultsArePro && !trackedIds.has(job.id) && (
                   <button
                     type="button"
                     onClick={() => toggleSelected(job)}
@@ -898,8 +906,20 @@ export default function JobSearchPage() {
 
                 {/* Inline collapsible cover letter — same ▶ toggle pattern
                     as the Auto Apply queue, lazily generated on first
-                    expand and cached per job id after that. */}
-                {defaultResumeStructured && (
+                    expand and cached per job id after that. Pro-only: each
+                    expand is a real AI call, so this stays behind the same
+                    gate as Apply rather than opening cost up to anyone who
+                    can now browse results. */}
+                {!resultsArePro && defaultResumeStructured && (
+                  <Link
+                    href="/pricing"
+                    className="mt-2.5 flex items-center gap-1 text-xs font-semibold text-gold-700 hover:text-gold-800"
+                  >
+                    <Lock size={12} />
+                    {t("prepare.coverLetterHeading")} — {t("upgradeCta")}
+                  </Link>
+                )}
+                {resultsArePro && defaultResumeStructured && (
                   <div className="mt-2.5">
                     <button
                       type="button"
@@ -956,14 +976,30 @@ export default function JobSearchPage() {
                       {trackedIds.has(job.id) ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleApply(job)}
-                    className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                  >
-                    {t("sendApplication")}
-                    <ExternalLink size={14} />
-                  </button>
+                  {resultsArePro ? (
+                    <button
+                      type="button"
+                      onClick={() => handleApply(job)}
+                      className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      {t("sendApplication")}
+                      <ExternalLink size={14} />
+                    </button>
+                  ) : (
+                    // Location and the real apply link are stripped
+                    // server-side for non-Pro results (see app/api/jobs/
+                    // search/route.ts) — there's nothing for handleApply to
+                    // open here even if it were wired up, so this links
+                    // straight to pricing instead of pretending to apply.
+                    <Link
+                      href="/pricing"
+                      title={t("upgradeCta")}
+                      className="flex items-center justify-center gap-1.5 rounded-full border border-gold-400/50 bg-gold-50 px-5 py-2.5 text-sm font-semibold text-gold-700 hover:bg-gold-100"
+                    >
+                      <Lock size={14} />
+                      {t("upgradeToApply")}
+                    </Link>
+                  )}
                 </div>
                 <button
                   type="button"

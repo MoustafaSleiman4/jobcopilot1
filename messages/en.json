@@ -28,7 +28,7 @@
     }
   },
   "home": {
-    "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
+    "badge": "🏆 #1 Trusted Job Search App in the Gulf",
     "title": "Your AI copilot for landing the next job",
     "subtitle": "Build a standout resume, get matched to real openings across the Gulf, Lebanon, and the wider Middle East & Africa region, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
     "ctaPrimary": "Start free",
@@ -475,6 +475,9 @@
       "loading": "Searching for jobs...",
       "lockedTitle": "Unlock Smart Job Search & Copilot",
       "lockedBody": "Upgrade to Pro to search real openings across the Gulf, the Levant, and MEA, apply in one click, and let the copilot prep your contact info and a tailored cover letter for every job automatically.",
+      "limitedTitle": "You're viewing limited results",
+      "limitedBody": "Upgrade to Pro to see company locations, apply in one click, and get a tailored cover letter for every job.",
+      "upgradeToApply": "Upgrade to apply",
       "allLocations": "All locations",
       "allIndustries": "All industries",
       "allWorkTypes": "Remote, hybrid & onsite",
