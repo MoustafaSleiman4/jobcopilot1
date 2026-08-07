@@ -499,7 +499,17 @@
         "onsite": "من المكتب"
       },
       "industryNames": {
-        "Technology": "التكنولوجيا",
+        "Healthcare": "الرعاية الصحية",
+        "Oil & Gas & Energy": "النفط والغاز والطاقة",
+        "Construction & Engineering": "الإنشاءات والهندسة",
+        "Aviation, Travel & Hospitality": "الطيران والسفر والضيافة",
+        "Real Estate & Property": "العقارات",
+        "Legal": "القانون",
+        "Manufacturing & Industrial": "التصنيع والصناعة",
+        "Retail & E-commerce": "التجزئة والتجارة الإلكترونية",
+        "Government & Public Sector": "الحكومة والقطاع العام",
+        "Education": "التعليم",
+        "Technology/Software/IT": "التقنية والبرمجيات وتكنولوجيا المعلومات",
         "Marketing": "التسويق",
         "Finance & Banking": "المالية والمصارف",
         "Sales & Business Development": "المبيعات وتطوير الأعمال",

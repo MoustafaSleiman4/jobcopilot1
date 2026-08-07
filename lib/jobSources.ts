@@ -85,10 +85,20 @@ export const LOCATION_ALIASES: Record<string, string[]> = {
 // almost every non-tech role in the region, which is exactly what surfaced
 // as "Technology" search results returning construction/oil & gas jobs (see
 // the sector-specific categories added here in response to that report).
-export const INDUSTRY_KEYWORDS: [string, string[]][] = [
+// 4th-tuple-slot (optional) is an EXCLUDE list: a title/company matching one
+// of these blocks that category even if it also matched an include keyword.
+// Currently only Technology/Software/IT needs one — "engineer" alone is far
+// too broad a signal (mechanical/electrical/chemical/biomedical/aerospace/
+// marine engineers are all real, common, non-tech Gulf job titles), and none
+// of those disciplines have their own dedicated category here, so excluding
+// them from Technology/Software/IT sends them to "Other" rather than
+// mislabeling them as tech — reported directly ("Project Manager (Mechanical
+// Engineer)" showing under Technology) after the sector categories below
+// were first added.
+export const INDUSTRY_KEYWORDS: [string, string[], string[]?][] = [
   ["Healthcare", ["nurse", "physician", "doctor", "medical officer", "pharmacist", "healthcare", "clinical", "hospital", "dentist", "radiologist", "physiotherapist", "surgeon", "paramedic"]],
   ["Oil & Gas & Energy", ["oil and gas", "oil & gas", "petroleum", "drilling", "refinery", "upstream", "downstream", "offshore", "onshore", "pipeline", "commissioning", "process engineer", "reservoir engineer", "renewable energy", "solar energy", "lng", "oil", "gas"]],
-  ["Construction & Engineering", ["construction", "civil engineer", "structural engineer", "site engineer", "site manager", "quantity surveyor", "architect", "mep engineer", "hvac", "fit out", "fit-out", "piping engineer", "foreman", "surveyor", "contracts manager"]],
+  ["Construction & Engineering", ["construction", "civil engineer", "structural engineer", "site engineer", "site manager", "resident engineer", "quantity surveyor", "architect", "mep engineer", "hvac", "fit out", "fit-out", "piping engineer", "foreman", "surveyor", "contracts manager"]],
   ["Aviation, Travel & Hospitality", ["pilot", "cabin crew", "flight attendant", "airline", "airport", "aviation", "ground operations", "hotel", "restaurant", "chef", "hospitality", "tourism", "travel agent", "concierge", "housekeeping", "resort"]],
   ["Real Estate & Property", ["real estate", "property management", "leasing", "facilities management", "property consultant"]],
   ["Legal", ["lawyer", "attorney", "legal counsel", "paralegal", "legal advisor", "compliance officer"]],
@@ -96,7 +106,11 @@ export const INDUSTRY_KEYWORDS: [string, string[]][] = [
   ["Retail & E-commerce", ["retail", "store manager", "merchandising", "e-commerce", "cashier", "visual merchandiser"]],
   ["Government & Public Sector", ["government", "ministry", "municipality", "public sector", "civil service"]],
   ["Education", ["teacher", "professor", "lecturer", "tutor", "curriculum", "academic advisor", "school principal", "university"]],
-  ["Technology", ["engineer", "developer", "software", "data", "devops", "product manager", "qa engineer", "frontend", "backend", "full stack", "it", "scrum master", "programmer", "system administrator", "database administrator", "cyber security", "cybersecurity", "site reliability"]],
+  [
+    "Technology/Software/IT",
+    ["engineer", "developer", "software", "data", "devops", "product manager", "qa engineer", "frontend", "backend", "full stack", "it", "scrum master", "programmer", "system administrator", "database administrator", "cyber security", "cybersecurity", "site reliability"],
+    ["mechanical", "electrical", "chemical", "biomedical", "aerospace", "marine engineer", "automotive"],
+  ],
   ["Marketing", ["marketing", "growth", "content", "seo", "brand", "social media"]],
   ["Finance & Banking", ["finance", "accountant", "audit", "banking", "relationship manager", "investment", "financial", "credit"]],
   ["Sales & Business Development", ["sales", "business development", "account executive", "partnership"]],
@@ -110,20 +124,27 @@ function escapeRegExpLiteral(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Precompiled ONCE at module load, not per call — inferIndustry() below runs
-// on every job from every source on every search request (and every seed/
-// refresh run), so building a fresh RegExp per keyword per job would add up
-// fast at the volumes this table is now at.
-const COMPILED_INDUSTRY_KEYWORDS: [string, RegExp[]][] = INDUSTRY_KEYWORDS.map(([industry, keywords]) => [
-  industry,
+function compileWordBoundaryPatterns(keywords: string[]): RegExp[] {
   // Word-boundary matching (\b), not substring — the old plain
   // `.includes(k)` check on "it " matched inside "fit out", "credit",
   // "audit", "visit", etc. (any word ending in "-it" followed by a space),
   // which is how a construction "Senior Project Manager - Fit Out" role was
   // silently getting tagged "Technology". \b anchors each keyword to actual
   // word edges instead.
-  keywords.map((k) => new RegExp(`\\b${escapeRegExpLiteral(k)}\\b`, "i")),
-]);
+  return keywords.map((k) => new RegExp(`\\b${escapeRegExpLiteral(k)}\\b`, "i"));
+}
+
+// Precompiled ONCE at module load, not per call — inferIndustry() below runs
+// on every job from every source on every search request (and every seed/
+// refresh run), so building a fresh RegExp per keyword per job would add up
+// fast at the volumes this table is now at.
+const COMPILED_INDUSTRY_KEYWORDS: [string, RegExp[], RegExp[]][] = INDUSTRY_KEYWORDS.map(
+  ([industry, keywords, excludeKeywords]) => [
+    industry,
+    compileWordBoundaryPatterns(keywords),
+    compileWordBoundaryPatterns(excludeKeywords ?? []),
+  ]
+);
 
 // True when a job's own location text actually mentions one of the 9
 // Gulf/Levant/Egypt countries this app is scoped to (or a known
@@ -146,8 +167,10 @@ export function isRegionLocation(location: string): boolean {
 // than title alone.
 export function inferIndustry(title: string, company?: string): string {
   const haystack = company ? `${title} ${company}` : title;
-  for (const [industry, patterns] of COMPILED_INDUSTRY_KEYWORDS) {
-    if (patterns.some((re) => re.test(haystack))) return industry;
+  for (const [industry, patterns, excludePatterns] of COMPILED_INDUSTRY_KEYWORDS) {
+    if (!patterns.some((re) => re.test(haystack))) continue;
+    if (excludePatterns.some((re) => re.test(haystack))) continue;
+    return industry;
   }
   return "Other";
 }

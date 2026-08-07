@@ -499,7 +499,17 @@
         "onsite": "Onsite"
       },
       "industryNames": {
-        "Technology": "Technology",
+        "Healthcare": "Healthcare",
+        "Oil & Gas & Energy": "Oil & Gas & Energy",
+        "Construction & Engineering": "Construction & Engineering",
+        "Aviation, Travel & Hospitality": "Aviation, Travel & Hospitality",
+        "Real Estate & Property": "Real Estate & Property",
+        "Legal": "Legal",
+        "Manufacturing & Industrial": "Manufacturing & Industrial",
+        "Retail & E-commerce": "Retail & E-commerce",
+        "Government & Public Sector": "Government & Public Sector",
+        "Education": "Education",
+        "Technology/Software/IT": "Technology/Software/IT",
         "Marketing": "Marketing",
         "Finance & Banking": "Finance & Banking",
         "Sales & Business Development": "Sales & Business Development",
