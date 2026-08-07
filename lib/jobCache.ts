@@ -133,20 +133,39 @@ function rowToJob(row: JobRow): Job {
   };
 }
 
+// Supabase/PostgREST caps a single request at 1000 rows by default
+// regardless of what .limit() asks for, so a plain single-page select was
+// silently truncating the cache well below its real size once it grew past
+// 1000 (it hit ~2,510 active rows and only ever surfaced 1000, or fewer
+// still once combined with other filtering upstream). Page through with
+// .range() instead so every cached job — however many there are — actually
+// reaches search/Auto Apply. PAGE_CAP is just a sane upper bound (50k rows)
+// so a pathological/unbounded table can't turn one request into an infinite
+// loop; the cache is nowhere near that today.
+const CACHE_PAGE_SIZE = 1000;
+const CACHE_PAGE_CAP = 50;
+
 /**
  * Reads ONLY the local cache — never touches Jooble/Careerjet/SerpApi. This
  * is what every real user search (and, since it's free to read, Auto Apply
  * too) should call instead of hitting those APIs directly.
  */
 export async function getCachedJobs(admin: SupabaseClient): Promise<Job[]> {
-  const { data, error } = await admin
-    .from("retrieved_jobs")
-    .select("id, title, company, location, apply_url, apply_type, industry, work_type")
-    .gt("expires_at", new Date().toISOString())
-    .limit(1000);
+  const rows: JobRow[] = [];
+  for (let page = 0; page < CACHE_PAGE_CAP; page++) {
+    const from = page * CACHE_PAGE_SIZE;
+    const to = from + CACHE_PAGE_SIZE - 1;
+    const { data, error } = await admin
+      .from("retrieved_jobs")
+      .select("id, title, company, location, apply_url, apply_type, industry, work_type")
+      .gt("expires_at", new Date().toISOString())
+      .range(from, to);
 
-  if (error || !data) return [];
-  return (data as JobRow[]).map(rowToJob);
+    if (error || !data) break;
+    rows.push(...(data as JobRow[]));
+    if (data.length < CACHE_PAGE_SIZE) break; // last page
+  }
+  return rows.map(rowToJob);
 }
 
 /**

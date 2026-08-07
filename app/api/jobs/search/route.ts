@@ -66,16 +66,10 @@ export async function GET(request: NextRequest) {
 
   // --- Auth + daily quota (see DAILY_SEARCH_LIMIT above) ---
   // `quota` is only populated for a signed-in Pro user with the migration
-  // applied — it's what the client shows as "N searches left today".
-  // `skipPaidSources` gates Jooble/Careerjet/SerpApi specifically: it's true
-  // whenever the caller isn't a verified, under-quota Pro user, so an
-  // unauthenticated or free-plan request (bypassing the UI's Pro gate
-  // directly) never spends any of the paid/keyed quota, and a Pro user past
-  // today's limit still gets real results — just from the always-free
-  // Greenhouse/Lever/Ashby boards and the curated fallback list, not a hard
-  // error.
+  // applied — it's what the client shows as "N searches left today". It's
+  // purely an informational counter now (see the note by getCachedJobs()
+  // below) — it no longer gates which jobs come back, for anyone.
   let quota: { used: number; limit: number; remaining: number } | null = null;
-  let skipPaidSources = true;
   // Job Search is no longer a whole-page Pro gate (see app/[locale]/
   // dashboard/jobs/page.tsx) — free/logged-out visitors can browse results
   // now too, just without the company location or the real apply link (see
@@ -130,39 +124,38 @@ export async function GET(request: NextRequest) {
             limit: DAILY_SEARCH_LIMIT,
             remaining: Math.max(0, DAILY_SEARCH_LIMIT - usedToday),
           };
-          skipPaidSources = usedToday > DAILY_SEARCH_LIMIT;
-        } else {
-          // supabase/job-search-rate-limit.sql hasn't been run yet (or some
-          // other RPC failure) — fail open on the LIMIT (don't block a real
-          // Pro user over a missing migration), but we still can't show a
-          // quota, and there's no enforcement happening either way.
-          skipPaidSources = false;
         }
+        // supabase/job-search-rate-limit.sql hasn't been run yet (or some
+        // other RPC failure)? We still just can't show a quota — there's no
+        // enforcement happening either way, and it never blocked results.
       }
     }
   } catch {
     // Supabase not configured, or the lookup failed for some other reason —
-    // leave skipPaidSources at its default `true`. Never block the request
-    // entirely over this; the curated + free-board sources still return.
+    // never block the request entirely over this; the cached + free-board +
+    // curated sources below still return regardless of auth state.
   }
 
   let realJobs: Job[] = [];
 
-  // Paid sources (Jooble/Careerjet/SerpApi) no longer get called here at
-  // all — this reads the shared local cache instead (see lib/jobCache.ts),
-  // which is populated once a day for everyone by
-  // app/api/jobs/refresh-cache/route.ts. skipPaidSources still gates this
-  // the same way it gated the old live calls: only a signed-in, under-quota
-  // Pro user gets the cached paid-source listings blended in.
-  if (!skipPaidSources) {
-    try {
-      const admin = createAdminClient();
-      const cached = await getCachedJobs(admin);
-      realJobs = realJobs.concat(cached);
-    } catch {
-      // supabase/job-cache.sql not migrated yet, or admin client not
-      // configured — fall through to the always-free sources below.
-    }
+  // Reads the shared local cache (public.retrieved_jobs), populated once a
+  // day for everyone by app/api/jobs/refresh-cache/route.ts plus the
+  // one-time/forced bulk seed — this is a plain DB read with no live
+  // Jooble/Careerjet/SerpApi call attached, so it costs nothing no matter
+  // how often or by whom it's called. Every visitor gets the full result
+  // pool from it, Pro or free/logged-out alike; only the location/applyUrl
+  // fields get stripped for non-Pro further down, never the set of jobs
+  // itself. (This used to be gated to Pro-only, which was silently limiting
+  // free/logged-out users to just the ~15 Greenhouse/Lever/Ashby boards
+  // plus the curated fallback list — a couple hundred jobs instead of the
+  // full cached pool.)
+  try {
+    const admin = createAdminClient();
+    const cached = await getCachedJobs(admin);
+    realJobs = realJobs.concat(cached);
+  } catch {
+    // supabase/job-cache.sql not migrated yet, or admin client not
+    // configured — fall through to the always-free sources below.
   }
 
   try {
