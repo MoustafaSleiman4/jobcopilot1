@@ -105,13 +105,13 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="hidden text-sm font-medium text-foreground/70 hover:text-foreground sm:block"
+                className="rounded-full border-2 border-emerald-600 px-3.5 py-2 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 sm:px-5 sm:py-2.5 sm:text-base"
               >
                 {t("login")}
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-md transition-colors hover:bg-emerald-700 sm:px-6 sm:py-2.5 sm:text-base"
               >
                 {t("signup")}
               </Link>

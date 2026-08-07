@@ -133,7 +133,7 @@ export default async function HomePage({
           <div className="pattern-motif pointer-events-none absolute inset-0" />
           <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
           <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
-            <span className="inline-block rounded-full border border-gold-400/40 bg-gold-50 px-4 py-1.5 text-xs font-semibold text-gold-600">
+            <span className="inline-block rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
               {t("badge")}
             </span>
             <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
