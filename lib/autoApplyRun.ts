@@ -138,10 +138,19 @@ export async function runAutoApplyForUser(
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
 
+  // Dismissed rows don't count against today's cap — otherwise a match
+  // queued earlier today under stale criteria (e.g. before the user edited
+  // their keywords) permanently occupies a daily_cap "slot" even after
+  // they've explicitly thrown it out, blocking a fresh, better-matching run
+  // for the rest of the day with no way to recover except waiting until
+  // tomorrow. Dismissing a stale match now genuinely frees that slot up so
+  // the next "Run now" (or the next cron pass) can fill it with something
+  // that actually matches the current settings.
   const { count: queuedToday } = await admin
     .from("auto_apply_queue")
     .select("id", { count: "exact", head: true })
     .eq("user_id", prefs.user_id)
+    .neq("status", "dismissed")
     .gte("created_at", startOfToday.toISOString());
 
   const remainingCapToday = prefs.daily_cap - (queuedToday ?? 0);
