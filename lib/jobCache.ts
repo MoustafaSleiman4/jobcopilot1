@@ -21,7 +21,7 @@
 // API spend.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { type Job, type WorkType, LOCATIONS, isRegionLocation } from "@/lib/jobSources";
+import { type Job, type WorkType, LOCATIONS, LOCATION_ALIASES, isRegionLocation } from "@/lib/jobSources";
 import { fetchJoobleJobsPage, fetchCareerjetJobs, fetchSerpApiJobs } from "@/lib/paidJobSources";
 
 // How long a refresh stays "fresh" before the next trigger is allowed to
@@ -166,21 +166,49 @@ function rowToJob(row: JobRow): Job {
 const CACHE_PAGE_SIZE = 1000;
 const CACHE_PAGE_CAP = 50;
 
+// Optional server-side pre-filters for getCachedJobs — `location` is a
+// country name (matched the same loose way as the rest of the app: the
+// country itself plus any LOCATION_ALIASES, e.g. "UAE" for "United Arab
+// Emirates") rather than a raw SQL pattern, so callers pass the same values
+// they'd pass to the app's own location dropdown.
+type CachedJobFilters = { location?: string; industry?: string; workType?: WorkType };
+
 /**
  * Reads ONLY the local cache — never touches Jooble/Careerjet/SerpApi. This
  * is what every real user search (and, since it's free to read, Auto Apply
  * too) should call instead of hitting those APIs directly.
+ *
+ * Filters are optional and additive to the always-applied expires_at check
+ * — when given, they're pushed down into the query (backed by the
+ * industry/work_type btree indexes and the location trigram index) instead
+ * of always pulling the full cache and filtering it in JS. A filtered
+ * search only transfers the rows that can actually match, which matters
+ * more as the table keeps growing from the ongoing seed work. Callers that
+ * want the whole pool (e.g. Auto Apply, which matches against a resume
+ * rather than a location/industry pick) just omit the filters, same as
+ * before.
  */
-export async function getCachedJobs(admin: SupabaseClient): Promise<Job[]> {
+export async function getCachedJobs(admin: SupabaseClient, filters: CachedJobFilters = {}): Promise<Job[]> {
   const rows: JobRow[] = [];
   for (let page = 0; page < CACHE_PAGE_CAP; page++) {
     const from = page * CACHE_PAGE_SIZE;
     const to = from + CACHE_PAGE_SIZE - 1;
-    const { data, error } = await admin
+    let query = admin
       .from("retrieved_jobs")
       .select("id, title, company, location, apply_url, apply_type, industry, work_type")
-      .gt("expires_at", new Date().toISOString())
-      .range(from, to);
+      .gt("expires_at", new Date().toISOString());
+
+    if (filters.industry) query = query.eq("industry", filters.industry);
+    if (filters.workType) query = query.eq("work_type", filters.workType);
+    if (filters.location) {
+      const needles = [filters.location.toLowerCase(), ...(LOCATION_ALIASES[filters.location] ?? [])];
+      // PostgREST .or() filter string — safe to build directly since every
+      // needle here comes from LOCATIONS/LOCATION_ALIASES (fixed, known
+      // strings), never straight from the request's raw query params.
+      query = query.or(needles.map((n) => `location.ilike.%${n}%`).join(","));
+    }
+
+    const { data, error } = await query.range(from, to);
 
     if (error || !data) break;
     rows.push(...(data as JobRow[]));

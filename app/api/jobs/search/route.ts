@@ -151,7 +151,18 @@ export async function GET(request: NextRequest) {
   // full cached pool.)
   try {
     const admin = createAdminClient();
-    const cached = await getCachedJobs(admin);
+    // Push the location/industry/workType filters down to the query itself
+    // (see getCachedJobs' comment) rather than always pulling the whole
+    // cache — a filtered search only transfers the rows that can actually
+    // match. The `q` text search still has to happen in JS below (it scores
+    // relevance across title/company/location together, which isn't a
+    // simple column filter), so this only trims what's read for the filters
+    // that already ARE plain column matches.
+    const cached = await getCachedJobs(admin, {
+      location: locationFilter || undefined,
+      industry: industryFilter || undefined,
+      workType: workTypeFilter || undefined,
+    });
     realJobs = realJobs.concat(cached);
   } catch {
     // supabase/job-cache.sql not migrated yet, or admin client not
@@ -192,18 +203,25 @@ export async function GET(request: NextRequest) {
   });
 
   if (q) {
-    // Match every word in the query, not the exact phrase — searching
-    // "project manager" used to require that literal substring, so a real
-    // listing titled "Programme Manager" or "Senior Project Manager –
-    // Applied AI" (word order/extra words) could silently fail to match
-    // even though it's exactly the kind of role being searched for. Now
-    // every word just has to appear somewhere across title/company/
-    // location, in any order.
+    // Match ANY of the entered words, not every one of them (and not the
+    // exact phrase) — searching "developer software engineer project
+    // manager" used to require ALL five words present somewhere, which
+    // almost nothing matches; someone typing several role titles into one
+    // box means "show me jobs for any of these", not "show me the one job
+    // whose text happens to contain every word". A job matching more of the
+    // words is still more relevant than one matching just one, so results
+    // are ranked by match count (most matched words first) rather than left
+    // in whatever order the underlying sources returned.
     const words = q.split(/\s+/).filter(Boolean);
-    jobs = jobs.filter((j) => {
-      const haystack = `${j.title} ${j.company} ${j.location}`.toLowerCase();
-      return words.every((w) => haystack.includes(w));
-    });
+    jobs = jobs
+      .map((j) => {
+        const haystack = `${j.title} ${j.company} ${j.location}`.toLowerCase();
+        const matchCount = words.reduce((n, w) => (haystack.includes(w) ? n + 1 : n), 0);
+        return { job: j, matchCount };
+      })
+      .filter((x) => x.matchCount > 0)
+      .sort((a, b) => b.matchCount - a.matchCount)
+      .map((x) => x.job);
   }
 
   if (locationFilter) {
