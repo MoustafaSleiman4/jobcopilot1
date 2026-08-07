@@ -17,6 +17,7 @@ import {
   fetchRemoteOkJobs,
 } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
+import { getActiveCompanyJobs } from "@/lib/companyJobs";
 import { scoreJob } from "@/lib/autoApplyRun";
 import type { StructuredResume } from "@/lib/resume-types";
 
@@ -174,6 +175,17 @@ export async function GET(request: NextRequest) {
   } catch {
     // supabase/job-cache.sql not migrated yet, or admin client not
     // configured — fall through to the always-free sources below.
+  }
+
+  try {
+    // Free employer-posted jobs (see the new "For Employers" portal) —
+    // always included alongside every other source, Pro or free/logged-out
+    // alike, same as the rest of realJobs below.
+    const admin = createAdminClient();
+    realJobs = realJobs.concat(await getActiveCompanyJobs(admin));
+  } catch {
+    // supabase/employer-companies.sql not migrated yet, or admin client not
+    // configured — fall through; every other source below still returns.
   }
 
   try {

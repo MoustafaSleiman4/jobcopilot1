@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFreeSourceJobs } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
+import { getActiveCompanyJobs } from "@/lib/companyJobs";
 import { runAutoApplyForUser, type AutoApplyPreferences } from "@/lib/autoApplyRun";
 
 export const runtime = "nodejs";
@@ -51,7 +52,13 @@ export async function GET(request: NextRequest) {
   // themselves are only ever called once a day by the shared refresh, not
   // by this cron), so Auto Apply now matches against real paid-source
   // listings too instead of only the always-free boards.
-  const candidateJobs = [...(await fetchFreeSourceJobs()), ...(await getCachedJobs(admin))];
+  // Also blends in free employer-posted jobs (see the "For Employers"
+  // portal) so opted-in candidates get matched against those too.
+  const candidateJobs = [
+    ...(await fetchFreeSourceJobs()),
+    ...(await getCachedJobs(admin)),
+    ...(await getActiveCompanyJobs(admin)),
+  ];
 
   let totalQueued = 0;
 

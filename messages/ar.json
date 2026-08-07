@@ -5,7 +5,8 @@
     "login": "تسجيل الدخول",
     "signup": "ابدأ الآن",
     "dashboard": "لوحة التحكم",
-    "signOut": "تسجيل الخروج"
+    "signOut": "تسجيل الخروج",
+    "forEmployers": "لأصحاب العمل"
   },
   "seo": {
     "pricing": {
@@ -25,6 +26,14 @@
     },
     "resetPassword": {
       "title": "تعيين كلمة مرور جديدة"
+    },
+    "employerSignup": {
+      "title": "انشر الوظائف مجانًا — وظّف عبر GulfJobCopilot",
+      "description": "أنشئ حساب صاحب عمل مجاني على GulfJobCopilot لنشر الوظائف الشاغرة والتواصل مع الباحثين عن عمل في السعودية والإمارات ولبنان ومنطقة الخليج والشرق الأوسط."
+    },
+    "employerLogin": {
+      "title": "تسجيل دخول صاحب العمل",
+      "description": "سجّل الدخول إلى حساب صاحب العمل الخاص بك على GulfJobCopilot لإدارة إعلانات وظائف شركتك."
     }
   },
   "home": {
@@ -792,6 +801,155 @@
   },
   "footer": {
     "tagline": "مساعدك الذكي لسوق العمل في الخليج ومنطقة الشرق الأوسط وأفريقيا.",
-    "rights": "جميع الحقوق محفوظة."
+    "rights": "جميع الحقوق محفوظة.",
+    "forEmployers": "لأصحاب العمل"
+  },
+  "employer": {
+    "signup": {
+      "title": "وظّف عبر GulfJobCopilot",
+      "subtitle": "انشر الوظائف مجانًا وتواصل مع الباحثين عن عمل في الخليج ولبنان والشرق الأوسط.",
+      "companyName": "اسم الشركة",
+      "workEmail": "البريد الإلكتروني للعمل",
+      "workEmailPlaceholder": "you@yourcompany.com",
+      "workEmailHint": "يُرجى استخدام بريد شركتك الإلكتروني، وليس بريدًا شخصيًا.",
+      "password": "كلمة المرور",
+      "submit": "إنشاء حساب صاحب عمل",
+      "submitting": "جارٍ إنشاء الحساب...",
+      "professionalEmailError": "يُرجى التسجيل ببريد شركتك الإلكتروني، وليس بريدًا شخصيًا (Gmail، Yahoo، Hotmail، إلخ).",
+      "hasAccount": "هل لديك حساب توظيف بالفعل؟",
+      "loginLink": "تسجيل الدخول",
+      "jobSeeker": "تبحث عن وظيفة بدلاً من ذلك؟",
+      "jobSeekerLink": "سجّل كباحث عن عمل",
+      "confirmTitle": "تحقق من بريدك الإلكتروني",
+      "confirmBody": "أرسلنا رمز تأكيد إلى {email}. أدخله أدناه لتفعيل حساب صاحب العمل الخاص بك.",
+      "codeLabel": "رمز التأكيد",
+      "codePlaceholder": "123456",
+      "verifyCode": "تحقق من الرمز",
+      "verifying": "جارٍ التحقق...",
+      "codeError": "لم ينجح هذا الرمز. يُرجى المحاولة مرة أخرى.",
+      "resendButton": "إعادة إرسال الرمز",
+      "resendSending": "جارٍ الإرسال...",
+      "resendSent": "تم إرسال رمز جديد.",
+      "resendError": "تعذّرت إعادة إرسال الرمز. يُرجى المحاولة مرة أخرى.",
+      "backToLogin": "العودة لتسجيل الدخول"
+    },
+    "login": {
+      "title": "تسجيل دخول صاحب العمل",
+      "subtitle": "مرحبًا بعودتك — أدر إعلانات وظائفك.",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "forgotLink": "نسيت كلمة المرور؟",
+      "submit": "تسجيل الدخول",
+      "noAccount": "جديد في التوظيف معنا؟",
+      "signupLink": "إنشاء حساب صاحب عمل"
+    },
+    "onboarding": {
+      "title": "أعدّ إعداد شركتك",
+      "subtitle": "فقط اسم شركتك للبدء — يمكنك إكمال الباقي لاحقًا.",
+      "companyName": "اسم الشركة",
+      "saving": "جارٍ الحفظ...",
+      "continue": "متابعة"
+    },
+    "nav": {
+      "employerBadge": "صاحب عمل",
+      "postings": "إعلانات الوظائف",
+      "profile": "ملف الشركة",
+      "signOut": "تسجيل الخروج"
+    },
+    "postings": {
+      "title": "إعلانات الوظائف",
+      "subtitle": "أدر الوظائف التي نشرتها شركتك.",
+      "postJob": "انشر وظيفة",
+      "loading": "جارٍ تحميل إعلاناتك...",
+      "emptyTitle": "لا توجد إعلانات وظائف بعد",
+      "emptyBody": "انشر أول وظيفة لك مجانًا وابدأ التواصل مع الباحثين عن عمل في الخليج والشرق الأوسط.",
+      "postFirstJob": "انشر أول وظيفة",
+      "status": {
+        "active": "نشطة",
+        "closed": "مغلقة",
+        "draft": "مسودة"
+      },
+      "employmentTypes": {
+        "full_time": "دوام كامل",
+        "part_time": "دوام جزئي",
+        "contract": "عقد",
+        "internship": "تدريب"
+      },
+      "publish": "نشر",
+      "close": "إغلاق",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "deleteConfirmTitle": "حذف هذا الإعلان؟",
+      "deleteConfirmBody": "سيتم حذف “{title}” نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+      "cancel": "إلغاء"
+    },
+    "jobForm": {
+      "basicsHeading": "أساسيات الوظيفة",
+      "title": "المسمى الوظيفي",
+      "titlePlaceholder": "مثال: مهندس برمجيات أول",
+      "description": "وصف الوظيفة",
+      "descriptionPlaceholder": "صف الدور والفريق وما يجعل هذه فرصة رائعة.",
+      "responsibilities": "المسؤوليات",
+      "responsibilitiesPlaceholder": "اذكر المسؤوليات الرئيسية (اختياري).",
+      "requirements": "المتطلبات",
+      "requirementsPlaceholder": "اذكر المهارات والخبرة والمؤهلات المطلوبة (اختياري).",
+      "detailsHeading": "تفاصيل الوظيفة",
+      "location": "الموقع",
+      "workType": "نوع العمل",
+      "workTypes": {
+        "remote": "عن بُعد",
+        "hybrid": "مختلط",
+        "onsite": "في الموقع"
+      },
+      "employmentType": "نوع التوظيف",
+      "employmentTypes": {
+        "full_time": "دوام كامل",
+        "part_time": "دوام جزئي",
+        "contract": "عقد",
+        "internship": "تدريب"
+      },
+      "industry": "القطاع",
+      "industryUnset": "اختر قطاعًا",
+      "salaryRange": "نطاق الراتب (اختياري)",
+      "salaryMin": "الحد الأدنى",
+      "salaryMax": "الحد الأقصى",
+      "salaryOptionalHint": "اتركه فارغًا إذا كنت تفضل عدم الإفصاح عن الراتب.",
+      "applyHeading": "كيف يتقدم المرشحون؟",
+      "applyViaUrl": "رابط التقديم",
+      "applyViaEmail": "بريد التقديم الإلكتروني",
+      "applyUrlRequired": "يُرجى إدخال رابط التقديم.",
+      "applyEmailRequired": "يُرجى إدخال بريد إلكتروني للتقديم.",
+      "saveChanges": "حفظ التغييرات",
+      "publish": "نشر الوظيفة",
+      "saveDraft": "حفظ كمسودة",
+      "backToPostings": "العودة إلى الإعلانات",
+      "newTitle": "انشر وظيفة جديدة",
+      "newSubtitle": "املأ التفاصيل أدناه — النشر مجاني.",
+      "loadingForm": "جارٍ التحميل...",
+      "companyLookupError": "تعذّر العثور على حساب شركتك. يُرجى تحديث الصفحة والمحاولة مرة أخرى.",
+      "editTitle": "تعديل إعلان الوظيفة",
+      "editSubtitle": "حدّث تفاصيل هذا الإعلان.",
+      "jobNotFound": "تعذّر العثور على إعلان الوظيفة هذا."
+    },
+    "profile": {
+      "title": "ملف الشركة",
+      "subtitle": "قد تُعرض هذه المعلومات للباحثين عن عمل بجانب إعلاناتك.",
+      "loading": "جارٍ التحميل...",
+      "companyName": "اسم الشركة",
+      "website": "موقع الشركة الإلكتروني",
+      "industry": "القطاع",
+      "industryUnset": "اختر قطاعًا",
+      "companySize": "حجم الشركة",
+      "companySizeUnset": "اختر حجم الشركة",
+      "hqLocation": "موقع المقر الرئيسي",
+      "hqLocationUnset": "اختر موقعًا",
+      "logoUrl": "رابط الشعار",
+      "description": "وصف الشركة",
+      "descriptionPlaceholder": "أخبر الباحثين عن عمل عن شركتك.",
+      "contactEmail": "بريد التواصل الإلكتروني",
+      "save": "حفظ التغييرات",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم الحفظ"
+    }
   }
 }

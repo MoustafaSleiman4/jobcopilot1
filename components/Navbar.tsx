@@ -41,6 +41,13 @@ export default function Navbar() {
               {t("pricing")}
             </Link>
           )}
+          {/* Always shown — a signed-in job seeker may still be the person
+              hiring for their own company, and an employer account browsing
+              the marketing site (rather than /employer/dashboard) should
+              still find its way back in. */}
+          <Link href="/employer/signup" className="hover:text-foreground">
+            {t("forEmployers")}
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />

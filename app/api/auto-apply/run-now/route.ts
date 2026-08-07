@@ -3,6 +3,7 @@ import { createClient as createServerSupabaseClient } from "@/lib/supabase/serve
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFreeSourceJobs } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
+import { getActiveCompanyJobs } from "@/lib/companyJobs";
 import { runAutoApplyForUser, RUN_NOW_COOLDOWN_MS, type AutoApplyPreferences } from "@/lib/autoApplyRun";
 
 export const runtime = "nodejs";
@@ -66,7 +67,14 @@ export async function POST() {
   // Same shared local cache Auto Apply's cron uses now (see lib/jobCache.ts)
   // — costs nothing to read, so this on-demand run gets the same
   // paid-source coverage as the overnight cron, not just the free boards.
-  const candidateJobs = [...(await fetchFreeSourceJobs()), ...(await getCachedJobs(admin))];
+  // Also blends in free employer-posted jobs (see the "For Employers"
+  // portal) — an opted-in candidate should be matched against those too,
+  // not just third-party board listings.
+  const candidateJobs = [
+    ...(await fetchFreeSourceJobs()),
+    ...(await getCachedJobs(admin)),
+    ...(await getActiveCompanyJobs(admin)),
+  ];
   const result = await runAutoApplyForUser(admin, prefsRow as AutoApplyPreferences, candidateJobs);
 
   return NextResponse.json({

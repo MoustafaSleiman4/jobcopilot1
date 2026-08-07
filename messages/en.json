@@ -5,7 +5,8 @@
     "login": "Log in",
     "signup": "Get started",
     "dashboard": "Dashboard",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "forEmployers": "For employers"
   },
   "seo": {
     "pricing": {
@@ -25,6 +26,14 @@
     },
     "resetPassword": {
       "title": "Set a new password"
+    },
+    "employerSignup": {
+      "title": "Post jobs for free — Hire on GulfJobCopilot",
+      "description": "Create a free employer account on GulfJobCopilot to post job openings and reach job seekers across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
+    },
+    "employerLogin": {
+      "title": "Employer log in",
+      "description": "Log in to your GulfJobCopilot employer account to manage your company's job postings."
     }
   },
   "home": {
@@ -792,6 +801,155 @@
   },
   "footer": {
     "tagline": "Your AI copilot for the Gulf & MEA job market.",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "forEmployers": "For employers"
+  },
+  "employer": {
+    "signup": {
+      "title": "Hire on GulfJobCopilot",
+      "subtitle": "Post jobs for free and reach job seekers across the Gulf, Lebanon & the wider Middle East.",
+      "companyName": "Company name",
+      "workEmail": "Work email",
+      "workEmailPlaceholder": "you@yourcompany.com",
+      "workEmailHint": "Please use your company email address, not a personal one.",
+      "password": "Password",
+      "submit": "Create employer account",
+      "submitting": "Creating account...",
+      "professionalEmailError": "Please sign up with your company work email, not a personal address (Gmail, Yahoo, Hotmail, etc).",
+      "hasAccount": "Already hiring with us?",
+      "loginLink": "Log in",
+      "jobSeeker": "Looking for a job instead?",
+      "jobSeekerLink": "Sign up as a job seeker",
+      "confirmTitle": "Check your email",
+      "confirmBody": "We sent a confirmation code to {email}. Enter it below to activate your employer account.",
+      "codeLabel": "Confirmation code",
+      "codePlaceholder": "123456",
+      "verifyCode": "Verify code",
+      "verifying": "Verifying...",
+      "codeError": "That code didn't work. Please try again.",
+      "resendButton": "Resend code",
+      "resendSending": "Sending...",
+      "resendSent": "A new code has been sent.",
+      "resendError": "Couldn't resend the code. Please try again.",
+      "backToLogin": "Back to log in"
+    },
+    "login": {
+      "title": "Employer log in",
+      "subtitle": "Welcome back — manage your job postings.",
+      "email": "Email",
+      "password": "Password",
+      "forgotLink": "Forgot password?",
+      "submit": "Log in",
+      "noAccount": "New to hiring here?",
+      "signupLink": "Create an employer account"
+    },
+    "onboarding": {
+      "title": "Set up your company",
+      "subtitle": "Just your company name to get started — you can fill in the rest later.",
+      "companyName": "Company name",
+      "saving": "Saving...",
+      "continue": "Continue"
+    },
+    "nav": {
+      "employerBadge": "Employer",
+      "postings": "Job postings",
+      "profile": "Company profile",
+      "signOut": "Sign out"
+    },
+    "postings": {
+      "title": "Job postings",
+      "subtitle": "Manage the jobs your company has posted.",
+      "postJob": "Post a job",
+      "loading": "Loading your postings...",
+      "emptyTitle": "No job postings yet",
+      "emptyBody": "Post your first job for free and start reaching job seekers across the Gulf and Middle East.",
+      "postFirstJob": "Post your first job",
+      "status": {
+        "active": "Active",
+        "closed": "Closed",
+        "draft": "Draft"
+      },
+      "employmentTypes": {
+        "full_time": "Full-time",
+        "part_time": "Part-time",
+        "contract": "Contract",
+        "internship": "Internship"
+      },
+      "publish": "Publish",
+      "close": "Close",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this posting?",
+      "deleteConfirmBody": "“{title}” will be permanently deleted. This can't be undone.",
+      "cancel": "Cancel"
+    },
+    "jobForm": {
+      "basicsHeading": "Job basics",
+      "title": "Job title",
+      "titlePlaceholder": "e.g. Senior Software Engineer",
+      "description": "Job description",
+      "descriptionPlaceholder": "Describe the role, the team, and what makes it a great opportunity.",
+      "responsibilities": "Responsibilities",
+      "responsibilitiesPlaceholder": "List the key responsibilities (optional).",
+      "requirements": "Requirements",
+      "requirementsPlaceholder": "List required skills, experience and qualifications (optional).",
+      "detailsHeading": "Job details",
+      "location": "Location",
+      "workType": "Work type",
+      "workTypes": {
+        "remote": "Remote",
+        "hybrid": "Hybrid",
+        "onsite": "On-site"
+      },
+      "employmentType": "Employment type",
+      "employmentTypes": {
+        "full_time": "Full-time",
+        "part_time": "Part-time",
+        "contract": "Contract",
+        "internship": "Internship"
+      },
+      "industry": "Industry",
+      "industryUnset": "Select an industry",
+      "salaryRange": "Salary range (optional)",
+      "salaryMin": "Min",
+      "salaryMax": "Max",
+      "salaryOptionalHint": "Leave blank if you'd rather not disclose salary.",
+      "applyHeading": "How should candidates apply?",
+      "applyViaUrl": "Application link",
+      "applyViaEmail": "Application email",
+      "applyUrlRequired": "Please enter an application URL.",
+      "applyEmailRequired": "Please enter an application email address.",
+      "saveChanges": "Save changes",
+      "publish": "Publish job",
+      "saveDraft": "Save as draft",
+      "backToPostings": "Back to postings",
+      "newTitle": "Post a new job",
+      "newSubtitle": "Fill in the details below — it's free to post.",
+      "loadingForm": "Loading...",
+      "companyLookupError": "We couldn't find your company account. Please refresh and try again.",
+      "editTitle": "Edit job posting",
+      "editSubtitle": "Update the details of this posting.",
+      "jobNotFound": "This job posting couldn't be found."
+    },
+    "profile": {
+      "title": "Company profile",
+      "subtitle": "This information may be shown to job seekers alongside your postings.",
+      "loading": "Loading...",
+      "companyName": "Company name",
+      "website": "Company website",
+      "industry": "Industry",
+      "industryUnset": "Select an industry",
+      "companySize": "Company size",
+      "companySizeUnset": "Select a company size",
+      "hqLocation": "Headquarters location",
+      "hqLocationUnset": "Select a location",
+      "logoUrl": "Logo URL",
+      "description": "Company description",
+      "descriptionPlaceholder": "Tell job seekers about your company.",
+      "contactEmail": "Contact email",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "saved": "Saved"
+    }
   }
 }
