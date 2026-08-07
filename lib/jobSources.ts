@@ -78,6 +78,20 @@ export const INDUSTRY_KEYWORDS: [string, string[]][] = [
   ["Design", ["designer", "ux", "ui ", "graphic"]],
 ];
 
+// True when a job's own location text actually mentions one of the 9
+// Gulf/Levant/Egypt countries this app is scoped to (or a known
+// abbreviation — see LOCATION_ALIASES). Used to keep US/global-remote
+// listings that a broad job-board search can otherwise pull in (RemoteOK in
+// particular has no geography filter of its own) out of results that are
+// supposed to be Gulf/Arab-region-only.
+export function isRegionLocation(location: string): boolean {
+  const loc = location.toLowerCase();
+  return LOCATIONS.some((country) => {
+    const needles = [country.toLowerCase(), ...(LOCATION_ALIASES[country] ?? [])];
+    return needles.some((n) => loc.includes(n));
+  });
+}
+
 export function inferIndustry(title: string): string {
   const lower = ` ${title.toLowerCase()} `;
   for (const [industry, keywords] of INDUSTRY_KEYWORDS) {
@@ -196,7 +210,15 @@ export async function fetchRemoteOkJobs(): Promise<Job[]> {
     });
     if (!res.ok) return [];
     const data: RemoteOkJob[] = await res.json();
-    const jobs = data.filter((j) => typeof j.position === "string" && j.position.length > 0);
+    // RemoteOK has no geography filter of its own — it's a fully global
+    // remote-jobs board, so most of what it returns is US/EU/APAC-based and
+    // not relevant to a Gulf/Levant/Egypt job seeker. Only keep listings
+    // whose own location text actually names one of this app's 9 target
+    // countries; a bare "Remote" with no country mentioned is excluded too,
+    // since there's no way to confirm it's actually open to this region.
+    const jobs = data.filter(
+      (j) => typeof j.position === "string" && j.position.length > 0 && isRegionLocation(j.location || "")
+    );
     return jobs.slice(0, 40).map((j, idx) =>
       finalize({
         id: `remoteok-${j.id ?? j.slug ?? idx}`,

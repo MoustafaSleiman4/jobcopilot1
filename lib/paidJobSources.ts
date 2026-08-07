@@ -123,8 +123,20 @@ type SerpApiJobResult = {
   share_link?: string;
 };
 
-// SerpApi's Google Jobs engine.
-export async function fetchSerpApiJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
+export type SerpApiPageResult = { jobs: Job[]; nextPageToken?: string };
+
+// SerpApi's Google Jobs engine. Returns both the jobs AND a nextPageToken
+// (when SerpApi's response includes one) — Google Jobs only supports going
+// deeper than page 1 via serpapi_pagination.next_page_token (the old
+// numeric `start` offset is deprecated/unsupported), so callers that want a
+// 2nd page pass the token they got back from the 1st call in as
+// `nextPageToken` here.
+export async function fetchSerpApiJobs(
+  apiKey: string,
+  keywords: string,
+  location: string,
+  nextPageToken?: string
+): Promise<SerpApiPageResult> {
   try {
     const params = new URLSearchParams({
       engine: "google_jobs",
@@ -133,17 +145,20 @@ export async function fetchSerpApiJobs(apiKey: string, keywords: string, locatio
       api_key: apiKey,
       hl: "en",
     });
+    if (nextPageToken) {
+      params.set("next_page_token", nextPageToken);
+    }
     const res = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
       next: { revalidate: 1800 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { jobs: [] };
     const data = await res.json();
     const results: SerpApiJobResult[] = data.jobs_results ?? [];
-    return results.map((j, idx) => {
+    const jobs = results.map((j, idx) => {
       const applyUrl = j.apply_options?.[0]?.link ?? j.share_link ?? "#";
       const sourceBoard = j.via?.replace(/^via\s+/i, "").trim();
       return finalize({
-        id: `serpapi-${location}-${j.job_id ?? idx}`,
+        id: `serpapi-${location}-${nextPageToken ? "p2-" : ""}${j.job_id ?? idx}`,
         title: j.title ?? "Untitled role",
         company: (j.company_name || sourceBoard) || "—",
         location: j.location || location,
@@ -151,7 +166,9 @@ export async function fetchSerpApiJobs(apiKey: string, keywords: string, locatio
         applyType: "external" as const,
       });
     });
+    const token: string | undefined = data.serpapi_pagination?.next_page_token;
+    return { jobs, nextPageToken: token };
   } catch {
-    return [];
+    return { jobs: [] };
   }
 }

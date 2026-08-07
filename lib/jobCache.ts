@@ -21,7 +21,7 @@
 // API spend.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { type Job, type WorkType, LOCATIONS } from "@/lib/jobSources";
+import { type Job, type WorkType, LOCATIONS, isRegionLocation } from "@/lib/jobSources";
 import { fetchJoobleJobsPage, fetchCareerjetJobs, fetchSerpApiJobs } from "@/lib/paidJobSources";
 
 // How long a refresh stays "fresh" before the next trigger is allowed to
@@ -198,8 +198,8 @@ export async function refreshGlobalJobCacheIfStale(
 
   try {
     if (serpApiKey) {
-      const results = await fetchSerpApiJobs(serpApiKey, "", location);
-      jobs.push(...results);
+      const result = await fetchSerpApiJobs(serpApiKey, "", location);
+      jobs.push(...result.jobs);
     }
   } catch {
     // ignore
@@ -223,6 +223,11 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
   const rows = jobs
     .filter((j) => {
       if (!j.applyUrl || j.applyUrl === "#" || seen.has(j.applyUrl)) return false;
+      // Gulf/Levant/Egypt-only, per the app's scope — a search made "in
+      // Saudi Arabia" can still come back with a US-based listing Google
+      // happened to index under that query, so this checks the job's own
+      // returned location text rather than trusting the search parameter.
+      if (!isRegionLocation(j.location)) return false;
       seen.add(j.applyUrl);
       return true;
     })
@@ -252,9 +257,11 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
  * to build up full coverage on its own.
  *
  * Unlike that function, this DOES fan out widely in one go: 9 locations x
- * 9 keyword categories = up to 81 SerpApi calls (same for Jooble; Careerjet
- * is 5 locales x 9 categories = up to 45). Safe to run once — well within
- * a fresh 250/month SerpApi key's budget — but this must never run
+ * 9 keyword categories = up to 81 SerpApi calls for page 1, plus up to
+ * another 81 for page 2 on combos that have more results (~120-160 SerpApi
+ * calls total in practice; same 81 for Jooble; Careerjet is 5 locales x 9
+ * categories = up to 45). Safe to run once — well within a fresh
+ * 250/month SerpApi key's budget — but this must never run
  * automatically or repeatedly: job_cache_meta.last_seeded_at gates it to
  * exactly once unless `force` is explicitly passed (e.g. re-seeding after
  * changing which sources are configured).
@@ -319,11 +326,24 @@ export async function seedGlobalJobCacheOnce(
 
   try {
     if (serpApiKey) {
+      // 2 pages per (keyword × location) combo here — deliberately, and
+      // ONLY in this one-time seed (never the daily refresh) — roughly
+      // doubles SerpApi's contribution since Google Jobs caps a single
+      // page around ~10 results. next_page_token comes back from page 1;
+      // if a combo has no further results, page 2 is just skipped.
       const combos = SEED_KEYWORDS.flatMap((kw) => LOCATIONS.map((loc) => ({ kw, loc })));
-      const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, loc }) =>
+      const page1Results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, loc }) =>
         fetchSerpApiJobs(serpApiKey, kw, loc)
       );
-      jobs.push(...results.flat());
+      jobs.push(...page1Results.flatMap((r) => r.jobs));
+
+      const page2Combos = combos
+        .map((combo, i) => ({ ...combo, token: page1Results[i].nextPageToken }))
+        .filter((c): c is typeof c & { token: string } => Boolean(c.token));
+      const page2Results = await mapWithConcurrency(page2Combos, CONCURRENCY, ({ kw, loc, token }) =>
+        fetchSerpApiJobs(serpApiKey, kw, loc, token)
+      );
+      jobs.push(...page2Results.flatMap((r) => r.jobs));
     }
   } catch {
     // ignore
