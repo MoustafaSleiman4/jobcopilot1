@@ -83,6 +83,27 @@ const SEED_KEYWORDS = [
   "qa",
   "developer",
   "software",
+  // Added for a second seed pass — more specific multi-word tech titles
+  // than the broad "engineer"/"developer"/"software" categories above.
+  // Each of these is a distinct search query to Jooble/Careerjet, so it
+  // returns a genuinely different results page (different ranking, often
+  // different postings entirely) rather than just re-finding what the
+  // broader terms already caught — that's why the first round of added
+  // keywords only produced ~125 net-new rows out of 1,720 processed: most
+  // of what "developer"/"software"/"qa" surfaced was already caught by
+  // "engineer" or the blank/default search.
+  "backend developer",
+  "frontend developer",
+  "full stack developer",
+  "mobile developer",
+  "ios developer",
+  "android developer",
+  "data engineer",
+  "devops engineer",
+  "machine learning engineer",
+  "product owner",
+  "business analyst",
+  "technical project manager",
 ];
 
 // Runs `fn` over `items` with at most `limit` in flight at once — plain
@@ -306,11 +327,21 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
  * exactly once unless `force` is explicitly passed (e.g. re-seeding after
  * changing which sources are configured).
  */
+type SeedSource = "jooble" | "careerjet" | "serpapi";
+const ALL_SEED_SOURCES: SeedSource[] = ["jooble", "careerjet", "serpapi"];
+
 export async function seedGlobalJobCacheOnce(
   admin: SupabaseClient,
-  options: { force?: boolean } = {}
+  options: { force?: boolean; sources?: SeedSource[] } = {}
 ): Promise<{ seeded: boolean; stored?: number; bySource?: Record<string, number> }> {
   const nowIso = new Date().toISOString();
+  // Lets a caller skip a specific source for this run — added so a second
+  // seed pass can lean on Jooble/Careerjet (which had plenty of headroom
+  // last time: 2,835 and unlimited-so-far raw results) without touching
+  // SerpApi again, since SerpApi's 250/month free-tier quota is shared with
+  // the daily refresh and a prior run may have already spent most of it.
+  // Defaults to all three, same as before, when not specified.
+  const sources = new Set(options.sources ?? ALL_SEED_SOURCES);
 
   if (!options.force) {
     const { data: claimed, error: claimError } = await admin
@@ -341,7 +372,7 @@ export async function seedGlobalJobCacheOnce(
   const CONCURRENCY = 8;
 
   try {
-    if (joobleKey) {
+    if (joobleKey && sources.has("jooble")) {
       const combos = SEED_KEYWORDS.flatMap((kw) => LOCATIONS.map((loc) => ({ kw, loc })));
       const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, loc }) =>
         fetchJoobleJobsPage(joobleKey, kw, loc, 1)
@@ -353,7 +384,7 @@ export async function seedGlobalJobCacheOnce(
   }
 
   try {
-    if (careerjetApiKey) {
+    if (careerjetApiKey && sources.has("careerjet")) {
       const combos = SEED_KEYWORDS.flatMap((kw) => Object.values(COUNTRY_TO_CAREERJET_LOCALE).map((locale) => ({ kw, locale })));
       const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, locale }) =>
         fetchCareerjetJobs(careerjetApiKey, kw, locale)
@@ -365,7 +396,7 @@ export async function seedGlobalJobCacheOnce(
   }
 
   try {
-    if (serpApiKey) {
+    if (serpApiKey && sources.has("serpapi")) {
       // 2 pages per (keyword × location) combo here — deliberately, and
       // ONLY in this one-time seed (never the daily refresh) — roughly
       // doubles SerpApi's contribution since Google Jobs caps a single

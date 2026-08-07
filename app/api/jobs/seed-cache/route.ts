@@ -37,10 +37,19 @@ export async function GET(request: NextRequest) {
   }
 
   const force = request.nextUrl.searchParams.get("force") === "1";
+  // Optional ?sources=jooble,careerjet lets a specific run skip a source —
+  // e.g. skip serpapi when its 250/month free-tier quota may already be
+  // spent from an earlier run this month, while still refreshing from
+  // Jooble/Careerjet. Omit entirely for the normal "use everything
+  // configured" behavior.
+  const sourcesParam = request.nextUrl.searchParams.get("sources");
+  const sources = sourcesParam
+    ? (sourcesParam.split(",").map((s) => s.trim().toLowerCase()) as ("jooble" | "careerjet" | "serpapi")[])
+    : undefined;
 
   try {
     const admin = createAdminClient();
-    const result = await seedGlobalJobCacheOnce(admin, { force });
+    const result = await seedGlobalJobCacheOnce(admin, { force, sources });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(
