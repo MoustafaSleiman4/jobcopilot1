@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import Logo from "@/components/Logo";
+import AuthShell from "@/components/AuthShell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 
@@ -46,9 +47,9 @@ export default function LoginForm() {
   if (user) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6 py-16">
+    <AuthShell>
       <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-sm">
-        <Link href="/" className="mb-8 flex justify-center">
+        <Link href="/" className="mb-8 flex justify-center lg:hidden">
           <Logo />
         </Link>
         <h1 className="text-center text-2xl font-bold text-foreground">{t("title")}</h1>
@@ -108,6 +109,6 @@ export default function LoginForm() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

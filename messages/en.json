@@ -272,6 +272,17 @@
       "mismatch": "Passwords don't match.",
       "invalidLink": "This reset link is invalid or has expired. Request a new one below.",
       "requestNewLink": "Request a new reset link"
+    },
+    "authPanel": {
+      "badge": "Free to get started",
+      "heading": "Land your next job faster with AI",
+      "subtitle": "Build a standout resume, get matched to real openings, and apply in one click — all in one place.",
+      "bullets": [
+        "AI-optimized resume builder",
+        "Smart job matching across the Gulf, Lebanon & the wider Middle East",
+        "One-click apply where supported",
+        "Track every application from one dashboard"
+      ]
     }
   },
   "dashboard": {
