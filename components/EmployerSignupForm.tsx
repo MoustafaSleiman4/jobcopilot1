@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import Logo from "@/components/Logo";
+import EmployerAuthShell from "@/components/EmployerAuthShell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { isProfessionalEmail } from "@/lib/professionalEmail";
@@ -139,9 +140,9 @@ export default function EmployerSignupForm() {
 
   if (needsConfirmation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6 py-16">
+      <EmployerAuthShell>
         <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
-          <Link href="/" className="mb-8 flex justify-center">
+          <Link href="/" className="mb-8 flex justify-center lg:hidden">
             <Logo />
           </Link>
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -195,14 +196,14 @@ export default function EmployerSignupForm() {
             </Link>
           </p>
         </div>
-      </div>
+      </EmployerAuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6 py-16">
+    <EmployerAuthShell>
       <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-sm">
-        <Link href="/" className="mb-8 flex justify-center">
+        <Link href="/" className="mb-8 flex justify-center lg:hidden">
           <Logo />
         </Link>
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -270,6 +271,6 @@ export default function EmployerSignupForm() {
           </Link>
         </p>
       </div>
-    </div>
+    </EmployerAuthShell>
   );
 }

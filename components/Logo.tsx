@@ -1,7 +1,11 @@
-export default function Logo({ className = "" }: { className?: string }) {
+export default function Logo({ className = "", light = false }: { className?: string; light?: boolean }) {
   return (
     <span className={`inline-flex items-center gap-2 font-extrabold tracking-tight ${className}`}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-gold-100 shadow-sm">
+      <span
+        className={`flex h-8 w-8 items-center justify-center rounded-lg shadow-sm ${
+          light ? "bg-white/15 text-gold-200" : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-gold-100"
+        }`}
+      >
         {/* Burj Khalifa silhouette — a few bold stepped tiers tapering to a
             thin spire, sized for legibility at 20px rather than a literal
             multi-terrace rendering (too many thin steps just blur together
@@ -13,8 +17,11 @@ export default function Logo({ className = "" }: { className?: string }) {
           />
         </svg>
       </span>
-      <span className="text-lg">
-        Gulf<span className="text-emerald-600">JobCopilot</span>
+      {/* `light` renders the wordmark for dark backgrounds (e.g. the
+          employer auth panel) — the default emerald-600 "JobCopilot" reads
+          as near-black on a dark emerald gradient otherwise. */}
+      <span className={`text-lg ${light ? "text-white" : ""}`}>
+        Gulf<span className={light ? "text-gold-200" : "text-emerald-600"}>JobCopilot</span>
       </span>
     </span>
   );

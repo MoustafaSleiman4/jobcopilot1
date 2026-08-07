@@ -172,7 +172,8 @@
         "1 resume",
         "1 free AI resume enhancement",
         "Community support"
-      ]
+      ],
+      "noCardRequired": "No credit card required"
     },
     "pro": {
       "name": "Pro",
@@ -203,7 +204,18 @@
     "yearly": "Yearly",
     "yearlySave": "Save ~17%",
     "startingCheckout": "Starting checkout…",
-    "checkoutError": "Couldn't start checkout. Please try again in a moment."
+    "checkoutError": "Couldn't start checkout. Please try again in a moment.",
+    "eyebrow": "Pricing",
+    "trust": {
+      "secureCheckout": "Secure checkout",
+      "cancelAnytime": "Cancel anytime",
+      "noHiddenFees": "No hidden fees"
+    },
+    "employerBanner": {
+      "title": "Hiring, not job hunting?",
+      "subtitle": "Post jobs for free and reach candidates across the Gulf & Middle East.",
+      "cta": "Post a job for free"
+    }
   },
   "auth": {
     "login": {
@@ -950,6 +962,17 @@
       "save": "Save changes",
       "saving": "Saving...",
       "saved": "Saved"
+    },
+    "authPanel": {
+      "badge": "Post jobs 100% free",
+      "heading": "Hire top talent across the Gulf & Middle East",
+      "subtitle": "Join the companies posting jobs and connecting with motivated candidates on GulfJobCopilot.",
+      "bullets": [
+        "Post unlimited jobs for free — no credit card required",
+        "Reach job seekers across the Gulf, Lebanon & the wider Middle East",
+        "Manage every posting from one simple dashboard",
+        "Your listings are matched directly into candidates' job search & Auto Apply"
+      ]
     }
   }
 }
