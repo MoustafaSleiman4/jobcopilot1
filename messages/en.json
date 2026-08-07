@@ -731,7 +731,7 @@
         "enableLabel": "Auto Apply is on",
         "enableHint": "Turn off any time — nothing new gets queued while this is off.",
         "dailyCapLabel": "New matches per day",
-        "dailyCapHint": "How many ready-to-send matches to prepare each day (1–20).",
+        "dailyCapHint": "How many ready-to-send matches to prepare each day (1–50).",
         "resumeLabel": "Resume to use",
         "resumeHint": "Which resume to match jobs against and write cover letters from.",
         "resumeAuto": "Auto (primary / most recently updated)",

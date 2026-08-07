@@ -9,10 +9,12 @@ import type { StructuredResume } from "@/lib/resume-types";
 // so both call sites stay in sync instead of drifting apart.
 
 // Hard ceiling per user per run, independent of their configured daily_cap
-// (which only goes up to 20 per the DB check constraint) — a second safety
-// net against one misconfigured or malicious `daily_cap` write turning into
-// a runaway AI-spend loop.
-export const MAX_MATCHES_PER_USER_PER_RUN = 20;
+// (which now goes up to 50 per the DB check constraint — see
+// supabase/auto-apply.sql) — a second safety net against one misconfigured
+// or malicious `daily_cap` write turning into a runaway AI-spend loop. Kept
+// equal to the DB max rather than below it, since daily_cap is already the
+// deliberate per-user ceiling; this just guards against it being bypassed.
+export const MAX_MATCHES_PER_USER_PER_RUN = 50;
 
 // How long a user has to wait between on-demand "Run now" triggers.
 // Previously 24h — that existed only to protect the free/paid job-board

@@ -62,7 +62,28 @@ function todaysLocation(): string {
 // per (keyword × location) call, so a single blank-keyword call per
 // location tops out in the low hundreds. Searching across a handful of
 // real categories multiplies that without touching the daily habit at all.
-const SEED_KEYWORDS = ["", "engineer", "marketing", "finance", "sales", "operations", "customer service", "hr", "design"];
+const SEED_KEYWORDS = [
+  "",
+  "engineer",
+  "marketing",
+  "finance",
+  "sales",
+  "operations",
+  "customer service",
+  "hr",
+  "design",
+  // Added on request to deepen tech-role coverage specifically — these are
+  // common enough job titles that they turn up meaningfully different
+  // results than the generic "engineer"/blank searches above (a "software
+  // developer" or "QA engineer" posting doesn't always surface under a bare
+  // "engineer" query, and "project manager"/"scrum master" postings mostly
+  // wouldn't show up under any of the categories above at all).
+  "project manager",
+  "scrum master",
+  "qa",
+  "developer",
+  "software",
+];
 
 // Runs `fn` over `items` with at most `limit` in flight at once — plain
 // job-board APIs on free tiers tend to rate-limit a burst of dozens of

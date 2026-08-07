@@ -459,10 +459,10 @@ export default function AutoApplyPage() {
             <input
               type="number"
               min={1}
-              max={20}
+              max={50}
               value={prefs.daily_cap}
               onChange={(e) =>
-                setPrefs((p) => ({ ...p, daily_cap: Math.min(20, Math.max(1, Number(e.target.value) || 1)) }))
+                setPrefs((p) => ({ ...p, daily_cap: Math.min(50, Math.max(1, Number(e.target.value) || 1)) }))
               }
               className="mt-1.5 w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />

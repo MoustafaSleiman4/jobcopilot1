@@ -16,7 +16,7 @@
 create table if not exists public.auto_apply_preferences (
   user_id uuid primary key references auth.users (id) on delete cascade,
   enabled boolean not null default false,
-  daily_cap integer not null default 5 check (daily_cap between 1 and 20),
+  daily_cap integer not null default 5 check (daily_cap between 1 and 50),
   keywords text not null default '',
   location text not null default '',
   work_type text check (work_type in ('remote', 'hybrid', 'onsite') or work_type is null),

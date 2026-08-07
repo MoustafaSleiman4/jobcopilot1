@@ -109,11 +109,8 @@ export default function JobSearchPage() {
   const [queryDraft, setQueryDraft] = useState("");
   const [location, setLocation] = useState("");
   const [locationDraft, setLocationDraft] = useState("");
-  // Defaults to "Technology" rather than "All industries" — the large
-  // majority of this app's users search tech roles, so this saves the most
-  // common filter click without stopping anyone from clearing it.
-  const [industry, setIndustry] = useState("Technology");
-  const [industryDraft, setIndustryDraft] = useState("Technology");
+  const [industry, setIndustry] = useState("");
+  const [industryDraft, setIndustryDraft] = useState("");
   const [workType, setWorkType] = useState<WorkType | "">("");
   const [workTypeDraft, setWorkTypeDraft] = useState<WorkType | "">("");
   // Populated only for a signed-in Pro user once the search-quota migration
