@@ -22,8 +22,11 @@ import {
 
 // Must match RUN_NOW_COOLDOWN_MS in lib/autoApplyRun.ts — duplicated here
 // rather than imported because that file pulls in server-only Supabase
-// admin/cover-letter code that can't end up in the client bundle.
-const RUN_NOW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// admin/cover-letter code that can't end up in the client bundle. Set to 0
+// now that matching reads from our own cached table instead of calling
+// paid/free job-board APIs directly — nothing left to rate-limit, so
+// "Run now" stays clickable immediately instead of showing a countdown.
+const RUN_NOW_COOLDOWN_MS = 0;
 
 type WorkType = "remote" | "hybrid" | "onsite";
 const WORK_TYPES: WorkType[] = ["remote", "hybrid", "onsite"];
@@ -35,6 +38,9 @@ type Preferences = {
   location: string;
   work_type: WorkType | null;
   excluded_companies: string[];
+  // null = no explicit choice — matching falls back to the primary/most
+  // recently updated resume, same as before this field existed.
+  resume_id: string | null;
 };
 
 const DEFAULT_PREFS: Preferences = {
@@ -44,7 +50,10 @@ const DEFAULT_PREFS: Preferences = {
   location: "",
   work_type: null,
   excluded_companies: [],
+  resume_id: null,
 };
+
+type ResumeOption = { id: string; title: string; is_primary: boolean };
 
 type QueueItem = {
   id: string;
@@ -68,6 +77,7 @@ export default function AutoApplyPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [defaultResumeId, setDefaultResumeId] = useState<string | null>(null);
   const [hasResume, setHasResume] = useState(false);
+  const [resumeOptions, setResumeOptions] = useState<ResumeOption[]>([]);
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const [excludedText, setExcludedText] = useState("");
@@ -141,23 +151,27 @@ export default function AutoApplyPage() {
           return;
         }
 
-        const { data: resume } = await supabase
+        // Fetch every resume, not just one — Auto Apply needs the full list
+        // to offer as choices, ordered so the primary (then most recently
+        // updated) resume is first, which is also what "no explicit choice
+        // saved" falls back to, both here and server-side in
+        // lib/autoApplyRun.ts.
+        const { data: resumes } = await supabase
           .from("resumes")
-          .select("id")
+          .select("id, title, is_primary")
           .eq("user_id", uid)
           .order("is_primary", { ascending: false })
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order("updated_at", { ascending: false });
         if (cancelled) return;
-        if (resume?.id) {
-          setDefaultResumeId(resume.id as string);
+        if (resumes && resumes.length > 0) {
+          setResumeOptions(resumes as ResumeOption[]);
+          setDefaultResumeId(resumes[0].id as string);
           setHasResume(true);
         }
 
         const { data: prefsRow } = await supabase
           .from("auto_apply_preferences")
-          .select("enabled, daily_cap, keywords, location, work_type, excluded_companies, last_run_at")
+          .select("enabled, daily_cap, keywords, location, work_type, excluded_companies, resume_id, last_run_at")
           .eq("user_id", uid)
           .maybeSingle();
         if (cancelled) return;
@@ -169,6 +183,7 @@ export default function AutoApplyPage() {
             location: prefsRow.location ?? "",
             work_type: (prefsRow.work_type as WorkType | null) ?? null,
             excluded_companies: prefsRow.excluded_companies ?? [],
+            resume_id: prefsRow.resume_id ?? null,
           };
           setPrefs(loaded);
           setExcludedText(loaded.excluded_companies.join("\n"));
@@ -212,6 +227,7 @@ export default function AutoApplyPage() {
           location: prefs.location,
           work_type: prefs.work_type,
           excluded_companies: excludedCompanies,
+          resume_id: prefs.resume_id,
         },
         { onConflict: "user_id" }
       );
@@ -278,6 +294,14 @@ export default function AutoApplyPage() {
     setSendingId(item.id);
     setQueue((prev) => prev.filter((q) => q.id !== item.id));
 
+    // The resume the match/cover letter were actually generated from — the
+    // explicit selection if one was saved, otherwise whatever resume Auto
+    // Apply falls back to server-side (primary/most recent), mirrored here
+    // via defaultResumeId. Recording this on the applications row (not just
+    // "whichever resume happens to be primary right now") keeps the tracker
+    // accurate even if the user's primary resume changes later.
+    const usedResumeId = prefs.resume_id ?? defaultResumeId;
+
     try {
       const supabase = createClient();
       await supabase
@@ -297,14 +321,14 @@ export default function AutoApplyPage() {
           if (existing.status === "saved") {
             await supabase
               .from("applications")
-              .update({ status: "applied", applied_at: new Date().toISOString(), resume_id: defaultResumeId })
+              .update({ status: "applied", applied_at: new Date().toISOString(), resume_id: usedResumeId })
               .eq("id", existing.id);
           }
         } else {
           await supabase.from("applications").insert({
             user_id: userId,
             source_job_id: item.source_job_id,
-            resume_id: defaultResumeId,
+            resume_id: usedResumeId,
             company: item.company,
             title: item.title,
             location: item.location,
@@ -443,6 +467,28 @@ export default function AutoApplyPage() {
               className="mt-1.5 w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
+
+          {/* Only worth showing once there's an actual choice to make — with a single resume,
+              matching already uses it automatically, so a dropdown here would just be noise. */}
+          {resumeOptions.length > 1 && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-foreground">{t("settings.resumeLabel")}</label>
+              <p className="text-xs text-foreground/50">{t("settings.resumeHint")}</p>
+              <select
+                value={prefs.resume_id ?? ""}
+                onChange={(e) => setPrefs((p) => ({ ...p, resume_id: e.target.value || null }))}
+                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">{t("settings.resumeAuto")}</option>
+                {resumeOptions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title || t("settings.resumeUntitled")}
+                    {r.is_primary ? ` (${t("settings.resumePrimaryTag")})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="mt-4">
             <label className="block text-sm font-medium text-foreground">{t("settings.keywordsLabel")}</label>

@@ -14,11 +14,15 @@ import type { StructuredResume } from "@/lib/resume-types";
 // a runaway AI-spend loop.
 export const MAX_MATCHES_PER_USER_PER_RUN = 20;
 
-// How long a user has to wait between on-demand "Run now" triggers. Doesn't
-// affect the scheduled cron, which always runs daily regardless — this only
-// rate-limits the manual button, so a user (or a script hitting the route
-// directly) can't hammer the free job sources by re-triggering repeatedly.
-export const RUN_NOW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// How long a user has to wait between on-demand "Run now" triggers.
+// Previously 24h — that existed only to protect the free/paid job-board
+// APIs from being hammered by repeated manual triggering. Now that
+// matching reads exclusively from our own retrieved_jobs cache (see
+// lib/jobCache.ts) instead of calling those APIs directly, there's nothing
+// left to protect by rate-limiting this button: `daily_cap` already caps
+// how many matches get queued per day regardless of how often this runs,
+// so 0 just means "no artificial wait, run as often as you like."
+export const RUN_NOW_COOLDOWN_MS = 0;
 
 export type AutoApplyPreferences = {
   user_id: string;
@@ -28,6 +32,12 @@ export type AutoApplyPreferences = {
   location: string;
   work_type: "remote" | "hybrid" | "onsite" | null;
   excluded_companies: string[];
+  // Which of the user's (possibly several) resumes to match against and
+  // write cover letters from. Null means "no explicit choice made" — falls
+  // back to their primary/most-recently-updated resume, same as before this
+  // field existed, so existing rows with no resume_id keep working exactly
+  // as they did.
+  resume_id: string | null;
 };
 
 type ResumeRow = { content: { structured?: StructuredResume } | null };
@@ -137,14 +147,23 @@ export async function runAutoApplyForUser(
   const remainingCapToday = prefs.daily_cap - (queuedToday ?? 0);
   if (remainingCapToday <= 0) return { queued: 0, reason: "daily_cap_reached" };
 
-  const { data: resumeRow } = await admin
-    .from("resumes")
-    .select("content")
-    .eq("user_id", prefs.user_id)
-    .order("is_primary", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ResumeRow>();
+  // Use the resume the user explicitly picked in their Auto Apply settings,
+  // if any. Filtered by user_id even though `resume_id` is already scoped to
+  // that user at write time (see the auto-apply page) — cheap defense in
+  // depth against a stale/tampered resume_id ever matching someone else's
+  // resume. Falls back to the primary/most-recently-updated resume (the
+  // original behavior) when no explicit choice was saved — resume_id has an
+  // `on delete set null` foreign key (see
+  // supabase/auto-apply-resume-selection.sql), so a deleted resume can't
+  // leave this pointing at a dangling id.
+  const resumeQuery = admin.from("resumes").select("content").eq("user_id", prefs.user_id);
+  const { data: resumeRow } = prefs.resume_id
+    ? await resumeQuery.eq("id", prefs.resume_id).maybeSingle<ResumeRow>()
+    : await resumeQuery
+        .order("is_primary", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<ResumeRow>();
   const structured = resumeRow?.content?.structured;
   // Deliberately require a real, named resume before matching or writing a
   // cover letter — a resume file existing on its own isn't enough if it was
