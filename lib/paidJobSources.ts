@@ -33,7 +33,11 @@ export async function fetchJoobleJobsPage(
     const res = await fetch(`https://jooble.org/api/${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keywords, location, ResultOnPage: 25, page }),
+      // ResultOnPage raised from 25 to 100 — this is still exactly ONE HTTP
+      // call, just asking Jooble for a bigger page of results in that one
+      // call, so a single daily refresh pulls more volume without spending
+      // any extra quota.
+      body: JSON.stringify({ keywords, location, ResultOnPage: 100, page }),
       next: { revalidate: 1800 },
     });
     if (!res.ok) return [];
@@ -54,16 +58,11 @@ export async function fetchJoobleJobsPage(
   }
 }
 
-// Jooble supports a documented `page` parameter for pagination, on top of
-// `ResultOnPage` — pulling 2 pages per (keyword × location) combination
-// roughly doubles Jooble's yield (up to 50 per location instead of 25).
-export async function fetchJoobleJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
-  const [page1, page2] = await Promise.all([
-    fetchJoobleJobsPage(apiKey, keywords, location, 1),
-    fetchJoobleJobsPage(apiKey, keywords, location, 2),
-  ]);
-  return [...page1, ...page2];
-}
+// Deliberately no multi-page/multi-call Jooble helper here anymore — the
+// whole point of lib/jobCache.ts is exactly ONE call per source per
+// refresh. fetchJoobleJobsPage(apiKey, keywords, location, 1) is that one
+// call; a second page would be a second call, same mistake as the old
+// "9 locations" bug, just in a different shape.
 
 type CareerjetJob = {
   url?: string;
@@ -81,7 +80,9 @@ export async function fetchCareerjetJobs(apiKey: string, keywords: string, local
       user_ip: "0.0.0.0",
       user_agent: "Mozilla/5.0 (GulfJobCopilot server-side job search)",
       locale_code: locale,
-      page_size: "25",
+      // Raised from 25 to 100, same reasoning as Jooble's ResultOnPage
+      // above — still exactly one HTTP call, just requesting a bigger page.
+      page_size: "100",
     });
     const res = await fetch(`https://search.api.careerjet.net/v4/query?${params.toString()}`, {
       headers: {

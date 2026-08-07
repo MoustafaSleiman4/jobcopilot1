@@ -150,15 +150,18 @@ export async function GET(request: NextRequest) {
   });
 
   if (q) {
-    // Include location in the match, not just title/company — otherwise
-    // typing a place name like "Lebanon" or "Beirut" returned zero results
-    // even when Lebanon-based listings were present.
-    jobs = jobs.filter(
-      (j) =>
-        j.title.toLowerCase().includes(q) ||
-        j.company.toLowerCase().includes(q) ||
-        j.location.toLowerCase().includes(q)
-    );
+    // Match every word in the query, not the exact phrase — searching
+    // "project manager" used to require that literal substring, so a real
+    // listing titled "Programme Manager" or "Senior Project Manager –
+    // Applied AI" (word order/extra words) could silently fail to match
+    // even though it's exactly the kind of role being searched for. Now
+    // every word just has to appear somewhere across title/company/
+    // location, in any order.
+    const words = q.split(/\s+/).filter(Boolean);
+    jobs = jobs.filter((j) => {
+      const haystack = `${j.title} ${j.company} ${j.location}`.toLowerCase();
+      return words.every((w) => haystack.includes(w));
+    });
   }
 
   if (locationFilter) {

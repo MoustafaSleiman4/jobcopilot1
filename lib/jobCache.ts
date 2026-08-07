@@ -181,9 +181,19 @@ export async function refreshGlobalJobCacheIfStale(
     // ignore
   }
 
-  if (jobs.length === 0) {
-    return { refreshed: true, stored: 0 };
-  }
+  const stored = await storeJobs(admin, jobs);
+  return { refreshed: true, stored };
+}
+
+// Shared by both refreshGlobalJobCacheIfStale (1 location/day) and
+// seedGlobalJobCacheOnce (all locations, one-time) — dedupes by apply URL,
+// upserts into retrieved_jobs, and self-prunes anything past its 30-day
+// TTL. expires_at is intentionally never included in the upsert payload:
+// new rows get it from the column default (now() + 30 days); existing rows
+// (matched on apply_url) keep whatever they were first assigned, so the
+// 1-month lifespan counts from first-seen, not last-seen.
+async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
+  if (jobs.length === 0) return 0;
 
   const seen = new Set<string>();
   const rows = jobs
@@ -202,20 +212,91 @@ export async function refreshGlobalJobCacheIfStale(
       apply_type: j.applyType,
       industry: j.industry,
       work_type: j.workType,
-      // expires_at intentionally omitted — see the note above. New rows get
-      // it from the column default; existing rows (matched on apply_url)
-      // keep whatever they were first assigned, so the 1-month lifespan
-      // counts from first-seen, not last-seen.
     }));
 
-  // Upsert on apply_url: a job that keeps showing up across daily refreshes
-  // gets its mutable fields (title/company/location/...) refreshed in
-  // place instead of piling up duplicate rows — but NOT its expiry.
   await admin.from("retrieved_jobs").upsert(rows, { onConflict: "apply_url" });
+  await admin.from("retrieved_jobs").delete().lt("expires_at", new Date().toISOString());
 
-  // Self-prune anything past its 30-day TTL every time a refresh actually
-  // runs — this table never needs a separate cleanup job.
-  await admin.from("retrieved_jobs").delete().lt("expires_at", nowIso);
+  return rows.length;
+}
 
-  return { refreshed: true, stored: rows.length };
+/**
+ * A ONE-TIME bulk pull across every Gulf/Levant location (and every
+ * Careerjet locale), meant to seed public.retrieved_jobs with real volume
+ * immediately instead of waiting ~9 days for the 1-location/day rotation in
+ * refreshGlobalJobCacheIfStale() to build up full coverage on its own.
+ *
+ * Unlike that function, this DOES fan out to all 9 locations in one go —
+ * that's 9 SerpApi calls, not 1. Safe to run once (a fresh 250/month
+ * SerpApi key barely notices 9 calls), but this must never run
+ * automatically or repeatedly: job_cache_meta.last_seeded_at gates it to
+ * exactly once unless `force` is explicitly passed (e.g. re-seeding after
+ * changing which sources are configured).
+ */
+export async function seedGlobalJobCacheOnce(
+  admin: SupabaseClient,
+  options: { force?: boolean } = {}
+): Promise<{ seeded: boolean; stored?: number }> {
+  const nowIso = new Date().toISOString();
+
+  if (!options.force) {
+    const { data: claimed, error: claimError } = await admin
+      .from("job_cache_meta")
+      .update({ last_seeded_at: nowIso })
+      .eq("id", true)
+      .is("last_seeded_at", null)
+      .select("id");
+
+    if (claimError || !claimed || claimed.length === 0) {
+      // Already seeded before (or the migration adding last_seeded_at
+      // hasn't run yet) — refuse rather than silently re-spending a big
+      // batch of API calls. Pass { force: true } to override deliberately.
+      return { seeded: false };
+    }
+  } else {
+    await admin.from("job_cache_meta").update({ last_seeded_at: nowIso }).eq("id", true);
+  }
+
+  const joobleKey = process.env.JOOBLE_API_KEY;
+  const careerjetApiKey = process.env.CAREERJET_API_KEY;
+  const serpApiKey = process.env.SERPAPI_KEY;
+
+  const jobs: Job[] = [];
+
+  try {
+    if (joobleKey) {
+      const results = await Promise.all(LOCATIONS.map((loc) => fetchJoobleJobsPage(joobleKey, "", loc, 1)));
+      jobs.push(...results.flat());
+    }
+  } catch {
+    // ignore — a partial seed is still useful
+  }
+
+  try {
+    if (careerjetApiKey) {
+      const results = await Promise.all(
+        Object.values(COUNTRY_TO_CAREERJET_LOCALE).map((locale) => fetchCareerjetJobs(careerjetApiKey, "", locale))
+      );
+      jobs.push(...results.flat());
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (serpApiKey) {
+      const results = await Promise.all(LOCATIONS.map((loc) => fetchSerpApiJobs(serpApiKey, "", loc)));
+      jobs.push(...results.flat());
+    }
+  } catch {
+    // ignore
+  }
+
+  const stored = await storeJobs(admin, jobs);
+
+  // Also stamp last_refreshed_at so the daily 1-location rotation doesn't
+  // immediately consider itself stale and fire again right after this.
+  await admin.from("job_cache_meta").update({ last_refreshed_at: nowIso }).eq("id", true);
+
+  return { seeded: true, stored };
 }

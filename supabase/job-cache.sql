@@ -36,6 +36,11 @@ create index if not exists retrieved_jobs_work_type_idx on public.retrieved_jobs
 create table if not exists public.job_cache_meta (
   id boolean primary key default true,
   last_refreshed_at timestamptz,
+  -- Gates the one-time bulk seed (see seedGlobalJobCacheOnce() in
+  -- lib/jobCache.ts / app/api/jobs/seed-cache/route.ts) to exactly once —
+  -- null until that route is visited, then stamped so it refuses to
+  -- silently re-run and re-spend a big batch of API calls.
+  last_seeded_at timestamptz,
   constraint job_cache_meta_singleton check (id)
 );
 
