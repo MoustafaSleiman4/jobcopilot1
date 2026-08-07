@@ -102,3 +102,126 @@ body {
 html[dir="rtl"] .rtl-flip {
   transform: scaleX(-1);
 }
+
+/* ---------------------------------------------------------------------
+ * Home page motion
+ * -------------------------------------------------------------------*/
+
+/* "#1 Trusted in the Gulf" hero badge — pops in on load, then loops a
+   soft gold glow pulse + a light diagonal shine sweep + a gentle trophy
+   wiggle, so the trust signal keeps drawing the eye instead of sitting
+   static. All three loops are intentionally slow/subtle (2.5s+) to read
+   as polish, not distraction, on a page visitors may look at for a while. */
+@keyframes badge-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(8px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes badge-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 173, 63, 0.32);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(217, 173, 63, 0);
+  }
+}
+
+@keyframes badge-shine {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(320%) skewX(-20deg);
+  }
+}
+
+@keyframes trophy-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  20% {
+    transform: rotate(-10deg) translateY(-1px);
+  }
+  40% {
+    transform: rotate(8deg) translateY(-1px);
+  }
+  60% {
+    transform: rotate(-4deg) translateY(0);
+  }
+  80% {
+    transform: rotate(0deg) translateY(0);
+  }
+}
+
+.trust-badge {
+  animation:
+    badge-pop-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    badge-glow 2.8s ease-in-out 0.9s infinite;
+}
+
+.trust-badge-shine::before {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: 0;
+  width: 35%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: badge-shine 3.4s ease-in-out 1.2s infinite;
+}
+
+.trust-badge-trophy {
+  transform-origin: 70% 90%;
+  animation: trophy-wiggle 2.6s ease-in-out 1.6s infinite;
+}
+
+/* Slow ambient drift behind the hero, purely decorative */
+@keyframes hero-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -1.5%, 0) scale(1.03);
+  }
+}
+
+.hero-drift {
+  animation: hero-drift 14s ease-in-out infinite;
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.float-y {
+  animation: float-y 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trust-badge,
+  .trust-badge-shine::before,
+  .trust-badge-trophy,
+  .hero-drift,
+  .float-y {
+    animation: none !important;
+  }
+}

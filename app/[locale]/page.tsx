@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuthAwareCta from "@/components/AuthAwareCta";
+import ScrollReveal from "@/components/ScrollReveal";
 import DuneDivider from "@/components/decorative/DuneDivider";
 import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
 import {
@@ -87,6 +88,17 @@ export default async function HomePage({
   const regions = t.raw("regions") as string[];
   const testimonials = t.raw("testimonials.items") as { quote: string; role: string; location: string }[];
 
+  // The badge string ("🏆 #1 Trusted...") comes from i18n as one opaque
+  // string — split off the leading trophy emoji so it can get its own
+  // gentle wiggle animation (see .trust-badge-trophy in globals.css)
+  // independent of the text next to it. Falls back to rendering the whole
+  // string plain if a locale ever ships this copy without the emoji.
+  const badgeRaw = t("badge");
+  const badgeTrophyIdx = badgeRaw.indexOf("🏆");
+  const badgeBefore = badgeTrophyIdx === -1 ? badgeRaw : badgeRaw.slice(0, badgeTrophyIdx);
+  const badgeTrophy = badgeTrophyIdx === -1 ? null : "🏆";
+  const badgeAfter = badgeTrophyIdx === -1 ? "" : badgeRaw.slice(badgeTrophyIdx + 2);
+
   // Organization + SoftwareApplication structured data so search engines can
   // show a richer result (name, description, pricing) instead of just a
   // plain blue link — see https://developers.google.com/search/docs/appearance/structured-data.
@@ -130,45 +142,63 @@ export default async function HomePage({
       <main className="flex-1">
         {/* Hero */}
         <section className="desert-gradient relative overflow-hidden">
-          <div className="pattern-motif pointer-events-none absolute inset-0" />
+          <div className="hero-drift pattern-motif pointer-events-none absolute inset-0" />
           <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
           <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
-            <span className="inline-block rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
-              {t("badge")}
-            </span>
-            <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
-              {t("title")}
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-foreground/70">
-              {t("subtitle")}
-            </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <AuthAwareCta
-                loggedOutHref="/signup"
-                loggedOutLabel={t("ctaPrimary")}
-                loggedInLabel={t("goToDashboard")}
-                className="w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/20 transition-colors hover:bg-emerald-700 sm:w-auto"
-              />
-              <Link
-                href="/pricing"
-                className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-colors hover:bg-sand-100 sm:w-auto"
-              >
-                {t("ctaSecondary")}
-              </Link>
-            </div>
-            <p className="mt-8 text-sm text-foreground/50">{t("trustedBy")}</p>
-
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
-              {regions.map((region) => (
-                <span
-                  key={region}
-                  className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70"
-                >
-                  {region}
+            <ScrollReveal direction="none">
+              <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
+                <span className="relative">
+                  {badgeBefore}
+                  {badgeTrophy && (
+                    <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
+                  )}
+                  {badgeAfter}
                 </span>
-              ))}
-            </div>
+              </span>
+            </ScrollReveal>
+            <ScrollReveal delay={100}>
+              <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
+                {t("title")}
+              </h1>
+            </ScrollReveal>
+            <ScrollReveal delay={200}>
+              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-foreground/70">
+                {t("subtitle")}
+              </p>
+            </ScrollReveal>
+            <ScrollReveal delay={300}>
+              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <AuthAwareCta
+                  loggedOutHref="/signup"
+                  loggedOutLabel={t("ctaPrimary")}
+                  loggedInLabel={t("goToDashboard")}
+                  className="w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:translate-y-0 active:scale-95 sm:w-auto"
+                />
+                <Link
+                  href="/pricing"
+                  className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto"
+                >
+                  {t("ctaSecondary")}
+                </Link>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={400}>
+              <p className="mt-8 text-sm text-foreground/50">{t("trustedBy")}</p>
+            </ScrollReveal>
+
+            <ScrollReveal delay={500}>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
+                {regions.map((region) => (
+                  <span
+                    key={region}
+                    className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70 transition-colors duration-200 hover:border-gold-400/60 hover:bg-gold-50"
+                  >
+                    {region}
+                  </span>
+                ))}
+              </div>
+            </ScrollReveal>
           </div>
           <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
         </section>
@@ -176,15 +206,17 @@ export default async function HomePage({
         {/* How it works */}
         <section className="bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
-              {t("howItWorks.title")}
-            </h2>
+            <ScrollReveal>
+              <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("howItWorks.title")}
+              </h2>
+            </ScrollReveal>
             <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {stepKeys.map((key, i) => {
                 const Icon = stepIcons[key];
                 return (
-                  <div key={key} className="relative text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+                  <ScrollReveal key={key} delay={i * 120} className="group relative text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
                       <Icon size={24} />
                     </div>
                     <span className="mt-4 block text-xs font-bold uppercase tracking-wide text-gold-600">
@@ -196,7 +228,7 @@ export default async function HomePage({
                     <p className="mt-2 text-sm leading-relaxed text-foreground/60">
                       {t(`howItWorks.steps.${key}.desc`)}
                     </p>
-                  </div>
+                  </ScrollReveal>
                 );
               })}
             </div>
@@ -206,20 +238,23 @@ export default async function HomePage({
         {/* Features */}
         <section className="bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
-              {t("features.title")}
-            </h2>
+            <ScrollReveal>
+              <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("features.title")}
+              </h2>
+            </ScrollReveal>
             <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {featureKeys.map((key) => {
+              {featureKeys.map((key, i) => {
                 const Icon = featureIcons[key];
                 const isPro = PRO_FEATURE_KEYS.has(key);
                 return (
-                  <div
+                  <ScrollReveal
                     key={key}
-                    className="rounded-2xl border border-border bg-background p-7 shadow-sm transition-shadow hover:shadow-md"
+                    delay={(i % 3) * 100}
+                    className="group rounded-2xl border border-border bg-background p-7 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-600/5"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-110">
                         <Icon className="h-5.5 w-5.5" size={22} />
                       </div>
                       {isPro && (
@@ -234,7 +269,7 @@ export default async function HomePage({
                     <p className="mt-2 text-sm leading-relaxed text-foreground/60">
                       {t(`features.${key}.desc`)}
                     </p>
-                  </div>
+                  </ScrollReveal>
                 );
               })}
             </div>
@@ -258,17 +293,22 @@ export default async function HomePage({
         {/* Testimonials */}
         <section className="bg-background py-20">
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
-              {t("testimonials.title")}
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-foreground/60">
-              {t("testimonials.subtitle")}
-            </p>
+            <ScrollReveal>
+              <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("testimonials.title")}
+              </h2>
+            </ScrollReveal>
+            <ScrollReveal delay={80}>
+              <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-foreground/60">
+                {t("testimonials.subtitle")}
+              </p>
+            </ScrollReveal>
             <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {testimonials.map((item, i) => (
-                <div
+                <ScrollReveal
                   key={i}
-                  className="flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm"
+                  delay={(i % 3) * 100}
+                  className="flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
                 >
                   <Quote className="text-gold-400" size={22} />
                   <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/80">
@@ -290,7 +330,7 @@ export default async function HomePage({
                       ))}
                     </div>
                   </div>
-                </div>
+                </ScrollReveal>
               ))}
             </div>
           </div>
@@ -300,14 +340,20 @@ export default async function HomePage({
         <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 pb-48 pt-20 text-center text-white sm:pb-64">
           <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-36 w-full text-white sm:h-52" />
           <div className="relative mx-auto max-w-2xl px-6">
-            <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
-            <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
-            <AuthAwareCta
-              loggedOutHref="/signup"
-              loggedOutLabel={t("finalCta.button")}
-              loggedInLabel={t("goToDashboard")}
-              className="mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 shadow-lg transition-colors hover:bg-gold-500"
-            />
+            <ScrollReveal>
+              <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
+            </ScrollReveal>
+            <ScrollReveal delay={100}>
+              <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
+            </ScrollReveal>
+            <ScrollReveal delay={200}>
+              <AuthAwareCta
+                loggedOutHref="/signup"
+                loggedOutLabel={t("finalCta.button")}
+                loggedInLabel={t("goToDashboard")}
+                className="mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-xl active:translate-y-0 active:scale-95"
+              />
+            </ScrollReveal>
           </div>
         </section>
       </main>
