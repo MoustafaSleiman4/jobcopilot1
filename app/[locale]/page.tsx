@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import AuthAwareCta from "@/components/AuthAwareCta";
 import HideIfPro from "@/components/HideIfPro";
 import ScrollReveal from "@/components/ScrollReveal";
+import Hero3DLoader from "@/components/Hero3DLoader";
 import DuneDivider from "@/components/decorative/DuneDivider";
 import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
 import {
@@ -192,8 +193,19 @@ export default async function HomePage({
           />
           <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
           <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
+            {/* 3D centerpiece — an animated Gulf skyline (Al Faisaliah
+                Tower, Kingdom Centre, Burj Khalifa) with an AI "copilot"
+                orb hovering above it. Its own block above the badge/
+                headline rather than a full-bleed background behind the
+                text, so it never competes with text legibility — it's the
+                first thing seen, then the eye flows down into the copy. */}
             <ScrollReveal direction="none">
-              <div className="relative inline-block">
+              <div className="relative mx-auto h-64 w-full max-w-3xl sm:h-80 md:h-[26rem]">
+                <Hero3DLoader />
+              </div>
+            </ScrollReveal>
+            <ScrollReveal direction="none">
+              <div className="relative mt-4 inline-block">
                 {/* Confetti layer — deliberately OUTSIDE the pill's own
                     overflow-hidden (that's only there to clip the shine
                     sweep to the pill's rounded shape) so pieces can fly

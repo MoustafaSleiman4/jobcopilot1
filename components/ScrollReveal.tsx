@@ -44,20 +44,35 @@ export default function ScrollReveal({
   as?: "div" | "span";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  // Lazy initializer (runs once, during render) rather than an effect —
-  // respects users who've asked their OS/browser to minimize motion by
-  // starting already-visible, so there's no animation to skip in the first
-  // place. Calling setState synchronously inside an effect body for this
-  // same check would trigger a cascading-render lint error; reading
-  // matchMedia here avoids that entirely.
-  const [visible, setVisible] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+  // Always false on both server and the client's first render — a lazy
+  // initializer that read matchMedia here (the previous approach) ran
+  // during hydration itself, so on a client with the OS's reduced-motion
+  // setting on, the very first client render produced different output
+  // (already-visible) than the server ever could (which has no window to
+  // check). React logs a hydration mismatch for that and, worse, doesn't
+  // reliably attach effects/refs on the mismatched subtree — in practice
+  // this left the entire homepage rendering blank for anyone with
+  // reduced-motion enabled, since every ScrollReveal-wrapped element below
+  // the mismatch point silently never got its IntersectionObserver set up.
+  // Checking matchMedia inside the mount effect below instead runs strictly
+  // after hydration completes, so first paint always matches the server.
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (visible) return;
     const el = ref.current;
     if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // Deliberate one-time synchronous setState here, not a cascading
+      // pattern: this is the mount effect syncing from an external system
+      // (the OS-level matchMedia preference), which is exactly the
+      // "subscribe/sync from an external system" case this lint rule
+      // itself carves out — see the comment above `visible`'s declaration
+      // for why this can't move into the initializer instead.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisible(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -70,7 +85,7 @@ export default function ScrollReveal({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [visible]);
+  }, []);
 
   const Comp = Tag as "div";
 
