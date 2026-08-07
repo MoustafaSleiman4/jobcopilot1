@@ -60,6 +60,9 @@ type Job = {
 
 type SearchResponse = {
   jobs: Job[];
+  total: number;
+  offset: number;
+  pageSize: number;
   industries: string[];
   locations: string[];
   workTypes: WorkType[];
@@ -106,8 +109,11 @@ export default function JobSearchPage() {
   const [queryDraft, setQueryDraft] = useState("");
   const [location, setLocation] = useState("");
   const [locationDraft, setLocationDraft] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [industryDraft, setIndustryDraft] = useState("");
+  // Defaults to "Technology" rather than "All industries" — the large
+  // majority of this app's users search tech roles, so this saves the most
+  // common filter click without stopping anyone from clearing it.
+  const [industry, setIndustry] = useState("Technology");
+  const [industryDraft, setIndustryDraft] = useState("Technology");
   const [workType, setWorkType] = useState<WorkType | "">("");
   const [workTypeDraft, setWorkTypeDraft] = useState<WorkType | "">("");
   // Populated only for a signed-in Pro user once the search-quota migration
@@ -117,6 +123,12 @@ export default function JobSearchPage() {
     null
   );
   const [jobs, setJobs] = useState<Job[]>([]);
+  // The real filtered count from the server (see app/api/jobs/search/
+  // route.ts's `total`), not just how many have been loaded onto the page —
+  // drives both the "N jobs found" text and whether "Load more" still has
+  // anything to fetch.
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [industries, setIndustries] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,11 +206,6 @@ export default function JobSearchPage() {
         if (cancelled) return;
         if (profile?.plan === "pro") setPlan("pro");
         setChecking(false);
-        setContactInfo({
-          fullName: profile?.full_name ?? "",
-          email: data.user?.email ?? "",
-          phone: profile?.phone ?? "",
-        });
 
         const { data: tracked } = await supabase
           .from("applications")
@@ -227,14 +234,24 @@ export default function JobSearchPage() {
         const structured = (resume?.content as ResumeContent | undefined)?.structured;
         if (structured) setDefaultResumeStructured(structured);
 
+        // Contact info shown in the "prepare" popup — the profile's
+        // full_name/phone (set on the Profile settings page) take priority
+        // when present, but most users fill in their name/phone on their
+        // resume and never separately on the profile page, so this used to
+        // show "Not set" even when the resume clearly had that info. Fall
+        // back to the resume's own fullName/phone fields before giving up.
+        setContactInfo({
+          fullName: profile?.full_name || structured?.fullName || "",
+          email: data.user?.email ?? "",
+          phone: profile?.phone || structured?.phone || "",
+        });
+
+        // Search box now starts empty by default (see the "Technology"
+        // industry default above) instead of auto-filling with the resume's
+        // job title — resumeTitle is still tracked for the resume-download
+        // button label in the "prepare" popup below.
         const title = structured?.title;
-        if (title) {
-          setResumeTitle(title);
-          if (!userTypedRef.current) {
-            setQuery(title);
-            setQueryDraft(title);
-          }
-        }
+        if (title) setResumeTitle(title);
       } catch {
         // Not logged in / Supabase not configured — fall back to an
         // unfiltered search, same as a logged-out visitor sees today.
@@ -260,11 +277,14 @@ export default function JobSearchPage() {
     if (location) params.set("location", location);
     if (industry) params.set("industry", industry);
     if (workType) params.set("workType", workType);
+    // A new search (or filter change) always starts back at page 1 — no
+    // offset param needed, the route defaults to 0.
 
     fetch(`/api/jobs/search?${params.toString()}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data: SearchResponse) => {
         setJobs(data.jobs ?? []);
+        setTotalJobs(data.total ?? data.jobs?.length ?? 0);
         if (data.industries?.length) setIndustries(data.industries);
         if (data.locations?.length) setLocations(data.locations);
         setSearchQuota(data.meta ?? null);
@@ -278,6 +298,39 @@ export default function JobSearchPage() {
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, [query, location, industry, workType, defaultQueryReady]);
+
+  // Fetches the next page (current jobs.length as the offset) and appends —
+  // a professional "Load more" pattern instead of dumping every result at
+  // once or silently capping at some fixed number. Uses the same committed
+  // query/filters as the main search effect above, just with an offset.
+  async function loadMoreJobs() {
+    if (loadingMore || jobs.length >= totalJobs) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      if (location) params.set("location", location);
+      if (industry) params.set("industry", industry);
+      if (workType) params.set("workType", workType);
+      params.set("offset", String(jobs.length));
+
+      const res = await fetch(`/api/jobs/search?${params.toString()}`);
+      const data: SearchResponse = await res.json();
+      setJobs((prev) => {
+        // Defend against the same job showing up twice across pages (a
+        // freshly-cached job inserted between page loads could otherwise
+        // shift the ordering enough to duplicate one across the boundary).
+        const existingIds = new Set(prev.map((j) => j.id));
+        const fresh = (data.jobs ?? []).filter((j) => !existingIds.has(j.id));
+        return [...prev, ...fresh];
+      });
+      setTotalJobs(data.total ?? totalJobs);
+    } catch {
+      // Silent — the "Load more" button just stays available to retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const hasActiveFilters = Boolean(location || industry || workType);
   // Reflects whatever's currently typed/selected but not yet searched —
@@ -728,7 +781,7 @@ export default function JobSearchPage() {
       </form>
 
       {!loading && (
-        <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: visibleJobs.length })}</p>
+        <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: totalJobs })}</p>
       )}
 
       {searchQuota && (
@@ -930,6 +983,20 @@ export default function JobSearchPage() {
           <p className="text-sm text-foreground/50">{t("noResults")}</p>
         )}
       </div>
+
+      {!loading && jobs.length > 0 && jobs.length < totalJobs && (
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={loadMoreJobs}
+            disabled={loadingMore}
+            className="flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-semibold text-foreground hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingMore && <Loader2 className="animate-spin" size={15} />}
+            {loadingMore ? t("loadingMore") : t("loadMore", { count: Math.min(24, totalJobs - jobs.length) })}
+          </button>
+        </div>
+      )}
 
       {prepareJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

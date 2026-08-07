@@ -44,6 +44,13 @@ type JobWithScore = Job & { matchScore?: number };
 // quota-protection measure now that reads are free.
 const DAILY_SEARCH_LIMIT = 10;
 
+// Real pagination instead of a hard 120-result cap — the client requests
+// PAGE_SIZE at a time via `offset`, with a "Load more" button appending the
+// next page, and `total` (the full filtered count, not just what's on this
+// page) tells the client the real number to show and when to stop offering
+// more.
+const PAGE_SIZE = 24;
+
 export async function GET(request: NextRequest) {
   const qRaw = request.nextUrl.searchParams.get("q") ?? "";
   const q = qRaw.toLowerCase();
@@ -54,6 +61,8 @@ export async function GET(request: NextRequest) {
     workTypeParam === "remote" || workTypeParam === "hybrid" || workTypeParam === "onsite"
       ? workTypeParam
       : "";
+  const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? "0");
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
 
   // --- Auth + daily quota (see DAILY_SEARCH_LIMIT above) ---
   // `quota` is only populated for a signed-in Pro user with the migration
@@ -227,11 +236,15 @@ export async function GET(request: NextRequest) {
     : jobs;
 
   return NextResponse.json({
-    // Raised from 60 now that real sources (Jooble pagination, more verified
-    // ATS boards, Careerjet) can genuinely return enough volume to make a
-    // higher cap meaningful — 60 was leaving real results on the table
-    // whenever more than one source returned a healthy number of jobs.
-    jobs: scoredJobs.slice(0, 120),
+    // One page of PAGE_SIZE results starting at `offset` — the client keeps
+    // requesting the next offset (via "Load more") and appending, rather
+    // than everything coming back in one giant response.
+    jobs: scoredJobs.slice(offset, offset + PAGE_SIZE),
+    // The real total after every filter, not just this page's length — this
+    // is what the "N jobs found" count and "more available" logic use.
+    total: scoredJobs.length,
+    offset,
+    pageSize: PAGE_SIZE,
     industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
     locations: LOCATIONS,
     workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],

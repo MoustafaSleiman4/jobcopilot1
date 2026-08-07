@@ -522,6 +522,8 @@
       "matchScore": "تطابق {score}%",
       "sendApplication": "إرسال الطلب",
       "dismiss": "تجاهل",
+      "loadMore": "تحميل {count} إضافية",
+      "loadingMore": "جارٍ تحميل المزيد...",
       "prepare": {
         "title": "تم فتح صفحة التقديم",
         "subtitle": "لوظيفة {title} في {company}",

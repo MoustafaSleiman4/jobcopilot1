@@ -522,6 +522,8 @@
       "matchScore": "{score}% match",
       "sendApplication": "Send application",
       "dismiss": "Dismiss",
+      "loadMore": "Load {count} more",
+      "loadingMore": "Loading more...",
       "prepare": {
         "title": "Application opened",
         "subtitle": "For {title} at {company}",
