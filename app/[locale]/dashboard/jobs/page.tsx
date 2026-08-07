@@ -114,6 +114,12 @@ export default function JobSearchPage() {
   const [industryDraft, setIndustryDraft] = useState("");
   const [workType, setWorkType] = useState<WorkType | "">("");
   const [workTypeDraft, setWorkTypeDraft] = useState<WorkType | "">("");
+  // Unchecked by default — see app/api/jobs/search/route.ts's `exactPhrase`
+  // param. Default behavior stays "match any of the entered words" (what
+  // most people typing a few role titles at once actually want); this opts
+  // a specific search into requiring the literal phrase instead.
+  const [exactPhrase, setExactPhrase] = useState(false);
+  const [exactPhraseDraft, setExactPhraseDraft] = useState(false);
   // Populated only for a signed-in Pro user once the search-quota migration
   // has been run (see app/api/jobs/search/route.ts) — null means "don't
   // show a quota indicator at all", not "unlimited".
@@ -290,6 +296,7 @@ export default function JobSearchPage() {
     if (location) params.set("location", location);
     if (industry) params.set("industry", industry);
     if (workType) params.set("workType", workType);
+    if (exactPhrase) params.set("exact", "1");
     // A new search (or filter change) always starts back at page 1 — no
     // offset param needed, the route defaults to 0.
 
@@ -311,7 +318,7 @@ export default function JobSearchPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [query, location, industry, workType, defaultQueryReady]);
+  }, [query, location, industry, workType, exactPhrase, defaultQueryReady]);
 
   // Fetches the next page (current jobs.length as the offset) and appends —
   // a professional "Load more" pattern instead of dumping every result at
@@ -326,6 +333,7 @@ export default function JobSearchPage() {
       if (location) params.set("location", location);
       if (industry) params.set("industry", industry);
       if (workType) params.set("workType", workType);
+      if (exactPhrase) params.set("exact", "1");
       params.set("offset", String(jobs.length));
 
       const res = await fetch(`/api/jobs/search?${params.toString()}`);
@@ -350,7 +358,11 @@ export default function JobSearchPage() {
   // Reflects whatever's currently typed/selected but not yet searched —
   // used to grey out "Search" when there's nothing new to run.
   const hasUnappliedChanges =
-    queryDraft !== query || locationDraft !== location || industryDraft !== industry || workTypeDraft !== workType;
+    queryDraft !== query ||
+    locationDraft !== location ||
+    industryDraft !== industry ||
+    workTypeDraft !== workType ||
+    exactPhraseDraft !== exactPhrase;
 
   // Commits the draft query/filters and runs one search — the only thing
   // that actually spends a search from today's quota, along with Clear
@@ -360,6 +372,7 @@ export default function JobSearchPage() {
     setLocation(locationDraft);
     setIndustry(industryDraft);
     setWorkType(workTypeDraft);
+    setExactPhrase(exactPhraseDraft);
   }
 
   function clearFilters() {
@@ -715,6 +728,19 @@ export default function JobSearchPage() {
             {t("matchedToResume", { title: resumeTitle })}
           </p>
         )}
+
+        <label
+          title={t("exactPhraseHint")}
+          className="mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-foreground/70 select-none"
+        >
+          <input
+            type="checkbox"
+            checked={exactPhraseDraft}
+            onChange={(e) => setExactPhraseDraft(e.target.checked)}
+            className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
+          />
+          {t("exactPhrase")}
+        </label>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-foreground/50">

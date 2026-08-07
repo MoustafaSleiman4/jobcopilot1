@@ -1,8 +1,10 @@
+import type { CSSProperties } from "react";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuthAwareCta from "@/components/AuthAwareCta";
+import HideIfPro from "@/components/HideIfPro";
 import ScrollReveal from "@/components/ScrollReveal";
 import DuneDivider from "@/components/decorative/DuneDivider";
 import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
@@ -71,6 +73,34 @@ const AVATAR_COLORS = [
   "bg-emerald-100 text-emerald-700",
   "bg-gold-100 text-gold-700",
   "bg-sand-200 text-foreground/70",
+];
+
+// Confetti burst fired from behind the "#1 Trusted" hero badge (see
+// .confetti-piece / @keyframes confetti-burst in globals.css) — a dense
+// 16-piece radial spray at varying distance (85-130px, well past the
+// badge's own edges)/rotation/size, staggered ~40ms apart so the burst
+// reads as one fast, deliberate "pop" wave. Colors cycle through the brand
+// emerald/gold palette, warm white, and a terracotta accent so it reads as
+// genuine celebration confetti rather than a couple of brand-colored dots.
+// Kept as a static table (not Math.random()) so server and client render
+// identically.
+const CONFETTI_PIECES: { tx: number; ty: number; rot: number; color: string; size: number; round: boolean; delay: number }[] = [
+  { tx: 110, ty: 0, rot: 320, color: "#d9ad3f", size: 10, round: true, delay: 0 },
+  { tx: 79, ty: 32, rot: -280, color: "#0f8f66", size: 8, round: false, delay: 0.04 },
+  { tx: 92, ty: 92, rot: 420, color: "#e8734a", size: 11, round: true, delay: 0.08 },
+  { tx: 36, ty: 88, rot: -350, color: "#ffffff", size: 8, round: false, delay: 0.12 },
+  { tx: 0, ty: 120, rot: 300, color: "#c9962b", size: 12, round: true, delay: 0.16 },
+  { tx: -34, ty: 83, rot: -410, color: "#0b7754", size: 9, round: false, delay: 0.2 },
+  { tx: -88, ty: 88, rot: 260, color: "#d9ad3f", size: 10, round: true, delay: 0.24 },
+  { tx: -88, ty: 36, rot: -330, color: "#ffffff", size: 8, round: false, delay: 0.28 },
+  { tx: -110, ty: 0, rot: 380, color: "#0f8f66", size: 11, round: true, delay: 0.32 },
+  { tx: -79, ty: -32, rot: -300, color: "#e8734a", size: 9, round: false, delay: 0.36 },
+  { tx: -92, ty: -92, rot: 340, color: "#c9962b", size: 12, round: true, delay: 0.4 },
+  { tx: -36, ty: -88, rot: -260, color: "#0b7754", size: 8, round: false, delay: 0.44 },
+  { tx: 0, ty: -120, rot: 400, color: "#d9ad3f", size: 10, round: true, delay: 0.48 },
+  { tx: 34, ty: -83, rot: -320, color: "#ffffff", size: 9, round: false, delay: 0.52 },
+  { tx: 88, ty: -88, rot: 270, color: "#0f8f66", size: 11, round: true, delay: 0.56 },
+  { tx: 88, ty: -36, rot: -390, color: "#e8734a", size: 8, round: false, delay: 0.6 },
 ];
 
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
@@ -143,56 +173,101 @@ export default async function HomePage({
         {/* Hero */}
         <section className="desert-gradient relative overflow-hidden">
           <div className="hero-drift pattern-motif pointer-events-none absolute inset-0" />
-          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
+          {/* Floating glow orbs — purely decorative, gives the hero visible
+              ambient motion instead of a static gradient behind the copy. */}
+          <div
+            className="orb orb-1 h-72 w-72 bg-emerald-400/20"
+            style={{ top: "4%", left: "6%" }}
+            aria-hidden="true"
+          />
+          <div
+            className="orb orb-2 h-64 w-64 bg-gold-400/25"
+            style={{ top: "10%", right: "8%" }}
+            aria-hidden="true"
+          />
+          <div
+            className="orb orb-3 h-56 w-56 bg-emerald-300/20"
+            style={{ bottom: "18%", left: "18%" }}
+            aria-hidden="true"
+          />
+          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
           <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-20 text-center sm:pb-64 sm:pt-28">
             <ScrollReveal direction="none">
-              <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
-                <span className="relative">
-                  {badgeBefore}
-                  {badgeTrophy && (
-                    <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
-                  )}
-                  {badgeAfter}
+              <div className="relative inline-block">
+                {/* Confetti layer — deliberately OUTSIDE the pill's own
+                    overflow-hidden (that's only there to clip the shine
+                    sweep to the pill's rounded shape) so pieces can fly
+                    past the badge's edges instead of getting clipped. */}
+                <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                  {CONFETTI_PIECES.map((c, i) => (
+                    <span
+                      key={i}
+                      className="confetti-piece"
+                      style={
+                        {
+                          "--tx": `${c.tx}px`,
+                          "--ty": `${c.ty}px`,
+                          "--rot": `${c.rot}deg`,
+                          backgroundColor: c.color,
+                          width: c.size,
+                          height: c.size,
+                          borderRadius: c.round ? "9999px" : "2px",
+                          animationDelay: `${1 + c.delay}s`,
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+                </div>
+                <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
+                  <span className="relative">
+                    {badgeBefore}
+                    {badgeTrophy && (
+                      <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
+                    )}
+                    {badgeAfter}
+                  </span>
                 </span>
-              </span>
+              </div>
             </ScrollReveal>
-            <ScrollReveal delay={100}>
-              <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
+            <ScrollReveal delay={150}>
+              <h1 className="gradient-text-sweep mt-6 text-4xl font-extrabold tracking-tight sm:text-6xl">
                 {t("title")}
               </h1>
             </ScrollReveal>
-            <ScrollReveal delay={200}>
+            <ScrollReveal delay={300}>
               <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-foreground/70">
                 {t("subtitle")}
               </p>
             </ScrollReveal>
-            <ScrollReveal delay={300}>
+            <ScrollReveal delay={450}>
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}
                   loggedInLabel={t("goToDashboard")}
-                  className="w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:translate-y-0 active:scale-95 sm:w-auto"
+                  className="cta-pulse w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-emerald-700 active:translate-y-0 active:scale-95 sm:w-auto"
                 />
-                <Link
-                  href="/pricing"
-                  className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto"
-                >
-                  {t("ctaSecondary")}
-                </Link>
+                <HideIfPro>
+                  <Link
+                    href="/pricing"
+                    className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto"
+                  >
+                    {t("ctaSecondary")}
+                  </Link>
+                </HideIfPro>
               </div>
             </ScrollReveal>
-            <ScrollReveal delay={400}>
+            <ScrollReveal delay={600}>
               <p className="mt-8 text-sm text-foreground/50">{t("trustedBy")}</p>
             </ScrollReveal>
 
-            <ScrollReveal delay={500}>
+            <ScrollReveal delay={750}>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
                 <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
                 {regions.map((region) => (
                   <span
                     key={region}
-                    className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70 transition-colors duration-200 hover:border-gold-400/60 hover:bg-gold-50"
+                    className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-gold-400/60 hover:bg-gold-50 hover:shadow-sm"
                   >
                     {region}
                   </span>
@@ -215,8 +290,8 @@ export default async function HomePage({
               {stepKeys.map((key, i) => {
                 const Icon = stepIcons[key];
                 return (
-                  <ScrollReveal key={key} delay={i * 120} className="group relative text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                  <ScrollReveal key={key} delay={i * 180} className="group relative text-center">
+                    <div className="icon-ring-pulse mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-6">
                       <Icon size={24} />
                     </div>
                     <span className="mt-4 block text-xs font-bold uppercase tracking-wide text-gold-600">
@@ -250,11 +325,11 @@ export default async function HomePage({
                 return (
                   <ScrollReveal
                     key={key}
-                    delay={(i % 3) * 100}
-                    className="group rounded-2xl border border-border bg-background p-7 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-600/5"
+                    delay={(i % 3) * 150}
+                    className="group rounded-2xl border border-border bg-background p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-600/10"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-110">
+                      <div className="icon-ring-pulse flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6">
                         <Icon className="h-5.5 w-5.5" size={22} />
                       </div>
                       {isPro && (
@@ -273,20 +348,22 @@ export default async function HomePage({
                 );
               })}
             </div>
-            <p className="mt-8 text-center text-sm text-foreground/50">
-              {t.rich("features.proNote", {
-                badge: (chunks) => (
-                  <span className="rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-700">
-                    {chunks}
-                  </span>
-                ),
-                link: (chunks) => (
-                  <Link href="/pricing" className="font-semibold text-emerald-600 hover:underline">
-                    {chunks}
-                  </Link>
-                ),
-              })}
-            </p>
+            <HideIfPro>
+              <p className="mt-8 text-center text-sm text-foreground/50">
+                {t.rich("features.proNote", {
+                  badge: (chunks) => (
+                    <span className="rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-700">
+                      {chunks}
+                    </span>
+                  ),
+                  link: (chunks) => (
+                    <Link href="/pricing" className="font-semibold text-emerald-600 hover:underline">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </p>
+            </HideIfPro>
           </div>
         </section>
 
@@ -307,10 +384,10 @@ export default async function HomePage({
               {testimonials.map((item, i) => (
                 <ScrollReveal
                   key={i}
-                  delay={(i % 3) * 100}
-                  className="flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                  delay={(i % 3) * 150}
+                  className="group flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-xl"
                 >
-                  <Quote className="text-gold-400" size={22} />
+                  <Quote className="text-gold-400 transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-6" size={22} />
                   <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/80">
                     &ldquo;{item.quote}&rdquo;
                   </p>
@@ -338,20 +415,30 @@ export default async function HomePage({
 
         {/* Final CTA */}
         <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 pb-48 pt-20 text-center text-white sm:pb-64">
-          <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-4 h-36 w-full text-white sm:h-52" />
+          <div
+            className="orb orb-1 h-72 w-72 bg-gold-300/20"
+            style={{ top: "8%", left: "10%" }}
+            aria-hidden="true"
+          />
+          <div
+            className="orb orb-2 h-60 w-60 bg-emerald-300/25"
+            style={{ top: "12%", right: "10%" }}
+            aria-hidden="true"
+          />
+          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-36 w-full text-white sm:h-52" />
           <div className="relative mx-auto max-w-2xl px-6">
-            <ScrollReveal>
+            <ScrollReveal direction="none">
               <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
             </ScrollReveal>
-            <ScrollReveal delay={100}>
+            <ScrollReveal delay={150}>
               <p className="mt-4 text-emerald-50/90">{t("finalCta.subtitle")}</p>
             </ScrollReveal>
-            <ScrollReveal delay={200}>
+            <ScrollReveal delay={300}>
               <AuthAwareCta
                 loggedOutHref="/signup"
                 loggedOutLabel={t("finalCta.button")}
                 loggedInLabel={t("goToDashboard")}
-                className="mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-xl active:translate-y-0 active:scale-95"
+                className="cta-pulse-gold mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-gold-500 active:translate-y-0 active:scale-95"
               />
             </ScrollReveal>
           </div>

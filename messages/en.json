@@ -470,6 +470,8 @@
       "title": "Smart Job Search & Copilot",
       "subtitle": "Real openings across the Gulf, the Levant, and MEA — matched to your profile, with a copilot that preps your application for every job.",
       "searchPlaceholder": "Search by title, company, or keyword",
+      "exactPhrase": "Exact phrase",
+      "exactPhraseHint": "Match your search words in this exact order, instead of any job matching any of them.",
       "apply": "Apply",
       "smartApply": "Smart apply",
       "loading": "Searching for jobs...",

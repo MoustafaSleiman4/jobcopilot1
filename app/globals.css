@@ -107,33 +107,52 @@ html[dir="rtl"] .rtl-flip {
  * Home page motion
  * -------------------------------------------------------------------*/
 
-/* "#1 Trusted in the Gulf" hero badge — pops in on load, then loops a
-   soft gold glow pulse + a light diagonal shine sweep + a gentle trophy
-   wiggle, so the trust signal keeps drawing the eye instead of sitting
-   static. All three loops are intentionally slow/subtle (2.5s+) to read
-   as polish, not distraction, on a page visitors may look at for a while. */
+/* "#1 Trusted in the Gulf" hero badge — a full celebration moment, not a
+   faint hover accent: pops in with a strong overshoot, then loops a
+   synchronized heartbeat scale + bright gold glow ring + a fast diagonal
+   shine sweep + a big trophy bounce, while a burst of confetti fires
+   outward from behind it on the same beat. Reported as "too minimum" in an
+   earlier pass, so this version is deliberately turned up — meant to be
+   unmistakably noticed, not just tasteful background polish. */
 @keyframes badge-pop-in {
   0% {
     opacity: 0;
-    transform: scale(0.85) translateY(8px);
+    transform: scale(0.7) translateY(14px) rotate(-6deg);
   }
-  60% {
+  55% {
     opacity: 1;
-    transform: scale(1.04) translateY(0);
+    transform: scale(1.12) translateY(-2px) rotate(2deg);
+  }
+  75% {
+    transform: scale(0.97) translateY(0) rotate(-1deg);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes badge-bounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
   }
 }
 
 @keyframes badge-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(217, 173, 63, 0.32);
+    box-shadow:
+      0 0 0 0 rgba(217, 173, 63, 0.55),
+      0 0 18px 2px rgba(217, 173, 63, 0.25);
   }
   50% {
-    box-shadow: 0 0 0 9px rgba(217, 173, 63, 0);
+    box-shadow:
+      0 0 0 14px rgba(217, 173, 63, 0),
+      0 0 28px 6px rgba(217, 173, 63, 0.45);
   }
 }
 
@@ -149,26 +168,27 @@ html[dir="rtl"] .rtl-flip {
 @keyframes trophy-wiggle {
   0%,
   100% {
-    transform: rotate(0deg) translateY(0);
+    transform: rotate(0deg) scale(1) translateY(0);
   }
-  20% {
-    transform: rotate(-10deg) translateY(-1px);
+  15% {
+    transform: rotate(-18deg) scale(1.15) translateY(-3px);
   }
-  40% {
-    transform: rotate(8deg) translateY(-1px);
+  35% {
+    transform: rotate(16deg) scale(1.15) translateY(-3px);
   }
-  60% {
-    transform: rotate(-4deg) translateY(0);
+  55% {
+    transform: rotate(-10deg) scale(1.05) translateY(-1px);
   }
-  80% {
-    transform: rotate(0deg) translateY(0);
+  75% {
+    transform: rotate(6deg) scale(1.02) translateY(0);
   }
 }
 
 .trust-badge {
   animation:
-    badge-pop-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-    badge-glow 2.8s ease-in-out 0.9s infinite;
+    badge-pop-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    badge-bounce 1.5s ease-in-out 1s infinite,
+    badge-glow 1.5s ease-in-out 1s infinite;
 }
 
 .trust-badge-shine::before {
@@ -178,28 +198,71 @@ html[dir="rtl"] .rtl-flip {
   bottom: -60%;
   left: 0;
   width: 35%;
-  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.7), transparent);
-  animation: badge-shine 3.4s ease-in-out 1.2s infinite;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  animation: badge-shine 1.6s ease-in-out 1s infinite;
 }
 
 .trust-badge-trophy {
+  display: inline-block;
   transform-origin: 70% 90%;
-  animation: trophy-wiggle 2.6s ease-in-out 1.6s infinite;
+  animation: trophy-wiggle 1.5s ease-in-out 1s infinite;
 }
 
-/* Slow ambient drift behind the hero, purely decorative */
+/* Confetti burst behind the badge — fires on the same 1.5s beat as the
+   bounce/glow above so the whole thing reads as one celebratory pulse.
+   Lives in a wrapper with no overflow-hidden (unlike the pill itself, which
+   needs overflow-hidden to clip the shine sweep) so pieces can fly well past
+   the badge's own edges. Each piece's direction/distance/rotation/color/
+   timing is set per-element via CSS custom properties and inline style in
+   the markup — this rule is just the shared physics. Snaps out fast (a real
+   "pop", reaching a third of its travel by 8% of the duration), holds full
+   opacity through the middle of the flight, then fades on the way down —
+   reads as a genuine confetti burst rather than a fading dot. */
+@keyframes confetti-burst {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.5);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--tx) * 0.35), calc(var(--ty) * 0.35))
+      rotate(calc(var(--rot) * 0.3)) scale(1.15);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.35);
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation-name: confetti-burst;
+  animation-duration: 1.5s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  animation-iteration-count: infinite;
+}
+
+/* Ambient drift behind the hero — noticeably alive rather than a faint
+   background flicker, but still slow enough to read as ambiance. */
 @keyframes hero-drift {
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
-    transform: translate3d(0, -1.5%, 0) scale(1.03);
+    transform: translate3d(1%, -3%, 0) scale(1.06);
   }
 }
 
 .hero-drift {
-  animation: hero-drift 14s ease-in-out infinite;
+  animation: hero-drift 9s ease-in-out infinite;
 }
 
 @keyframes float-y {
@@ -216,12 +279,156 @@ html[dir="rtl"] .rtl-flip {
   animation: float-y 4.5s ease-in-out infinite;
 }
 
+/* Soft glowing orbs drifting behind the hero copy — purely decorative,
+   gives the hero a sense of depth/motion instead of a static gradient. Each
+   orb gets its own size/position/timing via inline style + a numbered
+   variant class so they don't all move in lockstep. */
+@keyframes orb-drift-1 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(4%, -6%, 0) scale(1.15);
+  }
+  66% {
+    transform: translate3d(-3%, 4%, 0) scale(0.95);
+  }
+}
+
+@keyframes orb-drift-2 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-6%, 5%, 0) scale(1.2);
+  }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.orb-1 {
+  animation: orb-drift-1 7s ease-in-out infinite;
+}
+
+.orb-2 {
+  animation: orb-drift-2 9s ease-in-out infinite;
+}
+
+.orb-3 {
+  animation: orb-drift-1 11s ease-in-out infinite reverse;
+}
+
+/* Animated gradient sweep across the hero headline — a slow, continuous
+   color shift (dark text -> emerald -> gold -> dark text) rather than a
+   single flat color, so the main headline itself reads as "alive" the
+   moment the page loads. */
+@keyframes gradient-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.gradient-text-sweep {
+  background-image: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--emerald-500) 25%,
+    var(--gold-500) 50%,
+    var(--emerald-500) 75%,
+    var(--foreground) 100%
+  );
+  background-size: 250% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-sweep 6s linear infinite;
+}
+
+/* Pulsing glow ring behind primary CTA buttons — runs continuously, not
+   just on hover, so the main calls-to-action visibly pull the eye. */
+@keyframes cta-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(8, 95, 67, 0.35),
+      0 8px 20px -6px rgba(8, 95, 67, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(8, 95, 67, 0),
+      0 8px 24px -4px rgba(8, 95, 67, 0.55);
+  }
+}
+
+.cta-pulse {
+  animation: cta-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes cta-pulse-gold {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(201, 150, 43, 0.4),
+      0 8px 20px -6px rgba(201, 150, 43, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(201, 150, 43, 0),
+      0 8px 24px -4px rgba(201, 150, 43, 0.6);
+  }
+}
+
+.cta-pulse-gold {
+  animation: cta-pulse-gold 2.2s ease-in-out infinite;
+}
+
+/* Continuous soft ring pulse behind feature/step icons — animates
+   box-shadow only (never transform), so it layers cleanly under the
+   separate hover scale/rotate transitions already on those same icons
+   without the two animations fighting over the same CSS property. */
+@keyframes icon-ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(11, 119, 84, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(11, 119, 84, 0);
+  }
+}
+
+.icon-ring-pulse {
+  animation: icon-ring-pulse 2.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .trust-badge,
   .trust-badge-shine::before,
   .trust-badge-trophy,
+  .confetti-piece,
   .hero-drift,
-  .float-y {
+  .float-y,
+  .orb-1,
+  .orb-2,
+  .orb-3,
+  .gradient-text-sweep,
+  .cta-pulse,
+  .cta-pulse-gold,
+  .icon-ring-pulse {
     animation: none !important;
+  }
+
+  .confetti-piece {
+    display: none;
   }
 }

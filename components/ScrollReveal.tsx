@@ -4,11 +4,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Direction = "up" | "left" | "right" | "none";
 
+// Bigger travel distance + a starting scale-down (instead of a plain fade)
+// so the reveal itself reads as a clear, deliberate motion rather than a
+// faint opacity crossfade — this is the "more animated" pass after the
+// first version was reported as too subtle to notice.
 const HIDDEN_TRANSFORM: Record<Direction, string> = {
-  up: "translate-y-8",
-  left: "-translate-x-8",
-  right: "translate-x-8",
-  none: "",
+  up: "translate-y-14 scale-95",
+  left: "-translate-x-14 scale-95",
+  right: "translate-x-14 scale-95",
+  none: "scale-90",
 };
 
 /**
@@ -73,8 +77,10 @@ export default function ScrollReveal({
   return (
     <Comp
       ref={ref}
-      className={`transition-all duration-700 ease-out ${
-        visible ? "translate-x-0 translate-y-0 opacity-100" : `opacity-0 ${HIDDEN_TRANSFORM[direction]}`
+      className={`transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        visible
+          ? "translate-x-0 translate-y-0 scale-100 opacity-100"
+          : `opacity-0 ${HIDDEN_TRANSFORM[direction]}`
       } ${className}`}
       style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
     >

@@ -34,9 +34,13 @@ export default function Navbar() {
           <Logo />
         </Link>
         <div className="hidden items-center gap-8 text-sm font-medium text-foreground/70 md:flex">
-          <Link href="/pricing" className="hover:text-foreground">
-            {t("pricing")}
-          </Link>
+          {/* Already-subscribed Pro visitors have nothing to upgrade to —
+              no need to keep pointing them at pricing. */}
+          {(loading || user?.plan !== "pro") && (
+            <Link href="/pricing" className="hover:text-foreground">
+              {t("pricing")}
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />

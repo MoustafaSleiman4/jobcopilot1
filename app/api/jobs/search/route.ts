@@ -53,7 +53,14 @@ const PAGE_SIZE = 24;
 
 export async function GET(request: NextRequest) {
   const qRaw = request.nextUrl.searchParams.get("q") ?? "";
-  const q = qRaw.toLowerCase();
+  const q = qRaw.toLowerCase().trim();
+  // Off by default (see the any-word OR matching below, which is what most
+  // people typing a few role titles at once actually want) — but some
+  // searches genuinely need the literal phrase ("site reliability engineer"
+  // as one exact string, not any job matching "site" OR "reliability" OR
+  // "engineer"), so a checkbox in the UI can opt into it per-search via
+  // ?exact=1.
+  const exactPhrase = request.nextUrl.searchParams.get("exact") === "1";
   const locationFilter = request.nextUrl.searchParams.get("location") ?? "";
   const industryFilter = request.nextUrl.searchParams.get("industry") ?? "";
   const workTypeParam = request.nextUrl.searchParams.get("workType") ?? "";
@@ -202,16 +209,22 @@ export async function GET(request: NextRequest) {
     return true;
   });
 
-  if (q) {
-    // Match ANY of the entered words, not every one of them (and not the
-    // exact phrase) — searching "developer software engineer project
-    // manager" used to require ALL five words present somewhere, which
-    // almost nothing matches; someone typing several role titles into one
-    // box means "show me jobs for any of these", not "show me the one job
-    // whose text happens to contain every word". A job matching more of the
-    // words is still more relevant than one matching just one, so results
-    // are ranked by match count (most matched words first) rather than left
-    // in whatever order the underlying sources returned.
+  if (q && exactPhrase) {
+    // "Exact phrase" checkbox, checked: the whole query has to appear
+    // verbatim (case-insensitive) in the job's title/company/location, same
+    // as putting it in quotes on most job boards — no relevance ranking
+    // needed since it's a plain include/exclude match.
+    jobs = jobs.filter((j) => `${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q));
+  } else if (q) {
+    // Default (unchecked): match ANY of the entered words, not every one of
+    // them and not the exact phrase — searching "developer software engineer
+    // project manager" used to require ALL five words present somewhere,
+    // which almost nothing matches; someone typing several role titles into
+    // one box means "show me jobs for any of these", not "show me the one
+    // job whose text happens to contain every word". A job matching more of
+    // the words is still more relevant than one matching just one, so
+    // results are ranked by match count (most matched words first) rather
+    // than left in whatever order the underlying sources returned.
     const words = q.split(/\s+/).filter(Boolean);
     jobs = jobs
       .map((j) => {
