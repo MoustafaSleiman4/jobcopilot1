@@ -22,21 +22,40 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type Job, type WorkType, LOCATIONS } from "@/lib/jobSources";
-import {
-  fetchJoobleJobs,
-  fetchCareerjetJobs,
-  fetchSerpApiJobs,
-  CAREERJET_LOCALES,
-} from "@/lib/paidJobSources";
+import { fetchJoobleJobsPage, fetchCareerjetJobs, fetchSerpApiJobs } from "@/lib/paidJobSources";
 
 // How long a refresh stays "fresh" before the next trigger is allowed to
-// spend real API quota again. 9 locations x 1 call = 9 SerpApi calls per
-// refresh — refreshing every 24h tops out around 270 calls/month at the
-// ceiling, which is *slightly* over SerpApi's 250/month free tier. Raise
-// this (e.g. to 30) via the JOB_CACHE_REFRESH_HOURS env var in Vercel if you
-// want more headroom; lower it if you'd rather have fresher listings and
-// don't mind burning quota faster.
+// spend real API quota again. This refresh makes AT MOST ONE call per
+// source (Jooble/Careerjet/SerpApi) every time it actually runs — not one
+// per location — so refreshing once a day is exactly 1 SerpApi
+// call/day (≈30/month), nowhere close to the 250/month free-tier ceiling.
+// Raise this via the JOB_CACHE_REFRESH_HOURS env var in Vercel if you want
+// even more headroom.
 const REFRESH_INTERVAL_HOURS = Number(process.env.JOB_CACHE_REFRESH_HOURS) || 24;
+
+// Careerjet needs one of its 5 supported Gulf locale codes, not a country
+// name — only used on the (roughly 5-in-9) days todaysLocation() lands on a
+// country it actually covers; skipped entirely on the other days rather
+// than falling back to a second call.
+const COUNTRY_TO_CAREERJET_LOCALE: Record<string, string> = {
+  "United Arab Emirates": "en_AE",
+  "Saudi Arabia": "en_SA",
+  Kuwait: "en_KW",
+  Oman: "en_OM",
+  Qatar: "en_QA",
+};
+
+// Rotates through one Gulf/Levant location per calendar day (UTC) instead
+// of fanning out to all 9 on every refresh — that's what keeps this to
+// exactly 1 API call per source per day. Full 9-location coverage still
+// builds up over roughly a week+ as each day's results accumulate in
+// retrieved_jobs (rows aren't overwritten, just added to / refreshed by
+// apply_url — see the upsert below), and cycles back around every 9 days
+// after that.
+function todaysLocation(): string {
+  const dayIndex = Math.floor(Date.now() / (24 * 60 * 60 * 1000)) % LOCATIONS.length;
+  return LOCATIONS[dayIndex];
+}
 
 // Note on TTL: each row's expires_at is set ONCE, by the column default in
 // supabase/job-cache.sql (now() + 30 days), at the moment it's first
@@ -120,15 +139,19 @@ export async function refreshGlobalJobCacheIfStale(
   const serpApiKey = process.env.SERPAPI_KEY;
 
   const jobs: Job[] = [];
+  const location = todaysLocation();
 
   // Empty keywords ("") on purpose — this is the one *global* search this
-  // whole app now does, covering every Gulf/Levant location broadly rather
-  // than one specific user's query, so the cache serves every possible
-  // future search instead of just the one that happened to trigger it.
+  // whole app now does, rather than one specific user's query, so the
+  // cache serves every possible future search instead of just the one that
+  // happened to trigger it. Exactly ONE call per source below (not one per
+  // location) — see todaysLocation().
   try {
     if (joobleKey) {
-      const results = await Promise.all(LOCATIONS.map((loc) => fetchJoobleJobs(joobleKey, "", loc)));
-      jobs.push(...results.flat());
+      // Single page, not the 2-page fetchJoobleJobs helper — 1 real call,
+      // same "exactly one search" rule as the other two sources.
+      const results = await fetchJoobleJobsPage(joobleKey, "", location, 1);
+      jobs.push(...results);
     }
   } catch {
     // ignore — a partial refresh is still useful
@@ -136,10 +159,14 @@ export async function refreshGlobalJobCacheIfStale(
 
   try {
     if (careerjetApiKey) {
-      const results = await Promise.all(
-        CAREERJET_LOCALES.map((locale) => fetchCareerjetJobs(careerjetApiKey, "", locale))
-      );
-      jobs.push(...results.flat());
+      const locale = COUNTRY_TO_CAREERJET_LOCALE[location];
+      if (locale) {
+        const results = await fetchCareerjetJobs(careerjetApiKey, "", locale);
+        jobs.push(...results);
+      }
+      // No locale for today's location (Bahrain/Lebanon/Jordan/Egypt) —
+      // skip Careerjet entirely today rather than calling it for a
+      // different location than the other two sources.
     }
   } catch {
     // ignore
@@ -147,8 +174,8 @@ export async function refreshGlobalJobCacheIfStale(
 
   try {
     if (serpApiKey) {
-      const results = await Promise.all(LOCATIONS.map((loc) => fetchSerpApiJobs(serpApiKey, "", loc)));
-      jobs.push(...results.flat());
+      const results = await fetchSerpApiJobs(serpApiKey, "", location);
+      jobs.push(...results);
     }
   } catch {
     // ignore

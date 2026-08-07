@@ -23,7 +23,7 @@ type JoobleJob = {
   link?: string;
 };
 
-async function fetchJoobleJobsPage(
+export async function fetchJoobleJobsPage(
   apiKey: string,
   keywords: string,
   location: string,
