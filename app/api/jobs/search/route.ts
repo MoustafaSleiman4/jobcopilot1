@@ -17,8 +17,18 @@ import {
   fetchRemoteOkJobs,
 } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
+import { scoreJob } from "@/lib/autoApplyRun";
+import type { StructuredResume } from "@/lib/resume-types";
 
 export const runtime = "nodejs";
+
+// Extends the shared Job shape with an optional match score (0-100), added
+// below for a signed-in user with a usable resume — reuses the exact same
+// deterministic scoreJob() heuristic Auto Apply already uses, so a job that
+// shows "75% match" here and in the Auto Apply queue means the same thing in
+// both places. Left undefined (not 0) for anyone without a resume on file,
+// so the client can tell "no signal" apart from "scored zero".
+type JobWithScore = Job & { matchScore?: number };
 
 // Job Search is an entirely Pro-gated page in the UI (see
 // app/[locale]/dashboard/jobs/page.tsx), but this API route itself has no
@@ -57,12 +67,35 @@ export async function GET(request: NextRequest) {
   // error.
   let quota: { used: number; limit: number; remaining: number } | null = null;
   let skipPaidSources = true;
+  // Populated for any signed-in user with a usable resume on file (not
+  // gated to Pro — free users just won't reach this route with real
+  // listings to score against, since the page itself is Pro-gated). Used
+  // below to attach a per-job matchScore, the same scoreJob() heuristic
+  // Auto Apply already uses.
+  let structuredResume: StructuredResume | null = null;
   try {
     const supabase = await createServerSupabaseClient();
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
 
     if (user) {
+      // RLS-scoped to the signed-in user's own resumes (this uses the
+      // request-bound server client, not the admin client) — same
+      // primary-first, most-recently-updated ordering as the Job Search
+      // page's own client-side resume lookup, so the score shown here
+      // matches whichever resume the page itself would use for cover
+      // letters.
+      const { data: resumeRow } = await supabase
+        .from("resumes")
+        .select("content")
+        .eq("user_id", user.id)
+        .order("is_primary", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      structuredResume =
+        (resumeRow?.content as { structured?: StructuredResume } | null)?.structured ?? null;
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("plan")
@@ -185,12 +218,20 @@ export async function GET(request: NextRequest) {
     jobs = jobs.filter((j) => j.workType === workTypeFilter);
   }
 
+  // Attach a match score per job when we have a usable resume — cheap, pure
+  // keyword-overlap scoring (see scoreJob in lib/autoApplyRun.ts), same
+  // function Auto Apply uses, so the "%match" shown here means the same
+  // thing as the one shown in the Auto Apply queue.
+  const scoredJobs: JobWithScore[] = structuredResume
+    ? jobs.map((j) => ({ ...j, matchScore: scoreJob(j, structuredResume as StructuredResume) }))
+    : jobs;
+
   return NextResponse.json({
     // Raised from 60 now that real sources (Jooble pagination, more verified
     // ATS boards, Careerjet) can genuinely return enough volume to make a
     // higher cap meaningful — 60 was leaving real results on the table
     // whenever more than one source returned a healthy number of jobs.
-    jobs: jobs.slice(0, 120),
+    jobs: scoredJobs.slice(0, 120),
     industries: INDUSTRY_KEYWORDS.map(([name]) => name).concat("Other"),
     locations: LOCATIONS,
     workTypes: ["remote", "hybrid", "onsite"] satisfies WorkType[],

@@ -29,6 +29,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Zap,
+  ChevronRight,
+  Target,
 } from "lucide-react";
 
 // Bulk apply fans out one AI cover-letter generation call per selected job —
@@ -49,6 +51,11 @@ type Job = {
   applyType: "one_click" | "external";
   industry: string;
   workType: WorkType;
+  // Set server-side (app/api/jobs/search/route.ts) only when the signed-in
+  // user has a usable resume on file — same scoreJob() heuristic Auto Apply
+  // uses, so "{score}% match" here means the same thing as in the Auto
+  // Apply queue. Undefined (not 0) when there's no resume to score against.
+  matchScore?: number;
 };
 
 type SearchResponse = {
@@ -139,6 +146,18 @@ export default function JobSearchPage() {
   // anything with no way to recover.
   const [popupBlocked, setPopupBlocked] = useState(false);
   const userTypedRef = useRef(false);
+
+  // --- Per-card inline cover letter (Auto Apply queue-style ▶ toggle) ---
+  // Keyed by job id rather than reusing the single prepareJob/coverLetter
+  // state above, since multiple cards' letters can be expanded/cached at
+  // once here, independent of the "prepare" modal's own single-job flow.
+  const [expandedCoverLetterIds, setExpandedCoverLetterIds] = useState<Set<string>>(new Set());
+  const [cardCoverLetters, setCardCoverLetters] = useState<Record<string, string>>({});
+  const [cardCoverLetterLoading, setCardCoverLetterLoading] = useState<Record<string, boolean>>({});
+  const [cardCoverLetterErrors, setCardCoverLetterErrors] = useState<Record<string, string>>({});
+  // Client-only, not persisted — search results are already ephemeral
+  // per-query, so "dismissed" just needs to survive for this result set.
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   // --- Bulk apply ---
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -249,6 +268,11 @@ export default function JobSearchPage() {
         if (data.industries?.length) setIndustries(data.industries);
         if (data.locations?.length) setLocations(data.locations);
         setSearchQuota(data.meta ?? null);
+        // Fresh result set — clear any dismissed/expanded state from the
+        // previous search rather than letting a stale dismiss hide a job
+        // that's reappeared in new results.
+        setDismissedIds(new Set());
+        setExpandedCoverLetterIds(new Set());
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -397,6 +421,46 @@ export default function JobSearchPage() {
     return data.letter as string;
   }
 
+  // Expands/collapses a card's inline cover letter, lazily generating it on
+  // first expand only (cached in cardCoverLetters after that, so re-toggling
+  // never re-triggers a second AI call for the same job).
+  function toggleCardCoverLetter(job: Job) {
+    const willExpand = !expandedCoverLetterIds.has(job.id);
+    setExpandedCoverLetterIds((prev) => {
+      const next = new Set(prev);
+      if (willExpand) next.add(job.id);
+      else next.delete(job.id);
+      return next;
+    });
+    if (willExpand && !cardCoverLetters[job.id] && !cardCoverLetterLoading[job.id]) {
+      setCardCoverLetterLoading((prev) => ({ ...prev, [job.id]: true }));
+      setCardCoverLetterErrors((prev) => ({ ...prev, [job.id]: "" }));
+      generateCoverLetterFor(job)
+        .then((letter) => setCardCoverLetters((prev) => ({ ...prev, [job.id]: letter })))
+        .catch((err) =>
+          setCardCoverLetterErrors((prev) => ({
+            ...prev,
+            [job.id]: err instanceof Error ? err.message : t("prepare.letterError"),
+          }))
+        )
+        .finally(() => setCardCoverLetterLoading((prev) => ({ ...prev, [job.id]: false })));
+    }
+  }
+
+  // Local-only — just removes the card from view, nothing to persist since
+  // this is a live search result, not a saved/tracked record. Also drops it
+  // from any pending bulk-apply selection so a dismissed card can't still be
+  // counted/applied to after it's hidden.
+  function handleDismiss(job: Job) {
+    setDismissedIds((prev) => new Set(prev).add(job.id));
+    setSelectedIds((prev) => {
+      if (!prev.has(job.id)) return prev;
+      const next = new Set(prev);
+      next.delete(job.id);
+      return next;
+    });
+  }
+
   // True one-click: opens the employer's application page immediately
   // (synchronously, inside the click handler — see popupBlocked above for
   // why that matters) and marks the job Applied in the background, instead
@@ -516,6 +580,11 @@ export default function JobSearchPage() {
       // Not critical — the letter is still visible and selectable.
     }
   }
+
+  // Cards hide dismissed results without touching the underlying `jobs`
+  // array (bulk-apply selection, the prepare modal, etc. all still key off
+  // the full list/job ids as before) — dismiss is purely a view filter.
+  const visibleJobs = jobs.filter((j) => !dismissedIds.has(j.id));
 
   if (checking) {
     return <p className="text-sm text-foreground/50">{t("loading")}</p>;
@@ -659,7 +728,7 @@ export default function JobSearchPage() {
       </form>
 
       {!loading && (
-        <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: jobs.length })}</p>
+        <p className="mt-4 text-sm text-foreground/50">{t("resultsCount", { count: visibleJobs.length })}</p>
       )}
 
       {searchQuota && (
@@ -720,10 +789,10 @@ export default function JobSearchPage() {
           <p className="text-sm text-foreground/50">{t("loading")}</p>
         )}
         {!loading &&
-          jobs.map((job) => (
+          visibleJobs.map((job) => (
             <div
               key={job.id}
-              className={`flex flex-col justify-between gap-4 rounded-2xl border bg-surface p-6 sm:flex-row sm:items-center ${
+              className={`flex flex-col justify-between gap-4 rounded-2xl border bg-surface p-6 sm:flex-row sm:items-start ${
                 selectedIds.has(job.id) ? "border-emerald-400 ring-1 ring-emerald-400/30" : "border-border"
               }`}
             >
@@ -769,37 +838,95 @@ export default function JobSearchPage() {
                   >
                     {t(`workTypes.${job.workType}`)}
                   </span>
+                  {typeof job.matchScore === "number" && (
+                    <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <Target size={12} />
+                      {t("matchScore", { score: job.matchScore })}
+                    </span>
+                  )}
                 </div>
+
+                {/* Inline collapsible cover letter — same ▶ toggle pattern
+                    as the Auto Apply queue, lazily generated on first
+                    expand and cached per job id after that. */}
+                {defaultResumeStructured && (
+                  <div className="mt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleCardCoverLetter(job)}
+                      className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                    >
+                      <ChevronRight
+                        size={13}
+                        className={`transition-transform ${
+                          expandedCoverLetterIds.has(job.id) ? "rotate-90" : ""
+                        }`}
+                      />
+                      {t("prepare.coverLetterHeading")}
+                    </button>
+                    {expandedCoverLetterIds.has(job.id) && (
+                      <div className="mt-2 max-w-md">
+                        {cardCoverLetterLoading[job.id] && (
+                          <p className="flex items-center gap-1.5 text-xs text-foreground/50">
+                            <Loader2 className="animate-spin" size={13} />
+                            {t("prepare.generating")}
+                          </p>
+                        )}
+                        {cardCoverLetterErrors[job.id] && (
+                          <p className="text-xs text-red-600">{cardCoverLetterErrors[job.id]}</p>
+                        )}
+                        {cardCoverLetters[job.id] && (
+                          <textarea
+                            readOnly
+                            value={cardCoverLetters[job.id]}
+                            rows={6}
+                            className="w-full resize-y rounded-lg border border-border bg-background p-2.5 text-xs leading-relaxed text-foreground"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 </div>
               </div>
-              <div className="flex flex-none items-center gap-2">
-                {userId && (
+              <div className="flex flex-none flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  {userId && (
+                    <button
+                      type="button"
+                      onClick={() => handleSave(job)}
+                      disabled={trackedIds.has(job.id)}
+                      title={trackedIds.has(job.id) ? t("saved") : t("save")}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                        trackedIds.has(job.id)
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                          : "border-border text-foreground/50 hover:border-emerald-300 hover:text-emerald-600"
+                      }`}
+                    >
+                      {trackedIds.has(job.id) ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => handleSave(job)}
-                    disabled={trackedIds.has(job.id)}
-                    title={trackedIds.has(job.id) ? t("saved") : t("save")}
-                    className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
-                      trackedIds.has(job.id)
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                        : "border-border text-foreground/50 hover:border-emerald-300 hover:text-emerald-600"
-                    }`}
+                    onClick={() => handleApply(job)}
+                    className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                   >
-                    {trackedIds.has(job.id) ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+                    {t("sendApplication")}
+                    <ExternalLink size={14} />
                   </button>
-                )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => handleApply(job)}
-                  className="flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                  onClick={() => handleDismiss(job)}
+                  className="flex items-center gap-1 text-xs font-medium text-foreground/40 hover:text-red-600"
                 >
-                  {job.applyType === "one_click" ? t("apply") : t("smartApply")}
-                  <ExternalLink size={14} />
+                  <X size={13} />
+                  {t("dismiss")}
                 </button>
               </div>
             </div>
           ))}
-        {!loading && jobs.length === 0 && (
+        {!loading && visibleJobs.length === 0 && (
           <p className="text-sm text-foreground/50">{t("noResults")}</p>
         )}
       </div>
