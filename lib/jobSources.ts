@@ -75,16 +75,55 @@ export const LOCATION_ALIASES: Record<string, string[]> = {
   "Saudi Arabia": ["ksa", "saudi"],
 };
 
+// Ordered most-specific-sector-first, Technology and the other broad
+// corporate-function buckets last — inferIndustry() below returns the FIRST
+// category whose keywords match, so a title like "Senior Engineer,
+// Commissioning (Gas Operations)" needs to hit Oil & Gas & Energy's
+// "commissioning"/"gas" before it ever reaches Technology's much broader
+// "engineer" keyword. Without this ordering, "engineer"/"manager"/"data" —
+// all genuinely common in construction, oil & gas, healthcare, etc. — swallow
+// almost every non-tech role in the region, which is exactly what surfaced
+// as "Technology" search results returning construction/oil & gas jobs (see
+// the sector-specific categories added here in response to that report).
 export const INDUSTRY_KEYWORDS: [string, string[]][] = [
-  ["Technology", ["engineer", "developer", "software", "data", "devops", "product manager", "qa engineer", "frontend", "backend", "full stack", "it "]],
+  ["Healthcare", ["nurse", "physician", "doctor", "medical officer", "pharmacist", "healthcare", "clinical", "hospital", "dentist", "radiologist", "physiotherapist", "surgeon", "paramedic"]],
+  ["Oil & Gas & Energy", ["oil and gas", "oil & gas", "petroleum", "drilling", "refinery", "upstream", "downstream", "offshore", "onshore", "pipeline", "commissioning", "process engineer", "reservoir engineer", "renewable energy", "solar energy", "lng", "oil", "gas"]],
+  ["Construction & Engineering", ["construction", "civil engineer", "structural engineer", "site engineer", "site manager", "quantity surveyor", "architect", "mep engineer", "hvac", "fit out", "fit-out", "piping engineer", "foreman", "surveyor", "contracts manager"]],
+  ["Aviation, Travel & Hospitality", ["pilot", "cabin crew", "flight attendant", "airline", "airport", "aviation", "ground operations", "hotel", "restaurant", "chef", "hospitality", "tourism", "travel agent", "concierge", "housekeeping", "resort"]],
+  ["Real Estate & Property", ["real estate", "property management", "leasing", "facilities management", "property consultant"]],
+  ["Legal", ["lawyer", "attorney", "legal counsel", "paralegal", "legal advisor", "compliance officer"]],
+  ["Manufacturing & Industrial", ["manufacturing", "production line", "factory", "plant manager", "industrial engineer", "machinist", "quality control inspector"]],
+  ["Retail & E-commerce", ["retail", "store manager", "merchandising", "e-commerce", "cashier", "visual merchandiser"]],
+  ["Government & Public Sector", ["government", "ministry", "municipality", "public sector", "civil service"]],
+  ["Education", ["teacher", "professor", "lecturer", "tutor", "curriculum", "academic advisor", "school principal", "university"]],
+  ["Technology", ["engineer", "developer", "software", "data", "devops", "product manager", "qa engineer", "frontend", "backend", "full stack", "it", "scrum master", "programmer", "system administrator", "database administrator", "cyber security", "cybersecurity", "site reliability"]],
   ["Marketing", ["marketing", "growth", "content", "seo", "brand", "social media"]],
-  ["Finance & Banking", ["finance", "accountant", "audit", "banking", "relationship manager", "investment", "financial"]],
+  ["Finance & Banking", ["finance", "accountant", "audit", "banking", "relationship manager", "investment", "financial", "credit"]],
   ["Sales & Business Development", ["sales", "business development", "account executive", "partnership"]],
   ["Operations & Supply Chain", ["operations", "supply chain", "logistics", "procurement", "warehouse"]],
-  ["Human Resources", ["hr ", "human resources", "recruiter", "talent"]],
+  ["Human Resources", ["hr", "human resources", "recruiter", "talent"]],
   ["Customer Support", ["customer support", "customer service", "support specialist"]],
-  ["Design", ["designer", "ux", "ui ", "graphic"]],
+  ["Design", ["designer", "ux", "ui", "graphic"]],
 ];
+
+function escapeRegExpLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Precompiled ONCE at module load, not per call — inferIndustry() below runs
+// on every job from every source on every search request (and every seed/
+// refresh run), so building a fresh RegExp per keyword per job would add up
+// fast at the volumes this table is now at.
+const COMPILED_INDUSTRY_KEYWORDS: [string, RegExp[]][] = INDUSTRY_KEYWORDS.map(([industry, keywords]) => [
+  industry,
+  // Word-boundary matching (\b), not substring — the old plain
+  // `.includes(k)` check on "it " matched inside "fit out", "credit",
+  // "audit", "visit", etc. (any word ending in "-it" followed by a space),
+  // which is how a construction "Senior Project Manager - Fit Out" role was
+  // silently getting tagged "Technology". \b anchors each keyword to actual
+  // word edges instead.
+  keywords.map((k) => new RegExp(`\\b${escapeRegExpLiteral(k)}\\b`, "i")),
+]);
 
 // True when a job's own location text actually mentions one of the 9
 // Gulf/Levant/Egypt countries this app is scoped to (or a known
@@ -100,10 +139,15 @@ export function isRegionLocation(location: string): boolean {
   });
 }
 
-export function inferIndustry(title: string): string {
-  const lower = ` ${title.toLowerCase()} `;
-  for (const [industry, keywords] of INDUSTRY_KEYWORDS) {
-    if (keywords.some((k) => lower.includes(k))) return industry;
+// `company` is optional and folded into the same matching text as `title` —
+// a generic title like "Senior Manager" often carries no sector signal on
+// its own, but a company name like "ADNOC GAS" or "AECOM" does, so
+// classification gets meaningfully more accurate by considering both rather
+// than title alone.
+export function inferIndustry(title: string, company?: string): string {
+  const haystack = company ? `${title} ${company}` : title;
+  for (const [industry, patterns] of COMPILED_INDUSTRY_KEYWORDS) {
+    if (patterns.some((re) => re.test(haystack))) return industry;
   }
   return "Other";
 }
@@ -115,7 +159,7 @@ export function inferWorkType(location: string): WorkType {
 }
 
 export function finalize(job: Omit<Job, "industry" | "workType">): Job {
-  return { ...job, industry: inferIndustry(job.title), workType: inferWorkType(job.location) };
+  return { ...job, industry: inferIndustry(job.title, job.company), workType: inferWorkType(job.location) };
 }
 
 export const FALLBACK_JOBS: Job[] = (
