@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFreeSourceJobs } from "@/lib/jobSources";
+import { getCachedJobs } from "@/lib/jobCache";
 import { runAutoApplyForUser, RUN_NOW_COOLDOWN_MS, type AutoApplyPreferences } from "@/lib/autoApplyRun";
 
 export const runtime = "nodejs";
@@ -39,7 +40,7 @@ export async function POST() {
 
   const { data: prefsRow, error: prefsError } = await admin
     .from("auto_apply_preferences")
-    .select("user_id, enabled, daily_cap, keywords, location, work_type, excluded_companies, last_run_at")
+    .select("user_id, enabled, daily_cap, keywords, location, work_type, excluded_companies, resume_id, last_run_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -62,7 +63,10 @@ export async function POST() {
     );
   }
 
-  const candidateJobs = await fetchFreeSourceJobs();
+  // Same shared local cache Auto Apply's cron uses now (see lib/jobCache.ts)
+  // — costs nothing to read, so this on-demand run gets the same
+  // paid-source coverage as the overnight cron, not just the free boards.
+  const candidateJobs = [...(await fetchFreeSourceJobs()), ...(await getCachedJobs(admin))];
   const result = await runAutoApplyForUser(admin, prefsRow as AutoApplyPreferences, candidateJobs);
 
   return NextResponse.json({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
@@ -46,6 +46,22 @@ export default function DashboardShell({
   const { user } = useAuthUser();
   const plan = user?.plan ?? "free";
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Fire-and-forget "check if the shared job cache needs a refresh" ping,
+  // once per dashboard session (this component stays mounted across
+  // client-side nav within /dashboard, so this effectively fires once per
+  // login/visit, not once per page). The route itself
+  // (app/api/jobs/refresh-cache/route.ts) is cheap to call as often as you
+  // like — it only actually spends SerpApi/Jooble/Careerjet quota if the
+  // shared cache is genuinely stale (see lib/jobCache.ts), so this can
+  // never cause repeated real API spend just because a lot of people happen
+  // to log in around the same time.
+  useEffect(() => {
+    fetch("/api/jobs/refresh-cache").catch(() => {
+      // Best-effort — a failed ping here just means the daily Vercel Cron
+      // backstop (see vercel.json) refreshes the cache instead.
+    });
+  }, []);
 
   async function handleSignOut() {
     setMenuOpen(false);

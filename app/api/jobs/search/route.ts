@@ -10,216 +10,29 @@ import {
   LOCATIONS,
   LOCATION_ALIASES,
   INDUSTRY_KEYWORDS,
-  finalize,
   FALLBACK_JOBS,
   fetchGreenhouseJobs,
   fetchLeverJobs,
   fetchAshbyJobs,
   fetchRemoteOkJobs,
 } from "@/lib/jobSources";
+import { getCachedJobs } from "@/lib/jobCache";
 
 export const runtime = "nodejs";
 
 // Job Search is an entirely Pro-gated page in the UI (see
 // app/[locale]/dashboard/jobs/page.tsx), but this API route itself has no
 // auth requirement — anyone who found the URL could otherwise call it
-// directly and burn through the paid/keyed sources (SerpApi's free tier in
-// particular is capped at 250 searches/month, shared across every user).
-// DAILY_SEARCH_LIMIT caps how many times a single signed-in Pro user can
-// trigger a real search per day; requires supabase/job-search-rate-limit.sql
-// to actually enforce (fails open — no limiting at all — if that migration
-// hasn't been run, same as every other optional migration in this repo).
-// Note: app/[locale]/dashboard/reports/page.tsx also calls this same route
-// for its job-market snapshot, so those calls share this same daily quota.
+// directly. That used to matter for quota reasons (SerpApi's free tier is
+// capped at 250 searches/month, shared across every user) but this route no
+// longer calls SerpApi/Jooble/Careerjet at all — see lib/jobCache.ts. Those
+// paid sources are only ever fetched by a single shared daily refresh
+// (app/api/jobs/refresh-cache/route.ts); every real search here just reads
+// the cached public.retrieved_jobs table, which costs nothing no matter how
+// often it's called. DAILY_SEARCH_LIMIT is kept as a lightweight per-user
+// usage indicator (the "N searches left today" UI) rather than a
+// quota-protection measure now that reads are free.
 const DAILY_SEARCH_LIMIT = 10;
-
-
-type JoobleJob = {
-  id?: string | number;
-  title?: string;
-  company?: string;
-  location?: string;
-  link?: string;
-};
-
-async function fetchJoobleJobsPage(
-  apiKey: string,
-  keywords: string,
-  location: string,
-  page: number
-): Promise<Job[]> {
-  try {
-    const res = await fetch(`https://jooble.org/api/${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // ResultOnPage explicitly asks Jooble for more results per call — this
-      // used to rely on whatever Jooble's unstated default page size is and
-      // then truncate to 8, which meant the single biggest real source of
-      // volume in this whole route was capped well below what it could
-      // actually return. 25 per (query × location) combination, across up
-      // to 9 locations, is the main lever for going from "a handful of
-      // jobs" to genuinely broad Gulf/Levant coverage once JOOBLE_API_KEY
-      // is configured.
-      body: JSON.stringify({ keywords, location, ResultOnPage: 25, page }),
-      next: { revalidate: 1800 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const jobs: JoobleJob[] = data.jobs ?? [];
-    return jobs.map((j, idx) =>
-      finalize({
-        id: `jooble-${location}-p${page}-${j.id ?? idx}`,
-        title: j.title ?? "Untitled role",
-        company: j.company || "—",
-        location: j.location || location,
-        applyUrl: j.link ?? "#",
-        // Jooble is an aggregator: the link goes to the original posting (its
-        // own site or the employer's), so this is always a smart-apply deep
-        // link, never an in-app auto-submit.
-        applyType: "external" as const,
-      })
-    );
-  } catch {
-    return [];
-  }
-}
-
-// Jooble supports a documented `page` parameter for pagination, on top of
-// `ResultOnPage` — pulling 2 pages per (keyword × location) combination
-// roughly doubles Jooble's yield (up to 50 per location instead of 25)
-// without needing an undocumented, unverified ResultOnPage ceiling. This is
-// the single biggest source of real volume in this whole route once
-// JOOBLE_API_KEY is actually set.
-async function fetchJoobleJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
-  const [page1, page2] = await Promise.all([
-    fetchJoobleJobsPage(apiKey, keywords, location, 1),
-    fetchJoobleJobsPage(apiKey, keywords, location, 2),
-  ]);
-  return [...page1, ...page2];
-}
-
-type CareerjetJob = {
-  url?: string;
-  title?: string;
-  company?: string;
-  locations?: string;
-};
-
-// Careerjet is a second, independent job aggregator (separate company from
-// Jooble, sourcing from a different mix of boards/employers) with confirmed
-// locale support for the UAE, Saudi Arabia, Kuwait, Oman, and Qatar — real
-// redundancy rather than being 100% dependent on Jooble alone.
-//
-// Corrected this session: Careerjet has retired the old affid-based
-// `public.api.careerjet.net/search` endpoint this integration was originally
-// built against (that older client-library pattern is no longer what their
-// own partner API page documents) in favor of a v4 API at
-// `search.api.careerjet.net/v4/query`, authenticated with HTTP Basic Auth
-// (the API key as the username, empty password) rather than an `affid` query
-// param — confirmed directly against careerjet.com/partners/api. The env var
-// is now CAREERJET_API_KEY (a free key from the same signup page), not
-// CAREERJET_AFFID. Still gracefully does nothing until that's set, same
-// no-op-until-configured pattern as Jooble/SerpApi. NOTE: still not
-// live-tested end to end (this sandbox's network policy blocks
-// careerjet.net), so verify a real response shape once CAREERJET_API_KEY is
-// set, before relying on this as a primary source.
-async function fetchCareerjetJobs(apiKey: string, keywords: string, locale: string): Promise<Job[]> {
-  try {
-    const params = new URLSearchParams({
-      keywords,
-      user_ip: "0.0.0.0",
-      user_agent: "Mozilla/5.0 (GulfJobCopilot server-side job search)",
-      locale_code: locale,
-      page_size: "25",
-    });
-    const res = await fetch(`https://search.api.careerjet.net/v4/query?${params.toString()}`, {
-      headers: {
-        // Base64("<api-key>:") — Careerjet's v4 API uses the key as the Basic
-        // Auth username with an empty password, not a bearer token.
-        Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`,
-      },
-      next: { revalidate: 1800 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const jobs: CareerjetJob[] = data.jobs ?? [];
-    return jobs.map((j, idx) =>
-      finalize({
-        id: `careerjet-${locale}-${idx}`,
-        title: j.title ?? "Untitled role",
-        company: j.company || "—",
-        location: j.locations || locale,
-        applyUrl: j.url ?? "#",
-        applyType: "external" as const,
-      })
-    );
-  } catch {
-    return [];
-  }
-}
-
-// Careerjet locale codes with confirmed Gulf coverage (en_AE, en_SA, en_KW,
-// en_OM, en_QA) — Bahrain, Lebanon, Jordan, and Egypt aren't in Careerjet's
-// locale list, so those keep relying on Jooble + the curated fallback list.
-const CAREERJET_LOCALES = ["en_AE", "en_SA", "en_KW", "en_OM", "en_QA"];
-
-type SerpApiJobResult = {
-  job_id?: string;
-  title?: string;
-  company_name?: string;
-  location?: string;
-  via?: string; // e.g. "via LinkedIn", "via Indeed" — the original source board
-  apply_options?: { title?: string; link?: string }[];
-  share_link?: string;
-};
-
-// SerpApi's Google Jobs engine — the source that lets a Gulf/MEA job seeker
-// see real, live postings (including ones Google has indexed from LinkedIn)
-// as native cards on our own jobs page, with no navigation to linkedin.com
-// required just to see what's out there. Clicking "Apply" still goes to
-// wherever the original posting actually lives (LinkedIn, the employer's own
-// site, Indeed, etc.) — same as every other source in this file — because
-// actually submitting an application on a third-party site can only happen
-// on that site; this route only ever fetches indexed search results, never
-// authenticated or account-specific data.
-async function fetchSerpApiJobs(apiKey: string, keywords: string, location: string): Promise<Job[]> {
-  try {
-    const params = new URLSearchParams({
-      engine: "google_jobs",
-      q: keywords ? `${keywords} jobs in ${location}` : `jobs in ${location}`,
-      location,
-      api_key: apiKey,
-      hl: "en",
-    });
-    const res = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
-      next: { revalidate: 1800 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const results: SerpApiJobResult[] = data.jobs_results ?? [];
-    return results.map((j, idx) => {
-      // Prefer a direct apply link if SerpApi surfaced one; fall back to the
-      // Google Jobs share link (still a real, working destination) rather
-      // than a dead "#" — every other source in this file always resolves
-      // to a real URL, so this one should too.
-      const applyUrl = j.apply_options?.[0]?.link ?? j.share_link ?? "#";
-      // "via" comes back as "via LinkedIn" / "via Indeed" / etc. — stripped
-      // down to just the board name so it can be shown as a small source
-      // badge on the card without the leading "via ".
-      const sourceBoard = j.via?.replace(/^via\s+/i, "").trim();
-      return finalize({
-        id: `serpapi-${location}-${j.job_id ?? idx}`,
-        title: j.title ?? "Untitled role",
-        company: (j.company_name || sourceBoard) || "—",
-        location: j.location || location,
-        applyUrl,
-        applyType: "external" as const,
-      });
-    });
-  } catch {
-    return [];
-  }
-}
 
 export async function GET(request: NextRequest) {
   const qRaw = request.nextUrl.searchParams.get("q") ?? "";
@@ -286,62 +99,20 @@ export async function GET(request: NextRequest) {
 
   let realJobs: Job[] = [];
 
-  // When the user picked a specific location, only query Jooble for that
-  // one instead of all nine — faster, and the results are more targeted
-  // than fetching everything and post-filtering.
-  const joobleLocations = locationFilter
-    ? LOCATIONS.filter((l) => l === locationFilter)
-    : LOCATIONS;
-
-  const joobleKey = process.env.JOOBLE_API_KEY;
-  if (joobleKey && !skipPaidSources) {
+  // Paid sources (Jooble/Careerjet/SerpApi) no longer get called here at
+  // all — this reads the shared local cache instead (see lib/jobCache.ts),
+  // which is populated once a day for everyone by
+  // app/api/jobs/refresh-cache/route.ts. skipPaidSources still gates this
+  // the same way it gated the old live calls: only a signed-in, under-quota
+  // Pro user gets the cached paid-source listings blended in.
+  if (!skipPaidSources) {
     try {
-      const results = await Promise.all(
-        joobleLocations.map((loc) => fetchJoobleJobs(joobleKey, qRaw, loc))
-      );
-      realJobs = realJobs.concat(results.flat());
+      const admin = createAdminClient();
+      const cached = await getCachedJobs(admin);
+      realJobs = realJobs.concat(cached);
     } catch {
-      // ignore — fall through to other sources
-    }
-  }
-
-  const careerjetApiKey = process.env.CAREERJET_API_KEY;
-  if (careerjetApiKey && !skipPaidSources) {
-    // Country name -> Careerjet locale code, so the same locationFilter used
-    // for Jooble/curated filtering also narrows which Careerjet locales get
-    // queried.
-    const COUNTRY_TO_CAREERJET_LOCALE: Record<string, string> = {
-      "United Arab Emirates": "en_AE",
-      "Saudi Arabia": "en_SA",
-      Kuwait: "en_KW",
-      Oman: "en_OM",
-      Qatar: "en_QA",
-    };
-    const careerjetLocales = locationFilter
-      ? [COUNTRY_TO_CAREERJET_LOCALE[locationFilter]].filter(Boolean)
-      : CAREERJET_LOCALES;
-    try {
-      const results = await Promise.all(
-        careerjetLocales.map((locale) => fetchCareerjetJobs(careerjetApiKey, qRaw, locale))
-      );
-      realJobs = realJobs.concat(results.flat());
-    } catch {
-      // ignore — fall through to other sources
-    }
-  }
-
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (serpApiKey && !skipPaidSources) {
-    // Same locationFilter-narrowing logic as Jooble above: if the user picked
-    // one country, only spend one SerpApi call on it instead of nine.
-    const serpApiLocations = locationFilter ? [locationFilter] : LOCATIONS;
-    try {
-      const results = await Promise.all(
-        serpApiLocations.map((loc) => fetchSerpApiJobs(serpApiKey, qRaw, loc))
-      );
-      realJobs = realJobs.concat(results.flat());
-    } catch {
-      // ignore — fall through to other sources
+      // supabase/job-cache.sql not migrated yet, or admin client not
+      // configured — fall through to the always-free sources below.
     }
   }
 
