@@ -57,6 +57,30 @@ function todaysLocation(): string {
   return LOCATIONS[dayIndex];
 }
 
+// Broad job categories used ONLY by the one-time bulk seed below (never by
+// the daily refresh) — each source's free tier returns one page of results
+// per (keyword × location) call, so a single blank-keyword call per
+// location tops out in the low hundreds. Searching across a handful of
+// real categories multiplies that without touching the daily habit at all.
+const SEED_KEYWORDS = ["", "engineer", "marketing", "finance", "sales", "operations", "customer service", "hr", "design"];
+
+// Runs `fn` over `items` with at most `limit` in flight at once — plain
+// job-board APIs on free tiers tend to rate-limit a burst of dozens of
+// simultaneous requests, so the bulk seed below chunks its ~80 calls per
+// source through this instead of firing them all via one Promise.all.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // Note on TTL: each row's expires_at is set ONCE, by the column default in
 // supabase/job-cache.sql (now() + 30 days), at the moment it's first
 // inserted — see the upsert below, which deliberately omits expires_at so a
@@ -221,14 +245,16 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
 }
 
 /**
- * A ONE-TIME bulk pull across every Gulf/Levant location (and every
- * Careerjet locale), meant to seed public.retrieved_jobs with real volume
- * immediately instead of waiting ~9 days for the 1-location/day rotation in
- * refreshGlobalJobCacheIfStale() to build up full coverage on its own.
+ * A ONE-TIME bulk pull across every Gulf/Levant location × every category
+ * in SEED_KEYWORDS (and every Careerjet locale), meant to seed
+ * public.retrieved_jobs with real volume immediately instead of waiting
+ * ~9 days for the 1-location/day rotation in refreshGlobalJobCacheIfStale()
+ * to build up full coverage on its own.
  *
- * Unlike that function, this DOES fan out to all 9 locations in one go —
- * that's 9 SerpApi calls, not 1. Safe to run once (a fresh 250/month
- * SerpApi key barely notices 9 calls), but this must never run
+ * Unlike that function, this DOES fan out widely in one go: 9 locations x
+ * 9 keyword categories = up to 81 SerpApi calls (same for Jooble; Careerjet
+ * is 5 locales x 9 categories = up to 45). Safe to run once — well within
+ * a fresh 250/month SerpApi key's budget — but this must never run
  * automatically or repeatedly: job_cache_meta.last_seeded_at gates it to
  * exactly once unless `force` is explicitly passed (e.g. re-seeding after
  * changing which sources are configured).
@@ -236,7 +262,7 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
 export async function seedGlobalJobCacheOnce(
   admin: SupabaseClient,
   options: { force?: boolean } = {}
-): Promise<{ seeded: boolean; stored?: number }> {
+): Promise<{ seeded: boolean; stored?: number; bySource?: Record<string, number> }> {
   const nowIso = new Date().toISOString();
 
   if (!options.force) {
@@ -262,10 +288,17 @@ export async function seedGlobalJobCacheOnce(
   const serpApiKey = process.env.SERPAPI_KEY;
 
   const jobs: Job[] = [];
+  // Concurrency capped at 8 in-flight requests per source — see
+  // mapWithConcurrency's comment above for why (avoiding free-tier rate
+  // limits on a burst of dozens of simultaneous calls).
+  const CONCURRENCY = 8;
 
   try {
     if (joobleKey) {
-      const results = await Promise.all(LOCATIONS.map((loc) => fetchJoobleJobsPage(joobleKey, "", loc, 1)));
+      const combos = SEED_KEYWORDS.flatMap((kw) => LOCATIONS.map((loc) => ({ kw, loc })));
+      const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, loc }) =>
+        fetchJoobleJobsPage(joobleKey, kw, loc, 1)
+      );
       jobs.push(...results.flat());
     }
   } catch {
@@ -274,8 +307,9 @@ export async function seedGlobalJobCacheOnce(
 
   try {
     if (careerjetApiKey) {
-      const results = await Promise.all(
-        Object.values(COUNTRY_TO_CAREERJET_LOCALE).map((locale) => fetchCareerjetJobs(careerjetApiKey, "", locale))
+      const combos = SEED_KEYWORDS.flatMap((kw) => Object.values(COUNTRY_TO_CAREERJET_LOCALE).map((locale) => ({ kw, locale })));
+      const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, locale }) =>
+        fetchCareerjetJobs(careerjetApiKey, kw, locale)
       );
       jobs.push(...results.flat());
     }
@@ -285,11 +319,23 @@ export async function seedGlobalJobCacheOnce(
 
   try {
     if (serpApiKey) {
-      const results = await Promise.all(LOCATIONS.map((loc) => fetchSerpApiJobs(serpApiKey, "", loc)));
+      const combos = SEED_KEYWORDS.flatMap((kw) => LOCATIONS.map((loc) => ({ kw, loc })));
+      const results = await mapWithConcurrency(combos, CONCURRENCY, ({ kw, loc }) =>
+        fetchSerpApiJobs(serpApiKey, kw, loc)
+      );
       jobs.push(...results.flat());
     }
   } catch {
     // ignore
+  }
+
+  // Per-source tally BEFORE dedup, so the JSON response is a useful
+  // diagnostic (e.g. "careerjet: 0" immediately points at a missing/broken
+  // CAREERJET_API_KEY) without needing a separate DB query to check.
+  const bySource: Record<string, number> = {};
+  for (const j of jobs) {
+    const src = j.id.split("-")[0] || "unknown";
+    bySource[src] = (bySource[src] ?? 0) + 1;
   }
 
   const stored = await storeJobs(admin, jobs);
@@ -298,5 +344,5 @@ export async function seedGlobalJobCacheOnce(
   // immediately consider itself stale and fire again right after this.
   await admin.from("job_cache_meta").update({ last_refreshed_at: nowIso }).eq("id", true);
 
-  return { seeded: true, stored };
+  return { seeded: true, stored, bySource };
 }
