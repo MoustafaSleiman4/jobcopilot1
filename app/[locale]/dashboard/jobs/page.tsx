@@ -251,12 +251,20 @@ export default function JobSearchPage() {
           phone: profile?.phone || structured?.phone || "",
         });
 
-        // Search box now starts empty by default (see the "Technology"
-        // industry default above) instead of auto-filling with the resume's
-        // job title — resumeTitle is still tracked for the resume-download
-        // button label in the "prepare" popup below.
+        // Pre-fill the search box with the resume's own job title — a real
+        // keyword pulled straight from the user's resume gives Job Copilot
+        // something relevant to search on the moment the page loads instead
+        // of showing an empty box, while still leaving it fully editable.
+        // Guarded on userTypedRef so it never clobbers anything the user
+        // already started typing while this (async) load was in flight.
         const title = structured?.title;
-        if (title) setResumeTitle(title);
+        if (title) {
+          setResumeTitle(title);
+          if (!userTypedRef.current) {
+            setQuery(title);
+            setQueryDraft(title);
+          }
+        }
       } catch {
         // Not logged in / Supabase not configured — fall back to an
         // unfiltered search, same as a logged-out visitor sees today.
