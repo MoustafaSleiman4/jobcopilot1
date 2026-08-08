@@ -13,6 +13,10 @@
       "title": "Pricing",
       "description": "Simple, transparent pricing for GulfJobCopilot. Start free with 1 resume and 1 AI enhancement, or go Pro for unlimited AI resume tools, smart job search, one-click apply, and application tracking across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
     },
+    "help": {
+      "title": "Help & Support | GulfJobCopilot",
+      "description": "Find answers about resumes, job search, Auto Apply, cover letters, billing, and more — or contact the GulfJobCopilot support team directly."
+    },
     "login": {
       "title": "Log in",
       "description": "Log in to your GulfJobCopilot account to keep building your AI-optimized resume and applying to real jobs across the Gulf, Lebanon and the Middle East."
@@ -301,6 +305,7 @@
       "applications": "Applications",
       "chat": "Assistant",
       "account": "Account",
+      "help": "Help & support",
       "planFree": "Free plan",
       "planPro": "Pro plan",
       "signOut": "Sign out",
@@ -833,7 +838,8 @@
   "footer": {
     "tagline": "Your AI copilot for the Gulf & MEA job market.",
     "rights": "All rights reserved.",
-    "forEmployers": "For employers"
+    "forEmployers": "For employers",
+    "help": "Help & support"
   },
   "employer": {
     "signup": {
@@ -993,5 +999,271 @@
         "Your listings are matched directly into candidates' job search & Auto Apply"
       ]
     }
+  },
+  "help": {
+    "eyebrow": "Help & support",
+    "title": "What can we help with?",
+    "subtitle": "Search our help center or browse answers by topic — and if you can't find what you need, reach our team directly.",
+    "searchPlaceholder": "Search for an answer (e.g. \"cancel subscription\", \"resume\", \"Auto Apply\")",
+    "noResults": "No matching questions found. Try a different search, or contact us below.",
+    "quickTopics": [
+      {
+        "id": "jobs-no-matches",
+        "question": "Not seeing enough job matches"
+      },
+      {
+        "id": "auto-apply-how",
+        "question": "How does Auto Apply work?"
+      },
+      {
+        "id": "resume-build",
+        "question": "Build or upload my resume"
+      },
+      {
+        "id": "cover-letter-not-generating",
+        "question": "Cover letter isn't generating"
+      },
+      {
+        "id": "applications-track",
+        "question": "Track my applications"
+      },
+      {
+        "id": "billing-cancel",
+        "question": "Manage or cancel my subscription"
+      },
+      {
+        "id": "account-language",
+        "question": "Switch between Arabic and English"
+      },
+      {
+        "id": "employer-post-job",
+        "question": "Post a job as an employer"
+      }
+    ],
+    "somethingElseQuestion": "Something else",
+    "viewFullFaq": "View full FAQ",
+    "contact": {
+      "heading": "Still need help?",
+      "body": "Our team typically replies within one business day.",
+      "emailCta": "Email support",
+      "email": "support@gulfjobcopilot.com"
+    },
+    "categories": [
+      {
+        "name": "Getting started",
+        "items": [
+          {
+            "id": "start-what-is",
+            "q": "What is GulfJobCopilot?",
+            "a": "GulfJobCopilot is an AI-powered job search copilot for Saudi Arabia, the UAE, and the wider Gulf, Levant, and MEA region. It helps you build a stronger resume, find real openings that match your profile, apply faster, and track every application in one place — in Arabic or English."
+          },
+          {
+            "id": "start-free",
+            "q": "Is GulfJobCopilot free to use?",
+            "a": "Yes. The Free plan lets you build one resume, run one free AI resume enhancement, and browse job listings at no cost — no credit card required. Pro unlocks unlimited resumes, full search results, one-click apply, Auto Apply, cover letters, reports, and more."
+          },
+          {
+            "id": "start-account",
+            "q": "Do I need to create an account?",
+            "a": "You can browse job listings without an account, but you'll need a free account to save a resume, track applications, or use any Pro feature."
+          },
+          {
+            "id": "start-regions",
+            "q": "Which countries does GulfJobCopilot cover?",
+            "a": "We focus on Saudi Arabia, the UAE, Lebanon, Qatar, Kuwait, Bahrain, Oman, Egypt, and Jordan, with listings drawn from verified employer postings and job boards across the Gulf, Levant, and MEA region."
+          },
+          {
+            "id": "account-language",
+            "q": "Can I use the site in Arabic?",
+            "a": "Yes — use the EN / AR switch in the top navigation bar to switch the entire site, including your resume and cover letters, between English and Arabic at any time."
+          }
+        ]
+      },
+      {
+        "name": "Resume",
+        "items": [
+          {
+            "id": "resume-build",
+            "q": "How do I build or upload my resume?",
+            "a": "Go to Resume in your dashboard and either upload an existing resume (PDF or DOCX) or build one from scratch using the on-page editor. Uploaded resumes are automatically parsed into structured sections you can edit."
+          },
+          {
+            "id": "resume-filetypes",
+            "q": "What file types can I upload?",
+            "a": "PDF and DOCX files up to 10MB."
+          },
+          {
+            "id": "resume-enhance",
+            "q": "What does \"Enhance with AI\" do?",
+            "a": "It rewrites your summary, skills, and experience sections to be clearer and more results-focused, based on what you've already written. Free accounts get one AI enhancement; Pro accounts get unlimited re-runs."
+          },
+          {
+            "id": "resume-download",
+            "q": "Can I download my resume as a PDF?",
+            "a": "Downloading a polished PDF is a Pro feature. On the Free plan you can still view and edit your AI-improved resume online — upgrading unlocks the PDF download."
+          },
+          {
+            "id": "resume-multiple",
+            "q": "Can I have more than one resume?",
+            "a": "Yes — with a Pro plan you can save unlimited resume versions, useful if you're targeting more than one type of role. Free accounts are limited to one saved resume."
+          }
+        ]
+      },
+      {
+        "name": "Job search & Auto Apply",
+        "items": [
+          {
+            "id": "jobs-sources",
+            "q": "Where do job listings come from?",
+            "a": "We combine verified employer postings from our Employer portal with public job boards across the Gulf, Levant, and MEA region, refreshed daily, plus curated regional listings — all matched against your resume and search filters."
+          },
+          {
+            "id": "jobs-no-matches",
+            "q": "Why am I not seeing enough job matches?",
+            "a": "Try broadening your keywords, or clearing location or industry filters. Matching is based on what's actually in your resume, so make sure it lists the skills and job titles you're targeting. If you're on the Free plan, upgrading to Pro also unlocks the full result set rather than a limited view."
+          },
+          {
+            "id": "jobs-limited-results",
+            "q": "Why do I only see limited results?",
+            "a": "Free accounts see job titles, companies, and match info, but the company location and the real apply link are hidden until you upgrade to Pro — that's what \"limited results\" means. Search and filtering still work the same for everyone."
+          },
+          {
+            "id": "jobs-smart-apply",
+            "q": "What does \"Smart apply\" / one-click apply mean?",
+            "a": "It prepares your application for a specific job — pre-filling your contact details and drafting a tailored cover letter — so applying takes one click where the employer supports it. This is a Pro feature."
+          },
+          {
+            "id": "auto-apply-how",
+            "q": "How does Auto Apply work?",
+            "a": "Set your target keywords, locations, and a daily limit once. Every day, Auto Apply searches for new matching jobs, scores them against your resume, and prepares a ready-to-send application with a tailored cover letter for the best matches — up to your daily cap."
+          },
+          {
+            "id": "auto-apply-control",
+            "q": "Will Auto Apply send applications without my approval?",
+            "a": "No. Nothing is ever sent without you clicking Send. No job source we work with allows fully automated submission on your behalf, so Auto Apply always stops at \"ready to review\" and waits for your approval."
+          },
+          {
+            "id": "auto-apply-off",
+            "q": "Can I turn Auto Apply off?",
+            "a": "Yes, toggle \"Auto Apply is on\" off any time in your Auto Apply settings. Nothing new gets queued while it's off, and you can turn it back on whenever you're ready."
+          }
+        ]
+      },
+      {
+        "name": "Cover letters & certifications",
+        "items": [
+          {
+            "id": "cover-letter-how",
+            "q": "How do I generate a cover letter?",
+            "a": "Go to Cover letter in your dashboard, pick a resume version, enter the job title, company, and (optionally) the job description, choose a tone, and click Generate. This is a Pro feature."
+          },
+          {
+            "id": "cover-letter-not-generating",
+            "q": "My cover letter isn't generating — what should I check?",
+            "a": "Make sure you've selected a saved resume version first — the generator needs one to work from. If it still fails, try again in a moment; if it keeps failing, contact us with the job title and company you were using."
+          },
+          {
+            "id": "cover-letter-edit",
+            "q": "Can I edit the AI-generated cover letter?",
+            "a": "Yes — the result is fully editable before you copy it or download it as a PDF."
+          },
+          {
+            "id": "certifications-what",
+            "q": "What are AI-recommended certifications?",
+            "a": "An AI-powered analysis of your saved resume that recommends specific certifications to pursue next, with the reasoning behind each one, a priority level, and where to start studying. This is a Pro feature."
+          }
+        ]
+      },
+      {
+        "name": "Applications & reports",
+        "items": [
+          {
+            "id": "applications-track",
+            "q": "How do I track my applications?",
+            "a": "Every application you submit through GulfJobCopilot is added to your Applications board automatically. You can also add one manually and move it between Saved, Applied, Interview, Offer, and Rejected as it progresses."
+          },
+          {
+            "id": "applications-manual",
+            "q": "Can I add an application I made outside the site?",
+            "a": "Yes — use \"Add application\" on the Applications page to log a job you applied to outside GulfJobCopilot, so your tracker stays complete."
+          },
+          {
+            "id": "reports-what",
+            "q": "What do Reports show me?",
+            "a": "Your application funnel, response rate, how each resume version is performing, and job-market insights like top hiring companies and locations for your target roles. This is a Pro feature."
+          },
+          {
+            "id": "reports-export",
+            "q": "Can I export my reports?",
+            "a": "Yes, export your report as a CSV or a PDF at any time from the Reports page."
+          }
+        ]
+      },
+      {
+        "name": "AI assistant",
+        "items": [
+          {
+            "id": "chat-what",
+            "q": "What can the AI assistant help with?",
+            "a": "Ask it about your resume, interview prep, or general questions about the job market — it uses your profile to tailor its answers."
+          },
+          {
+            "id": "chat-limit",
+            "q": "How many free messages do I get?",
+            "a": "Free accounts get 3 messages total; Pro accounts get unlimited access to the assistant."
+          }
+        ]
+      },
+      {
+        "name": "Account & billing",
+        "items": [
+          {
+            "id": "billing-plans",
+            "q": "What's the difference between Free and Pro?",
+            "a": "Free gives you one resume, one AI enhancement, and browsing access. Pro ($9.99/month or $99.90/year) unlocks unlimited resumes and AI enhancement, full Smart Job Search results, one-click apply, Auto Apply, AI cover letters, the application tracker, certification recommendations, reports, and priority support."
+          },
+          {
+            "id": "billing-price",
+            "q": "How much does Pro cost?",
+            "a": "Pro is $9.99/month, or $99.90/year (about 17% less than paying monthly)."
+          },
+          {
+            "id": "billing-upgrade",
+            "q": "How do I upgrade to Pro?",
+            "a": "Go to Pricing, choose monthly or yearly, and click Upgrade to Pro — you'll be taken to a secure checkout page."
+          },
+          {
+            "id": "billing-cancel",
+            "q": "How do I cancel my Pro subscription?",
+            "a": "Pro is cancel-anytime. Use the manage-subscription link in your payment confirmation email, or email us at support@gulfjobcopilot.com with the address on your account and we'll cancel it for you — you'll keep Pro access through the end of your current billing period."
+          },
+          {
+            "id": "billing-secure",
+            "q": "Is my payment information secure?",
+            "a": "Yes — all payments are handled by our payment provider's secure checkout. We never see or store your full card details."
+          },
+          {
+            "id": "billing-stuck-free",
+            "q": "I upgraded but my account still shows Free plan — what do I do?",
+            "a": "This is usually instant, but can occasionally take a minute to sync. Refresh your dashboard after a minute; if it's still showing Free after that, contact us with your account email and we'll check it right away."
+          }
+        ]
+      },
+      {
+        "name": "For employers",
+        "items": [
+          {
+            "id": "employer-post-job",
+            "q": "How do I post a job?",
+            "a": "Create a free employer account from \"For employers,\" complete your company profile, and post your first job — it'll be visible to job seekers across the region."
+          },
+          {
+            "id": "employer-free",
+            "q": "Is posting jobs free?",
+            "a": "Yes, posting jobs on GulfJobCopilot is free for employers."
+          }
+        ]
+      }
+    ]
   }
 }

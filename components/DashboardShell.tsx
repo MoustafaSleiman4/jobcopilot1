@@ -20,6 +20,7 @@ import {
   BarChart3,
   GraduationCap,
   Zap,
+  HelpCircle,
 } from "lucide-react";
 
 const navItems = [
@@ -154,10 +155,18 @@ export default function DashboardShell({
                           {plan === "pro" ? t("planPro") : t("planFree")}
                         </span>
                       </div>
+                      <Link
+                        href="/help"
+                        onClick={() => setMenuOpen(false)}
+                        className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                      >
+                        <HelpCircle size={15} />
+                        {t("help")}
+                      </Link>
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
                       >
                         <LogOut size={15} />
                         {t("signOut")}
