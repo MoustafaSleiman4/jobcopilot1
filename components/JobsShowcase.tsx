@@ -92,7 +92,7 @@ export default function JobsShowcase() {
   return (
     <div className="relative">
       {stats && (
-        <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <div className="mb-1 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <span className="rounded-full border border-gold-400/40 bg-gold-50 px-3 py-1 text-xs font-semibold text-gold-700 shadow-sm sm:px-4 sm:text-sm">
             {t("statsRoles", { count: stats.total })}
           </span>
@@ -104,7 +104,7 @@ export default function JobsShowcase() {
           </span>
         </div>
       )}
-      <div className="relative h-52 w-full sm:h-64 md:h-72">
+      <div className="relative h-36 w-full sm:h-44 md:h-52">
         <JobsShowcase3D key={live ? "live" : "fallback"} jobs={jobs} />
       </div>
     </div>

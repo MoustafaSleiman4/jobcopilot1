@@ -180,7 +180,7 @@ export default async function HomePage({
             Placed as the very first thing on the page — above the hero's
             trust badge/headline — so it's the first thing a visitor sees,
             not something that requires scrolling past the hero to find. */}
-        <section className="bg-background py-2 sm:py-3">
+        <section className="bg-background py-1 sm:py-1.5">
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
               <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600 sm:text-sm">
@@ -189,7 +189,7 @@ export default async function HomePage({
               <h2 className="mt-0.5 text-center text-xl font-bold text-foreground sm:text-2xl">
                 {t("jobsShowcase.title")}
               </h2>
-              <p className="mx-auto mt-1 max-w-2xl text-center text-xs leading-relaxed text-foreground/60 sm:text-sm">
+              <p className="mx-auto mt-0.5 max-w-2xl text-center text-xs leading-relaxed text-foreground/60 sm:text-sm">
                 {t("jobsShowcase.subtitle")}
               </p>
             </ScrollReveal>
@@ -199,7 +199,7 @@ export default async function HomePage({
               animation itself doesn't) — the cards should visibly travel
               edge-to-edge, not be boxed into the same reading column as the
               text. */}
-          <ScrollReveal delay={150} className="mt-2">
+          <ScrollReveal delay={150} className="mt-1">
             <JobsShowcase />
           </ScrollReveal>
         </section>
@@ -240,7 +240,7 @@ export default async function HomePage({
           >
             <Hero3DLoader />
           </div>
-          <div className="relative mx-auto max-w-4xl px-6 pb-8 pt-2 text-center sm:pb-10 sm:pt-3">
+          <div className="relative mx-auto max-w-4xl px-6 pb-5 pt-1 text-center sm:pb-6 sm:pt-2">
             <ScrollReveal direction="none">
               <div className="relative mt-1 inline-block">
                 {/* Confetti layer — deliberately OUTSIDE the pill's own
@@ -289,7 +289,7 @@ export default async function HomePage({
               </p>
             </ScrollReveal>
             <ScrollReveal delay={450}>
-              <div className="mt-2 flex flex-col items-center justify-center gap-2 sm:mt-2 sm:flex-row sm:gap-3">
+              <div className="mt-1.5 flex flex-col items-center justify-center gap-1.5 sm:mt-1.5 sm:flex-row sm:gap-3">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}
@@ -307,11 +307,11 @@ export default async function HomePage({
               </div>
             </ScrollReveal>
             <ScrollReveal delay={600}>
-              <p className="mt-2 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
+              <p className="mt-1.5 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
             </ScrollReveal>
 
             <ScrollReveal delay={750}>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">
                 <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
                 {regions.map((region) => (
                   <span
