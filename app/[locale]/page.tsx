@@ -192,85 +192,74 @@ export default async function HomePage({
             aria-hidden="true"
           />
           <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
-          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-6 text-center sm:pb-64 sm:pt-10">
-            {/* Headline row — Al Faisaliah Tower flanks the headline on the
-                left (before "Your") and Burj Khalifa flanks it on the right
-                (after "the next job"), as two small standalone 3D widgets
-                laid out with plain flexbox next to the badge/headline
-                column. Deliberately NOT one wide scene stretched behind the
-                text — that overlapped and obscured the words no matter how
-                the towers were spaced. Flexbox guarantees no overlap at any
-                width: `flex-col` stacks tower/text/tower vertically on
-                mobile (which still reads as "tower before, tower after"),
-                `sm:flex-row` lays them out left-to-right once there's room.
-                Folding the animation into this row — instead of its own
-                block above the text — is what buys back the vertical space
-                needed to keep the whole hero visible together. */}
-            <div className="flex flex-col items-center justify-center gap-1 sm:flex-row sm:items-center sm:gap-5 md:gap-8">
-              <ScrollReveal
-                direction="none"
-                className="pointer-events-none relative h-20 w-14 flex-none sm:h-32 sm:w-20 md:h-44 md:w-28"
-              >
-                <Hero3DLoader tower="faisaliah" />
-              </ScrollReveal>
-              <div>
-                <ScrollReveal direction="none">
-                  <div className="relative mt-1 inline-block">
-                    {/* Confetti layer — deliberately OUTSIDE the pill's own
-                        overflow-hidden (that's only there to clip the shine
-                        sweep to the pill's rounded shape) so pieces can fly
-                        past the badge's edges instead of getting clipped. */}
-                    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-                      {CONFETTI_PIECES.map((c, i) => (
-                        <span
-                          key={i}
-                          className="confetti-piece"
-                          style={
-                            {
-                              "--tx": `${c.tx}px`,
-                              "--ty": `${c.ty}px`,
-                              "--rot": `${c.rot}deg`,
-                              backgroundColor: c.color,
-                              width: c.size,
-                              height: c.size,
-                              borderRadius: c.round ? "9999px" : "2px",
-                              animationDelay: `${1 + c.delay}s`,
-                            } as CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
-                    <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
-                      <span className="relative">
-                        {badgeBefore}
-                        {badgeTrophy && (
-                          <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
-                        )}
-                        {badgeAfter}
-                      </span>
-                    </span>
-                  </div>
-                </ScrollReveal>
-                <ScrollReveal delay={150}>
-                  <h1 className="gradient-text-sweep mt-3 text-4xl font-extrabold tracking-tight sm:text-6xl">
-                    {t("title")}
-                  </h1>
-                </ScrollReveal>
+          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-6 text-center sm:pb-64 sm:pt-8">
+            {/* 3D centerpiece — a fully 3D "AI copilot" orb (glowing core,
+                orbiting job-icon cards, a drifting ring of light) as its own
+                block above the badge/headline, rather than real building
+                shapes flanking the text. The earlier tower-based version
+                (Faisaliah/Burj Khalifa as literal 3D buildings) kept
+                fighting the headline's own width no matter how it was laid
+                out — either overlapping the words or getting pushed to the
+                far edges of the frame. An abstract centerpiece sidesteps
+                that entirely: it's its own compact block, so there's no
+                text to collide with, while still reading as a real,
+                animated 3D scene rather than a static illustration. Kept
+                short so the animation and the headline/subtitle both sit in
+                view together instead of pushing the copy below the fold. */}
+            <ScrollReveal direction="none">
+              <div className="relative mx-auto h-40 w-full max-w-md sm:h-40 md:h-44">
+                <Hero3DLoader />
               </div>
-              <ScrollReveal
-                direction="none"
-                className="pointer-events-none relative h-20 w-14 flex-none sm:h-32 sm:w-20 md:h-44 md:w-28"
-              >
-                <Hero3DLoader tower="burj" />
-              </ScrollReveal>
-            </div>
+            </ScrollReveal>
+            <ScrollReveal direction="none">
+              <div className="relative mt-1 inline-block">
+                {/* Confetti layer — deliberately OUTSIDE the pill's own
+                    overflow-hidden (that's only there to clip the shine
+                    sweep to the pill's rounded shape) so pieces can fly
+                    past the badge's edges instead of getting clipped. */}
+                <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                  {CONFETTI_PIECES.map((c, i) => (
+                    <span
+                      key={i}
+                      className="confetti-piece"
+                      style={
+                        {
+                          "--tx": `${c.tx}px`,
+                          "--ty": `${c.ty}px`,
+                          "--rot": `${c.rot}deg`,
+                          backgroundColor: c.color,
+                          width: c.size,
+                          height: c.size,
+                          borderRadius: c.round ? "9999px" : "2px",
+                          animationDelay: `${1 + c.delay}s`,
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+                </div>
+                <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
+                  <span className="relative">
+                    {badgeBefore}
+                    {badgeTrophy && (
+                      <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
+                    )}
+                    {badgeAfter}
+                  </span>
+                </span>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={150}>
+              <h1 className="gradient-text-sweep mt-2 text-4xl font-extrabold tracking-tight sm:text-6xl">
+                {t("title")}
+              </h1>
+            </ScrollReveal>
             <ScrollReveal delay={300}>
               <p className="mx-auto mt-2 max-w-2xl text-lg leading-relaxed text-foreground/70">
                 {t("subtitle")}
               </p>
             </ScrollReveal>
             <ScrollReveal delay={450}>
-              <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:mt-6 sm:flex-row sm:gap-4">
+              <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:mt-4 sm:flex-row sm:gap-4">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}

@@ -3,151 +3,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-// ---------------------------------------------------------------------------
-// Coordinate mapping: every tower below is traced from the exact same path
-// coordinates as components/decorative/SkylineSilhouette.tsx's flat SVG
-// skyline (viewBox 1200x260, ground at y=260) rather than invented from
-// scratch — that SVG was already carefully tuned against real reference
-// photos of each landmark, so reusing its numbers keeps this 3D version
-// unmistakably the same three buildings instead of a generic skyline, and
-// keeps it visually consistent with the flat silhouette still used
-// elsewhere in the same hero section.
-// ---------------------------------------------------------------------------
-const SVG_GROUND_Y = 260;
-const SCALE = 1 / 42;
-const TOWER_DEPTH = 1.1;
-
-function sx(svgX: number, centerX: number) {
-  return (svgX - centerX) * SCALE;
-}
-function sy(svgY: number) {
-  return (SVG_GROUND_Y - svgY) * SCALE;
-}
-
-function extrudeCentered(shape: THREE.Shape, depth = TOWER_DEPTH) {
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 16 });
-  geometry.translate(0, 0, -depth / 2);
-  return geometry;
-}
-
-function makeStrut(x1: number, y1: number, x2: number, y2: number, material: THREE.Material) {
-  const start = new THREE.Vector3(x1, y1, 0);
-  const end = new THREE.Vector3(x2, y2, 0);
-  const dir = new THREE.Vector3().subVectors(end, start);
-  const length = dir.length() || 0.001;
-  const geometry = new THREE.CylinderGeometry(0.5 * SCALE, 0.5 * SCALE, length, 6);
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.copy(start).addScaledVector(dir, 0.5);
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-  return mesh;
-}
-
-type WindowLight = THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> & {
-  userData: { phase: number; speed: number };
-};
-
-function addWindowLights(
-  group: THREE.Group,
-  count: number,
-  yRange: [number, number],
-  xRange: [number, number]
-): WindowLight[] {
-  const lights: WindowLight[] = [];
-  for (let i = 0; i < count; i++) {
-    const material = new THREE.MeshBasicMaterial({ color: 0xfaf0cd, transparent: true, opacity: 0.7 });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), material) as WindowLight;
-    const y = yRange[0] + Math.random() * (yRange[1] - yRange[0]);
-    const x = xRange[0] + Math.random() * (xRange[1] - xRange[0]);
-    mesh.position.set(x, y, TOWER_DEPTH / 2 + 0.02);
-    mesh.userData = { phase: Math.random() * Math.PI * 2, speed: 0.6 + Math.random() * 0.8 };
-    group.add(mesh);
-    lights.push(mesh);
-  }
-  return lights;
-}
-
-// ---- Al Faisaliah Tower (Riyadh) — tapered obelisk, signature gold sphere
-// braced near the tip, needle spire continuing above it. -------------------
-function buildFaisaliah(): THREE.Group {
-  const centerX = 140;
-  const shape = new THREE.Shape();
-  shape.moveTo(sx(117, centerX), sy(260));
-  shape.lineTo(sx(131, centerX), sy(100));
-  shape.lineTo(sx(149, centerX), sy(100));
-  shape.lineTo(sx(163, centerX), sy(260));
-  shape.closePath();
-
-  const bodyMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0f8f66,
-    emissive: 0x0b7754,
-    emissiveIntensity: 0.45,
-    metalness: 0.2,
-    roughness: 0.4,
-  });
-  const goldMaterial = new THREE.MeshStandardMaterial({
-    color: 0xd9ad3f,
-    emissive: 0xd9ad3f,
-    emissiveIntensity: 0.7,
-    metalness: 0.45,
-    roughness: 0.25,
-  });
-
-  const group = new THREE.Group();
-  group.add(new THREE.Mesh(extrudeCentered(shape), bodyMaterial));
-
-  const sphere = new THREE.Mesh(new THREE.SphereGeometry(19 * SCALE, 16, 16), goldMaterial);
-  sphere.position.set(0, sy(80), 0);
-  group.add(sphere);
-
-  const spireHeight = sy(14) - sy(61);
-  const spire = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.2 * SCALE, 1.7 * SCALE, spireHeight, 8),
-    goldMaterial
-  );
-  spire.position.set(0, sy(61) + spireHeight / 2, 0);
-  group.add(spire);
-
-  const finial = new THREE.Mesh(new THREE.SphereGeometry(2.6 * SCALE, 8, 8), goldMaterial);
-  finial.position.set(0, sy(12), 0);
-  group.add(finial);
-
-  group.add(makeStrut(sx(131, centerX), sy(101), sx(126, centerX), sy(86), goldMaterial));
-  group.add(makeStrut(sx(149, centerX), sy(101), sx(154, centerX), sy(86), goldMaterial));
-
-  return group;
-}
-
-// ---- Burj Khalifa (Dubai) — tiered, stepped setbacks tapering to a
-// needle-thin spire, traced point-for-point from the flat silhouette. ------
-function buildBurjKhalifa(): THREE.Group {
-  const centerX = 600;
-  const points: [number, number][] = [
-    [572, 260], [572, 190], [576, 190], [576, 140], [580, 140], [580, 105],
-    [584, 105], [584, 78], [588, 78], [588, 58], [592, 58], [600, 5],
-    [608, 58], [612, 58], [612, 78], [616, 78], [616, 105], [620, 105],
-    [620, 140], [624, 140], [624, 190], [628, 190], [628, 260],
-  ];
-  const shape = new THREE.Shape();
-  points.forEach(([x, y], i) => {
-    const X = sx(x, centerX);
-    const Y = sy(y);
-    if (i === 0) shape.moveTo(X, Y);
-    else shape.lineTo(X, Y);
-  });
-  shape.closePath();
-
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x0f8f66,
-    emissive: 0x0b7754,
-    emissiveIntensity: 0.45,
-    metalness: 0.25,
-    roughness: 0.35,
-  });
-  const group = new THREE.Group();
-  group.add(new THREE.Mesh(extrudeCentered(shape, TOWER_DEPTH * 0.85), material));
-  return group;
-}
-
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -158,10 +13,10 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-// Small "job search" icon cards that orbit the copilot core above the
-// skyline — drawn on an offscreen 2D canvas rather than imported image
-// assets, so the whole scene stays a single self-contained module with no
-// extra files to ship or go missing.
+// Small "job search" icon cards that orbit the copilot core — drawn on an
+// offscreen 2D canvas rather than imported image assets, so the whole scene
+// stays a single self-contained module with no extra files to ship or go
+// missing.
 function makeIconTexture(glyph: "briefcase" | "resume" | "check"): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
@@ -222,7 +77,7 @@ function makeIconTexture(glyph: "briefcase" | "resume" | "check"): THREE.CanvasT
   return texture;
 }
 
-function makeGlowTexture(): THREE.CanvasTexture {
+function makeGlowTexture(color: string): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -230,9 +85,9 @@ function makeGlowTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d");
   if (!ctx) return new THREE.CanvasTexture(canvas);
   const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, "rgba(15,143,102,0.5)");
-  gradient.addColorStop(0.5, "rgba(15,143,102,0.15)");
-  gradient.addColorStop(1, "rgba(15,143,102,0)");
+  gradient.addColorStop(0, `${color}80`);
+  gradient.addColorStop(0.5, `${color}26`);
+  gradient.addColorStop(1, `${color}00`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
   const texture = new THREE.CanvasTexture(canvas);
@@ -240,71 +95,27 @@ function makeGlowTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-type OrbitCard = { mesh: THREE.Mesh; angle: number; speed: number; tilt: number };
-
-function buildOrbitLayer(): { group: THREE.Group; core: THREE.Mesh; coreWire: THREE.Mesh; cards: OrbitCard[] } {
-  const group = new THREE.Group();
-
-  const core = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.55, 1),
-    new THREE.MeshStandardMaterial({
-      color: 0xd9ad3f,
-      emissive: 0xd9ad3f,
-      emissiveIntensity: 0.5,
-      metalness: 0.3,
-      roughness: 0.3,
-    })
-  );
-  group.add(core);
-
-  const coreWire = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.72, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3 })
-  );
-  group.add(coreWire);
-
-  const glyphs: Array<"briefcase" | "resume" | "check"> = ["briefcase", "resume", "check"];
-  const cards: OrbitCard[] = glyphs.map((glyph, i) => {
-    const material = new THREE.MeshStandardMaterial({
-      map: makeIconTexture(glyph),
-      transparent: true,
-      roughness: 0.4,
-      metalness: 0.1,
-      side: THREE.DoubleSide,
-    });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), material);
-    group.add(mesh);
-    return { mesh, angle: (i / glyphs.length) * Math.PI * 2, speed: 0.4 + i * 0.08, tilt: (i % 2 === 0 ? 1 : -1) * 0.3 };
-  });
-
-  return { group, core, coreWire, cards };
-}
-
-type TowerName = "faisaliah" | "burj";
+type OrbitCard = { mesh: THREE.Mesh; angle: number; speed: number; tilt: number; radius: number };
+type RingPoint = THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> & {
+  userData: { angle: number; radius: number; speed: number; y: number };
+};
 
 /**
- * The homepage hero's centerpiece: a stylized, animated 3D rendition of two
- * real Gulf landmarks — Al Faisaliah Tower (Riyadh) and Burj Khalifa
- * (Dubai). Built directly with three.js (no react-three-fiber — this is the
- * only 3D surface in the app, so a full scene-graph wrapper would add
- * abstraction with nothing else to amortize it against).
+ * The homepage hero's centerpiece: a fully 3D "AI copilot" orb — a glowing
+ * icosahedron core wrapped in a rotating wireframe shell, orbited by three
+ * job-search icon cards (resume, briefcase, application-check) and a thin
+ * ring of drifting light points, floating above a soft ground glow. Built
+ * directly with three.js (no react-three-fiber — this is the only 3D
+ * surface in the app, so a full scene-graph wrapper would add abstraction
+ * with nothing else to amortize it against).
  *
- * Two render modes, chosen by the optional `tower` prop:
- *  - Omitted: the original combined scene — both towers side by side with
- *    the orbiting "AI copilot" layer floating between them. A single wide
- *    canvas, meant to be its own block.
- *  - `"faisaliah"` / `"burj"`: a single tower, recentered at x=0 and
- *    reframed for a narrow, portrait-ish card. Used to render each tower as
- *    its own small widget flanking the headline text directly (Faisaliah
- *    immediately before it, Burj Khalifa immediately after) — see
- *    app/[locale]/page.tsx. Splitting into two independent canvases instead
- *    of one wide scene stretched to overlap the text was a deliberate
- *    choice: a shared canvas positioned behind the headline meant the
- *    towers either sat too close (overlapping and obscuring the words) or
- *    had to be pushed so far apart they nearly left the frame. Two small,
- *    self-contained widgets laid out with plain flexbox next to the text
- *    guarantee no overlap at any viewport width, with no pixel-math
- *    guessing required.
+ * This replaced an earlier version of this component that rendered real
+ * Gulf landmarks (Al Faisaliah Tower, Burj Khalifa) as 3D buildings —
+ * removed per design feedback in favor of this abstract centerpiece, which
+ * sidesteps the layout problems the buildings ran into (their fixed,
+ * wide-spread geometry fought with wherever the headline text needed to
+ * sit) while staying just as clearly "a real 3D animation," not a static
+ * illustration.
  *
  * Dynamically imported with `ssr: false` from the homepage (see
  * app/[locale]/page.tsx) — WebGL has no meaning during server rendering,
@@ -312,7 +123,7 @@ type TowerName = "faisaliah" | "burj";
  * entirely; it downloads and mounts only once the browser reaches this
  * component.
  */
-export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
+export default function Hero3D() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -338,88 +149,113 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
 
     let frameId = 0;
     let disposed = false;
-    const single = tower !== undefined;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    // A single centered tower never needs the horizontal pull-back the
-    // combined scene uses to keep two spread-out towers in frame — fixed
-    // distance is enough since the tower body is only ~1 world unit wide.
-    const baseCameraZ = 10;
-    camera.position.set(0, 3.4, baseCameraZ);
+    // The whole scene (core + orbit radius ~1.6 + ring radius ~2.1) fits in
+    // a tight ~4.5 world-unit sphere, so a short, fixed camera distance is
+    // enough at any container aspect — no towers to keep spread across a
+    // wide frame here, so the aspect-based pull-back the old scene needed
+    // doesn't apply.
+    const baseCameraZ = 5.6;
+    camera.position.set(0, 0.4, baseCameraZ);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     container.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xfdf3d9, 0.6));
-    const goldLight = new THREE.PointLight(0xd9ad3f, 4, 40);
-    goldLight.position.set(6, 6, 8);
+    scene.add(new THREE.AmbientLight(0xfdf3d9, 0.65));
+    const goldLight = new THREE.PointLight(0xd9ad3f, 4.5, 20);
+    goldLight.position.set(2.5, 2, 3);
     scene.add(goldLight);
-    const emeraldLight = new THREE.PointLight(0x0f8f66, 3, 40);
-    emeraldLight.position.set(-6, 2, 6);
+    const emeraldLight = new THREE.PointLight(0x0f8f66, 3.5, 20);
+    emeraldLight.position.set(-2.5, 1, 2.5);
     scene.add(emeraldLight);
-    const backLight = new THREE.PointLight(0xffffff, 1.2, 40);
-    backLight.position.set(0, 4, -6);
+    const backLight = new THREE.PointLight(0xffffff, 1.4, 20);
+    backLight.position.set(0, 2, -3);
     scene.add(backLight);
 
     const worldGroup = new THREE.Group();
     scene.add(worldGroup);
 
-    // Combined mode: Faisaliah on the left, Burj Khalifa on the right, the
-    // orbiting copilot layer between them. Single mode: whichever one tower
-    // was asked for, recentered to x=0 so it sits dead-center in its own
-    // small widget.
-    const towers: { group: THREE.Group; delay: number }[] = [];
-    let allLights: WindowLight[] = [];
-    if (single) {
-      const group = tower === "faisaliah" ? buildFaisaliah() : buildBurjKhalifa();
-      group.position.x = 0;
-      towers.push({ group, delay: 0 });
-      worldGroup.add(group);
-      allLights =
-        tower === "faisaliah"
-          ? addWindowLights(group, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)])
-          : addWindowLights(group, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]);
-    } else {
-      const faisaliah = buildFaisaliah();
-      faisaliah.position.x = -2.7;
-      const burj = buildBurjKhalifa();
-      burj.position.x = 2.7;
-      towers.push({ group: faisaliah, delay: 0 }, { group: burj, delay: 0.2 });
-      towers.forEach((t) => worldGroup.add(t.group));
-      allLights = [
-        ...addWindowLights(faisaliah, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)]),
-        ...addWindowLights(burj, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]),
-      ];
-    }
-    towers.forEach((t) => {
-      t.group.scale.y = 0.0001;
+    // The core: a glowing gold icosahedron wrapped in a slowly counter-
+    // rotating white wireframe shell — the "AI copilot" itself.
+    const core = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.72, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xd9ad3f,
+        emissive: 0xd9ad3f,
+        emissiveIntensity: 0.55,
+        metalness: 0.3,
+        roughness: 0.25,
+      })
+    );
+    worldGroup.add(core);
+
+    const coreWire = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.94, 1),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.32 })
+    );
+    worldGroup.add(coreWire);
+
+    const coreGlow = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: makeGlowTexture("#d9ad3f"), transparent: true, opacity: 0.8, depthWrite: false })
+    );
+    coreGlow.scale.set(3.4, 3.4, 1);
+    worldGroup.add(coreGlow);
+
+    // Three job-search icon cards orbiting the core on tilted paths.
+    // MeshBasicMaterial (unlit) rather than MeshStandardMaterial — these are
+    // small flat "sticker" cards, not physical objects, and a PBR material
+    // here made them read as dull olive smudges instead of the cream card
+    // with a gold border baked into the texture: as they orbit through
+    // angles where none of the scene's point lights hit their camera-facing
+    // side, a lit material has nothing to reflect and goes dark regardless
+    // of the texture underneath. Unlit guarantees the texture's own colors
+    // always show, at every orbit angle.
+    const glyphs: Array<"briefcase" | "resume" | "check"> = ["briefcase", "resume", "check"];
+    const cards: OrbitCard[] = glyphs.map((glyph, i) => {
+      const material = new THREE.MeshBasicMaterial({
+        map: makeIconTexture(glyph),
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.62), material);
+      worldGroup.add(mesh);
+      return {
+        mesh,
+        angle: (i / glyphs.length) * Math.PI * 2,
+        speed: 0.42 + i * 0.09,
+        tilt: (i % 2 === 0 ? 1 : -1) * 0.35,
+        radius: 1.9,
+      };
+    });
+
+    // A thin ring of small drifting light points further out — gives the
+    // scene a second, slower layer of motion beyond the core + cards so it
+    // reads as a genuine orbiting system rather than one object spinning.
+    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x0f8f66, transparent: true, opacity: 0.75 });
+    const ringPoints: RingPoint[] = Array.from({ length: 14 }, (_, i) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), ringMaterial) as RingPoint;
+      const angle = (i / 14) * Math.PI * 2;
+      mesh.userData = { angle, radius: 2.5 + (i % 3) * 0.08, speed: 0.12, y: (i % 2 === 0 ? 1 : -1) * 0.15 };
+      worldGroup.add(mesh);
+      return mesh;
     });
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(single ? 4 : 15, single ? 4 : 8),
-      new THREE.MeshBasicMaterial({ map: makeGlowTexture(), transparent: true, opacity: 0.5, depthWrite: false })
+      new THREE.PlaneGeometry(9, 9),
+      new THREE.MeshBasicMaterial({ map: makeGlowTexture("#0f8f66"), transparent: true, opacity: 0.4, depthWrite: false })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.02;
+    ground.position.y = -2.1;
     worldGroup.add(ground);
 
-    // The orbiting "AI copilot" layer only makes sense between two towers
-    // with open sky to hover in — skip it entirely for a single narrow
-    // widget, where it would have nowhere to orbit without colliding with
-    // the tower or the widget's edges.
-    const orbit = single ? null : buildOrbitLayer();
-    if (orbit) {
-      orbit.group.position.set(0, 6.6, 0);
-      worldGroup.add(orbit.group);
-    }
-
-    const particleCount = single ? 40 : 160;
+    const particleCount = 90;
     const positions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * (single ? 3 : 18);
-      positions[i * 3 + 1] = Math.random() * (single ? 7 : 9) + 1;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * (single ? 3 : 8) - (single ? 1 : 3);
+      positions[i * 3] = (Math.random() - 0.5) * 8;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 5;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 4 - 1;
     }
     const particleGeometry = new THREE.BufferGeometry();
     particleGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -428,6 +264,12 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
       new THREE.PointsMaterial({ color: 0xf3dd97, size: 0.035, transparent: true, opacity: 0.5 })
     );
     scene.add(particles);
+
+    // Entrance: the whole rig scales up from near-nothing with a soft
+    // overshoot-free ease, reading as the copilot "materializing" rather
+    // than a generic fade-in.
+    worldGroup.scale.setScalar(0.0001);
+    const entranceStart = performance.now();
 
     // Pointer parallax — lerped toward the target each frame for a smooth
     // "the whole scene follows your cursor" feel rather than snapping.
@@ -447,14 +289,7 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
     function handleResize() {
       const { width, height } = container!.getBoundingClientRect();
       if (width === 0 || height === 0) return;
-      const aspect = width / height;
-      camera.aspect = aspect;
-      // Single-tower widgets are narrow/portrait by design (see their sizing
-      // in app/[locale]/page.tsx) and only ever hold one centered tower, so
-      // they never need the horizontal pull-back below — that formula
-      // exists purely to keep the combined scene's two spread-out towers in
-      // frame on a narrow/tall (mobile) container.
-      camera.position.z = !single && aspect < 1.6 ? baseCameraZ * (1.6 / Math.max(aspect, 0.75)) : baseCameraZ;
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     }
@@ -467,36 +302,43 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
       if (disposed) return;
       const t = clock.getElapsedTime();
 
-      towers.forEach((tower) => {
-        const localT = Math.max(0, Math.min((t - tower.delay) / 1.1, 1));
-        const eased = localT * localT * (3 - 2 * localT);
-        tower.group.scale.y = Math.max(0.0001, eased);
+      const entranceT = Math.min((performance.now() - entranceStart) / 900, 1);
+      const eased = entranceT * entranceT * (3 - 2 * entranceT);
+      worldGroup.scale.setScalar(Math.max(0.0001, eased));
+
+      core.rotation.y = t * 0.4;
+      core.rotation.x = t * 0.15;
+      coreWire.rotation.y = -t * 0.25;
+      coreWire.rotation.x = t * 0.18;
+      coreGlow.material.opacity = 0.65 + 0.15 * Math.sin(t * 1.3);
+
+      cards.forEach((card) => {
+        const angle = card.angle + t * card.speed;
+        card.mesh.position.set(
+          Math.cos(angle) * card.radius,
+          Math.sin(angle * 0.8) * 0.55 + card.tilt,
+          Math.sin(angle) * card.radius
+        );
+        card.mesh.lookAt(camera.position);
       });
 
-      allLights.forEach((light) => {
-        light.material.opacity = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * light.userData.speed + light.userData.phase));
+      ringPoints.forEach((point) => {
+        const angle = point.userData.angle + t * point.userData.speed;
+        point.position.set(
+          Math.cos(angle) * point.userData.radius,
+          point.userData.y + Math.sin(t * 0.5 + point.userData.angle) * 0.12,
+          Math.sin(angle) * point.userData.radius
+        );
       });
 
-      if (orbit) {
-        orbit.core.rotation.y = t * 0.4;
-        orbit.coreWire.rotation.y = -t * 0.25;
-        orbit.coreWire.rotation.x = t * 0.15;
-        orbit.cards.forEach((card) => {
-          const angle = card.angle + t * card.speed;
-          card.mesh.position.set(Math.cos(angle) * 1.6, Math.sin(angle * 0.8) * 0.5 + card.tilt, Math.sin(angle) * 1.6);
-          card.mesh.lookAt(camera.position);
-        });
-        orbit.group.position.y = 6.6 + Math.sin(t * 0.6) * 0.12;
-      }
-
-      worldGroup.rotation.y = Math.sin(t * 0.05) * 0.18;
-      particles.rotation.y = t * 0.015;
+      worldGroup.rotation.y = Math.sin(t * 0.08) * 0.22;
+      particles.rotation.y = t * 0.02;
 
       curX += (targetX - curX) * 0.04;
       curY += (targetY - curY) * 0.04;
       camera.position.x = curX * 1.1;
-      camera.position.y = 3.4 - curY * 0.5;
-      camera.lookAt(0, 3, 0);
+      camera.position.y = 0.4 - curY * 0.5;
+      camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(animate);
@@ -510,8 +352,8 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
       resizeObserver.disconnect();
       renderer.dispose();
       scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-          obj.geometry.dispose();
+        if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Sprite) {
+          obj.geometry?.dispose?.();
           const material = obj.material;
           if (Array.isArray(material)) material.forEach((m) => m.dispose());
           else material.dispose();
@@ -521,7 +363,7 @@ export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [tower]);
+  }, []);
 
   return <div ref={containerRef} className="absolute inset-0" aria-hidden="true" />;
 }
