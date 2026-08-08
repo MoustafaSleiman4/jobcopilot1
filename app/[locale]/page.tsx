@@ -172,6 +172,33 @@ export default async function HomePage({
       <Navbar />
 
       <main className="flex-1">
+        {/* Jobs showcase — a fully 3D, continuously turning drum of real job
+            listings pulled live from public.retrieved_jobs (see
+            app/api/jobs/showcase and components/JobsShowcase.tsx), meant to
+            visually sell the site's actual scale ("thousands of real jobs")
+            to a first-time visitor rather than just asserting it in copy.
+            Placed as the very first thing on the page — above the hero's
+            trust badge/headline — so it's the first thing a visitor sees,
+            not something that requires scrolling past the hero to find. */}
+        <section className="bg-background py-16 sm:py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <ScrollReveal>
+              <p className="text-center text-sm font-bold uppercase tracking-wide text-gold-600">
+                {t("jobsShowcase.eyebrow")}
+              </p>
+              <h2 className="mt-2 text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("jobsShowcase.title")}
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-foreground/60">
+                {t("jobsShowcase.subtitle")}
+              </p>
+            </ScrollReveal>
+            <ScrollReveal delay={150} className="mt-10">
+              <JobsShowcase />
+            </ScrollReveal>
+          </div>
+        </section>
+
         {/* Hero */}
         <section className="desert-gradient relative overflow-hidden">
           <div className="hero-drift pattern-motif pointer-events-none absolute inset-0" />
@@ -296,30 +323,6 @@ export default async function HomePage({
             </ScrollReveal>
           </div>
           <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
-        </section>
-
-        {/* Jobs showcase — a fully 3D, continuously turning drum of real job
-            listings pulled live from public.retrieved_jobs (see
-            app/api/jobs/showcase and components/JobsShowcase.tsx), meant to
-            visually sell the site's actual scale ("thousands of real jobs")
-            to a first-time visitor rather than just asserting it in copy. */}
-        <section className="bg-background py-20">
-          <div className="mx-auto max-w-6xl px-6">
-            <ScrollReveal>
-              <p className="text-center text-sm font-bold uppercase tracking-wide text-gold-600">
-                {t("jobsShowcase.eyebrow")}
-              </p>
-              <h2 className="mt-2 text-center text-3xl font-bold text-foreground sm:text-4xl">
-                {t("jobsShowcase.title")}
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-foreground/60">
-                {t("jobsShowcase.subtitle")}
-              </p>
-            </ScrollReveal>
-            <ScrollReveal delay={150} className="mt-10">
-              <JobsShowcase />
-            </ScrollReveal>
-          </div>
         </section>
 
         {/* How it works */}
