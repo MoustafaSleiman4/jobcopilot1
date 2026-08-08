@@ -7,6 +7,7 @@ import AuthAwareCta from "@/components/AuthAwareCta";
 import HideIfPro from "@/components/HideIfPro";
 import ScrollReveal from "@/components/ScrollReveal";
 import Hero3DLoader from "@/components/Hero3DLoader";
+import JobsShowcase from "@/components/JobsShowcase";
 import DuneDivider from "@/components/decorative/DuneDivider";
 import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
 import {
@@ -295,6 +296,30 @@ export default async function HomePage({
             </ScrollReveal>
           </div>
           <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
+        </section>
+
+        {/* Jobs showcase — a fully 3D, continuously turning drum of real job
+            listings pulled live from public.retrieved_jobs (see
+            app/api/jobs/showcase and components/JobsShowcase.tsx), meant to
+            visually sell the site's actual scale ("thousands of real jobs")
+            to a first-time visitor rather than just asserting it in copy. */}
+        <section className="bg-background py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <ScrollReveal>
+              <p className="text-center text-sm font-bold uppercase tracking-wide text-gold-600">
+                {t("jobsShowcase.eyebrow")}
+              </p>
+              <h2 className="mt-2 text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("jobsShowcase.title")}
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-foreground/60">
+                {t("jobsShowcase.subtitle")}
+              </p>
+            </ScrollReveal>
+            <ScrollReveal delay={150} className="mt-10">
+              <JobsShowcase />
+            </ScrollReveal>
+          </div>
         </section>
 
         {/* How it works */}

@@ -56,6 +56,14 @@
       "Egypt",
       "Jordan"
     ],
+    "jobsShowcase": {
+      "eyebrow": "Live job feed",
+      "title": "Thousands of real jobs, updating every day",
+      "subtitle": "Every card below is a real, live opening pulled straight from our jobs database — not a mockup.",
+      "statsRoles": "{count}+ live roles",
+      "statsCompanies": "{count}+ hiring companies",
+      "statsIndustries": "{count} industries"
+    },
     "features": {
       "title": "Everything you need to get hired, faster",
       "proBadge": "Pro",
