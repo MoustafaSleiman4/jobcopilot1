@@ -280,14 +280,31 @@ function buildOrbitLayer(): { group: THREE.Group; core: THREE.Mesh; coreWire: TH
   return { group, core, coreWire, cards };
 }
 
+type TowerName = "faisaliah" | "burj";
+
 /**
  * The homepage hero's centerpiece: a stylized, animated 3D rendition of two
- * real Gulf landmarks — Al Faisaliah Tower (Riyadh) on the left and Burj
- * Khalifa (Dubai) on the right — rising into place with a glowing "AI
- * copilot" orb orbited by job-search icon cards hovering above the skyline
- * between them. Built directly with three.js (no react-three-fiber — this
- * is the only 3D surface in the app, so a full scene-graph wrapper would add
+ * real Gulf landmarks — Al Faisaliah Tower (Riyadh) and Burj Khalifa
+ * (Dubai). Built directly with three.js (no react-three-fiber — this is the
+ * only 3D surface in the app, so a full scene-graph wrapper would add
  * abstraction with nothing else to amortize it against).
+ *
+ * Two render modes, chosen by the optional `tower` prop:
+ *  - Omitted: the original combined scene — both towers side by side with
+ *    the orbiting "AI copilot" layer floating between them. A single wide
+ *    canvas, meant to be its own block.
+ *  - `"faisaliah"` / `"burj"`: a single tower, recentered at x=0 and
+ *    reframed for a narrow, portrait-ish card. Used to render each tower as
+ *    its own small widget flanking the headline text directly (Faisaliah
+ *    immediately before it, Burj Khalifa immediately after) — see
+ *    app/[locale]/page.tsx. Splitting into two independent canvases instead
+ *    of one wide scene stretched to overlap the text was a deliberate
+ *    choice: a shared canvas positioned behind the headline meant the
+ *    towers either sat too close (overlapping and obscuring the words) or
+ *    had to be pushed so far apart they nearly left the frame. Two small,
+ *    self-contained widgets laid out with plain flexbox next to the text
+ *    guarantee no overlap at any viewport width, with no pixel-math
+ *    guessing required.
  *
  * Dynamically imported with `ssr: false` from the homepage (see
  * app/[locale]/page.tsx) — WebGL has no meaning during server rendering,
@@ -295,7 +312,7 @@ function buildOrbitLayer(): { group: THREE.Group; core: THREE.Mesh; coreWire: TH
  * entirely; it downloads and mounts only once the browser reaches this
  * component.
  */
-export default function Hero3D() {
+export default function Hero3D({ tower }: { tower?: TowerName } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -321,13 +338,13 @@ export default function Hero3D() {
 
     let frameId = 0;
     let disposed = false;
+    const single = tower !== undefined;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    // Pulled in from 12 now that only two towers need to fit in frame (down
-    // from three) — a tighter shot reads as bigger/closer, which also suits
-    // the shorter canvas this scene now renders into (see the reduced hero
-    // container height in app/[locale]/page.tsx).
+    // A single centered tower never needs the horizontal pull-back the
+    // combined scene uses to keep two spread-out towers in frame — fixed
+    // distance is enough since the tower body is only ~1 world unit wide.
     const baseCameraZ = 10;
     camera.position.set(0, 3.4, baseCameraZ);
 
@@ -348,50 +365,61 @@ export default function Hero3D() {
     const worldGroup = new THREE.Group();
     scene.add(worldGroup);
 
-    // Faisaliah on the left, Burj Khalifa on the right — Kingdom Centre
-    // removed from the scene entirely per design feedback, leaving open sky
-    // (and the orbiting copilot layer) between the two remaining towers.
-    const faisaliah = buildFaisaliah();
-    faisaliah.position.x = -2.7;
-    const burj = buildBurjKhalifa();
-    burj.position.x = 2.7;
-
-    // Rise-up entrance, staggered left to right — each tower's group pivots
-    // from the ground (y=0 is the shared ground plane every shape was
-    // traced against), so animating scale.y from ~0 to 1 reads as the
-    // skyline genuinely building itself up rather than a generic fade-in.
-    const towers = [
-      { group: faisaliah, delay: 0 },
-      { group: burj, delay: 0.2 },
-    ];
-    towers.forEach((tower) => {
-      tower.group.scale.y = 0.0001;
-      worldGroup.add(tower.group);
+    // Combined mode: Faisaliah on the left, Burj Khalifa on the right, the
+    // orbiting copilot layer between them. Single mode: whichever one tower
+    // was asked for, recentered to x=0 so it sits dead-center in its own
+    // small widget.
+    const towers: { group: THREE.Group; delay: number }[] = [];
+    let allLights: WindowLight[] = [];
+    if (single) {
+      const group = tower === "faisaliah" ? buildFaisaliah() : buildBurjKhalifa();
+      group.position.x = 0;
+      towers.push({ group, delay: 0 });
+      worldGroup.add(group);
+      allLights =
+        tower === "faisaliah"
+          ? addWindowLights(group, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)])
+          : addWindowLights(group, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]);
+    } else {
+      const faisaliah = buildFaisaliah();
+      faisaliah.position.x = -2.7;
+      const burj = buildBurjKhalifa();
+      burj.position.x = 2.7;
+      towers.push({ group: faisaliah, delay: 0 }, { group: burj, delay: 0.2 });
+      towers.forEach((t) => worldGroup.add(t.group));
+      allLights = [
+        ...addWindowLights(faisaliah, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)]),
+        ...addWindowLights(burj, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]),
+      ];
+    }
+    towers.forEach((t) => {
+      t.group.scale.y = 0.0001;
     });
 
-    const allLights: WindowLight[] = [
-      ...addWindowLights(faisaliah, 8, [sy(110), sy(240)], [sx(122, 140), sx(158, 140)]),
-      ...addWindowLights(burj, 10, [sy(60), sy(240)], [sx(578, 600), sx(622, 600)]),
-    ];
-
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(15, 8),
+      new THREE.PlaneGeometry(single ? 4 : 15, single ? 4 : 8),
       new THREE.MeshBasicMaterial({ map: makeGlowTexture(), transparent: true, opacity: 0.5, depthWrite: false })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     worldGroup.add(ground);
 
-    const orbit = buildOrbitLayer();
-    orbit.group.position.set(0, 6.6, 0);
-    worldGroup.add(orbit.group);
+    // The orbiting "AI copilot" layer only makes sense between two towers
+    // with open sky to hover in — skip it entirely for a single narrow
+    // widget, where it would have nowhere to orbit without colliding with
+    // the tower or the widget's edges.
+    const orbit = single ? null : buildOrbitLayer();
+    if (orbit) {
+      orbit.group.position.set(0, 6.6, 0);
+      worldGroup.add(orbit.group);
+    }
 
-    const particleCount = 160;
+    const particleCount = single ? 40 : 160;
     const positions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 18;
-      positions[i * 3 + 1] = Math.random() * 9 + 1;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 8 - 3;
+      positions[i * 3] = (Math.random() - 0.5) * (single ? 3 : 18);
+      positions[i * 3 + 1] = Math.random() * (single ? 7 : 9) + 1;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * (single ? 3 : 8) - (single ? 1 : 3);
     }
     const particleGeometry = new THREE.BufferGeometry();
     particleGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -421,11 +449,12 @@ export default function Hero3D() {
       if (width === 0 || height === 0) return;
       const aspect = width / height;
       camera.aspect = aspect;
-      // Narrower/taller containers (mobile) need the camera pulled back
-      // further to keep both towers in frame — a fixed camera distance
-      // that looks right on a wide desktop hero crops the left and right
-      // towers on a narrow phone viewport.
-      camera.position.z = aspect < 1.6 ? baseCameraZ * (1.6 / Math.max(aspect, 0.75)) : baseCameraZ;
+      // Single-tower widgets are narrow/portrait by design (see their sizing
+      // in app/[locale]/page.tsx) and only ever hold one centered tower, so
+      // they never need the horizontal pull-back below — that formula
+      // exists purely to keep the combined scene's two spread-out towers in
+      // frame on a narrow/tall (mobile) container.
+      camera.position.z = !single && aspect < 1.6 ? baseCameraZ * (1.6 / Math.max(aspect, 0.75)) : baseCameraZ;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     }
@@ -448,15 +477,17 @@ export default function Hero3D() {
         light.material.opacity = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * light.userData.speed + light.userData.phase));
       });
 
-      orbit.core.rotation.y = t * 0.4;
-      orbit.coreWire.rotation.y = -t * 0.25;
-      orbit.coreWire.rotation.x = t * 0.15;
-      orbit.cards.forEach((card) => {
-        const angle = card.angle + t * card.speed;
-        card.mesh.position.set(Math.cos(angle) * 1.6, Math.sin(angle * 0.8) * 0.5 + card.tilt, Math.sin(angle) * 1.6);
-        card.mesh.lookAt(camera.position);
-      });
-      orbit.group.position.y = 6.6 + Math.sin(t * 0.6) * 0.12;
+      if (orbit) {
+        orbit.core.rotation.y = t * 0.4;
+        orbit.coreWire.rotation.y = -t * 0.25;
+        orbit.coreWire.rotation.x = t * 0.15;
+        orbit.cards.forEach((card) => {
+          const angle = card.angle + t * card.speed;
+          card.mesh.position.set(Math.cos(angle) * 1.6, Math.sin(angle * 0.8) * 0.5 + card.tilt, Math.sin(angle) * 1.6);
+          card.mesh.lookAt(camera.position);
+        });
+        orbit.group.position.y = 6.6 + Math.sin(t * 0.6) * 0.12;
+      }
 
       worldGroup.rotation.y = Math.sin(t * 0.05) * 0.18;
       particles.rotation.y = t * 0.015;
@@ -490,7 +521,7 @@ export default function Hero3D() {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [tower]);
 
   return <div ref={containerRef} className="absolute inset-0" aria-hidden="true" />;
 }
