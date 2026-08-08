@@ -114,6 +114,18 @@ export default function DashboardShell({
                 Demo mode — connect Supabase to go live
               </span>
             )}
+            {/* Kept as its own always-visible link right next to the
+                language switcher (rather than tucked inside the account
+                menu below) — a user stuck on something wants Help
+                immediately findable the moment they land in the dashboard,
+                not one extra click away. */}
+            <Link
+              href="/help"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground/70 hover:border-emerald-300 hover:text-foreground"
+            >
+              <HelpCircle size={16} />
+              <span className="hidden sm:inline">{t("help")}</span>
+            </Link>
             <LocaleSwitcher />
 
             {/* Account menu: this is the one place in the whole dashboard
@@ -155,18 +167,10 @@ export default function DashboardShell({
                           {plan === "pro" ? t("planPro") : t("planFree")}
                         </span>
                       </div>
-                      <Link
-                        href="/help"
-                        onClick={() => setMenuOpen(false)}
-                        className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
-                      >
-                        <HelpCircle size={15} />
-                        {t("help")}
-                      </Link>
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
+                        className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50"
                       >
                         <LogOut size={15} />
                         {t("signOut")}
