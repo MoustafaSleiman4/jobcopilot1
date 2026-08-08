@@ -104,7 +104,7 @@ export default function JobsShowcase() {
           </span>
         </div>
       )}
-      <div className="relative mx-auto h-28 w-full max-w-4xl sm:h-36 md:h-44">
+      <div className="relative h-52 w-full sm:h-64 md:h-72">
         <JobsShowcase3D key={live ? "live" : "fallback"} jobs={jobs} />
       </div>
     </div>

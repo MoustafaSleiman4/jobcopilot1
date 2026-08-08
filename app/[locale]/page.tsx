@@ -193,10 +193,15 @@ export default async function HomePage({
                 {t("jobsShowcase.subtitle")}
               </p>
             </ScrollReveal>
-            <ScrollReveal delay={150} className="mt-2">
-              <JobsShowcase />
-            </ScrollReveal>
           </div>
+          {/* Full page width, deliberately outside the max-w-6xl/px-6
+              container above (the heading stays centered/contained; the
+              animation itself doesn't) — the cards should visibly travel
+              edge-to-edge, not be boxed into the same reading column as the
+              text. */}
+          <ScrollReveal delay={150} className="mt-2">
+            <JobsShowcase />
+          </ScrollReveal>
         </section>
 
         {/* Hero */}

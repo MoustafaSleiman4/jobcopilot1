@@ -34,60 +34,63 @@ function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
 // file. Deliberately unlit-material-friendly: flat, high-contrast colors
 // baked directly into the texture rather than relying on any lighting.
 function makeJobCardTexture(job: ShowcaseCardJob): THREE.CanvasTexture {
-  const w = 320;
-  const h = 200;
+  // Rendered at 2x the card's target pixel size (roughly) so text stays
+  // crisp now that cards are much bigger on screen — the earlier 320x200
+  // canvas looked soft once card planes doubled in world-space size.
+  const w = 460;
+  const h = 284;
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
-  roundRectPath(ctx, 5, 5, w - 10, h - 10, 22);
+  roundRectPath(ctx, 7, 7, w - 14, h - 14, 30);
   ctx.fillStyle = "#fdf9ec";
   ctx.fill();
   ctx.strokeStyle = "rgba(217,173,63,0.65)";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5;
   ctx.stroke();
 
-  // Small emerald "briefcase" badge, top-left.
-  roundRectPath(ctx, 22, 22, 38, 38, 11);
+  // Emerald "briefcase" badge, top-left.
+  roundRectPath(ctx, 30, 30, 54, 54, 16);
   ctx.fillStyle = "#0f8f66";
   ctx.fill();
   ctx.strokeStyle = "#fdf9ec";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  roundRectPath(ctx, 32, 36, 18, 15, 3);
+  roundRectPath(ctx, 44, 51, 26, 21, 4);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(32, 42);
-  ctx.lineTo(50, 42);
+  ctx.moveTo(44, 59);
+  ctx.lineTo(70, 59);
   ctx.stroke();
 
   // "HIRING NOW" pill, top-right — the recurring visual hook that sells
   // "this is live," not just a static mockup.
-  ctx.font = "bold 12px Arial";
+  ctx.font = "bold 17px Arial";
   const pillLabel = "HIRING NOW";
-  const pillWidth = ctx.measureText(pillLabel).width + 22;
-  roundRectPath(ctx, w - 22 - pillWidth, 26, pillWidth, 26, 13);
+  const pillWidth = ctx.measureText(pillLabel).width + 30;
+  roundRectPath(ctx, w - 30 - pillWidth, 36, pillWidth, 36, 18);
   ctx.fillStyle = "rgba(15,143,102,0.12)";
   ctx.fill();
   ctx.fillStyle = "#0f8f66";
   ctx.textBaseline = "middle";
-  ctx.fillText(pillLabel, w - 22 - pillWidth + 11, 26 + 13);
+  ctx.fillText(pillLabel, w - 30 - pillWidth + 15, 36 + 18);
 
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#085f43";
-  ctx.font = "bold 22px Arial";
-  ctx.fillText(truncateToWidth(ctx, job.title, w - 44), 22, 96);
+  ctx.font = "bold 32px Arial";
+  ctx.fillText(truncateToWidth(ctx, job.title, w - 62), 30, 136);
 
   ctx.fillStyle = "#b8892f";
-  ctx.font = "600 17px Arial";
-  ctx.fillText(truncateToWidth(ctx, job.company, w - 44), 22, 124);
+  ctx.font = "600 24px Arial";
+  ctx.fillText(truncateToWidth(ctx, job.company, w - 62), 30, 175);
 
   ctx.fillStyle = "rgba(8,95,67,0.6)";
-  ctx.font = "14px Arial";
-  ctx.fillText(truncateToWidth(ctx, job.location || "Gulf Region", w - 44), 22, 148);
+  ctx.font = "20px Arial";
+  ctx.fillText(truncateToWidth(ctx, job.location || "Gulf Region", w - 62), 30, 209);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -114,15 +117,20 @@ function makeGlowTexture(color: string): THREE.CanvasTexture {
 }
 
 type RingConfig = { radius: number; y: number; count: number; speed: number };
-// Three concentric, vertically-staggered rings of cards orbiting a central
-// glowing column — reads as a dense, continuously-turning "drum" of job
-// listings rather than one or two static tiles, which is the whole point:
-// communicating "there are thousands of these" at a glance.
+// Two wide, vertically-offset rings of big cards orbiting a central glowing
+// column — a large orbit radius (rather than the earlier compact, tighter
+// drum) so the cards visibly travel across the full width of the page as
+// they turn, not just spin in place inside a small box.
 const RINGS: RingConfig[] = [
-  { radius: 3.3, y: 1.3, count: 8, speed: 0.16 },
-  { radius: 4.0, y: 0, count: 9, speed: -0.12 },
-  { radius: 3.3, y: -1.3, count: 8, speed: 0.16 },
+  { radius: 6.4, y: 0.85, count: 8, speed: 0.13 },
+  { radius: 7.1, y: -0.85, count: 9, speed: -0.1 },
 ];
+const RING_MAX_RADIUS = Math.max(...RINGS.map((r) => r.radius));
+
+// Card plane size in world units — roughly 1.7x the previous card size so
+// text reads clearly even though the ring is now much farther from camera.
+const CARD_WIDTH = 2.3;
+const CARD_HEIGHT = 1.42;
 
 type OrbitCard = { mesh: THREE.Mesh; baseAngle: number; radius: number; y: number; speed: number };
 
@@ -167,9 +175,9 @@ export default function JobsShowcase3D({ jobs }: { jobs: ShowcaseCardJob[] }) {
     let disposed = false;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    const baseCameraZ = 6.8;
-    camera.position.set(0, 0.6, baseCameraZ);
+    const cameraFov = 45;
+    const camera = new THREE.PerspectiveCamera(cameraFov, 1, 0.1, 100);
+    camera.position.set(0, 0.4, 8);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     container.appendChild(renderer.domElement);
@@ -239,7 +247,7 @@ export default function JobsShowcase3D({ jobs }: { jobs: ShowcaseCardJob[] }) {
         jobCursor++;
 
         const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.83), material);
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CARD_WIDTH, CARD_HEIGHT), material);
         const baseAngle = (i / ring.count) * Math.PI * 2;
         mesh.position.set(Math.cos(baseAngle) * ring.radius, ring.y, Math.sin(baseAngle) * ring.radius);
         worldGroup.add(mesh);
@@ -248,17 +256,17 @@ export default function JobsShowcase3D({ jobs }: { jobs: ShowcaseCardJob[] }) {
     });
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(13, 13),
+      new THREE.PlaneGeometry(22, 22),
       new THREE.MeshBasicMaterial({ map: makeGlowTexture("#0f8f66"), transparent: true, opacity: 0.32, depthWrite: false })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -3;
     worldGroup.add(ground);
 
-    const particleCount = 110;
+    const particleCount = 140;
     const positions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 13;
+      positions[i * 3] = (Math.random() - 0.5) * 22;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 7;
       positions[i * 3 + 2] = (Math.random() - 0.5) * 5 - 1;
     }
@@ -286,17 +294,23 @@ export default function JobsShowcase3D({ jobs }: { jobs: ShowcaseCardJob[] }) {
     }
     window.addEventListener("pointermove", handlePointerMove);
 
+    // Solved directly from the camera's horizontal FOV rather than a fixed
+    // distance (the previous approach) — this section runs the full width
+    // of the page, so however wide that ends up being, the camera distance
+    // is whatever makes the ring's outer edge (+ half a card's width, so
+    // cards aren't clipped mid-orbit) reach almost to the frame's edges.
+    // Without this, a fixed distance either leaves large empty margins on a
+    // wide desktop viewport or clips cards on a narrow phone.
+    const targetHalfWidth = (RING_MAX_RADIUS + CARD_WIDTH / 2) * 1.04;
     function handleResize() {
       const { width, height } = container!.getBoundingClientRect();
       if (width === 0 || height === 0) return;
       const aspect = width / height;
       camera.aspect = aspect;
-      // This section spans the full page width, so its container is much
-      // wider/shorter than Hero3D's compact block — a fixed camera distance
-      // clips the top/bottom card rings on a wide, short viewport. Pull the
-      // camera back proportionally to how far the aspect ratio exceeds a
-      // roughly-square frame.
-      camera.position.z = baseCameraZ * Math.min(1.7, Math.max(1, aspect / 2.1));
+      const verticalFovRad = (cameraFov * Math.PI) / 180;
+      const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect);
+      const distanceForWidth = targetHalfWidth / Math.tan(horizontalFovRad / 2);
+      camera.position.z = THREE.MathUtils.clamp(distanceForWidth, 4.5, 15);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     }
