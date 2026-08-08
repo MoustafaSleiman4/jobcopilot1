@@ -21,6 +21,7 @@ import {
   GraduationCap,
   Zap,
   HelpCircle,
+  Building2,
 } from "lucide-react";
 
 const navItems = [
@@ -167,6 +168,26 @@ export default function DashboardShell({
                           {plan === "pro" ? t("planPro") : t("planFree")}
                         </span>
                       </div>
+                      {/* Only shown once this account actually owns a
+                          company row — otherwise every job seeker would see
+                          a link into a portal they've never set up. This is
+                          the fix for "created a company but couldn't find
+                          my way back to the job seeker dashboard": that
+                          direction already worked (no code stopped it, /dashboard
+                          only requires a session), it just had no visible
+                          entry point once someone had switched into the
+                          employer side. See EmployerDashboardShell for the
+                          matching link back. */}
+                      {user.hasCompany && (
+                        <Link
+                          href="/employer/dashboard"
+                          onClick={() => setMenuOpen(false)}
+                          className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                        >
+                          <Building2 size={15} />
+                          {t("employerDashboard")}
+                        </Link>
+                      )}
                       <button
                         type="button"
                         onClick={handleSignOut}

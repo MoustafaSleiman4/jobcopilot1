@@ -6,7 +6,7 @@ import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 import { createClient } from "@/lib/supabase/client";
-import { Briefcase, Building2, LogOut, ChevronDown } from "lucide-react";
+import { Briefcase, Building2, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
 const navItems = [
   { key: "postings", href: "/employer/dashboard", icon: Briefcase },
@@ -102,6 +102,22 @@ export default function EmployerDashboardShell({
                     <div className="truncate px-3 py-2 text-sm font-semibold text-foreground">
                       {companyName}
                     </div>
+                    {/* This account's Supabase Auth session is the same one
+                        used on the job-seeker side — owning a company row
+                        doesn't remove access to /dashboard, it just wasn't
+                        reachable from here before. Always shown (unlike the
+                        matching link on the job-seeker side, which only
+                        appears once a company exists): every employer
+                        account is, underneath, a normal logged-in user who
+                        can always get back to their job-seeker dashboard. */}
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                    >
+                      <LayoutDashboard size={15} />
+                      {t("jobSeekerDashboard")}
+                    </Link>
                     <button
                       type="button"
                       onClick={handleSignOut}

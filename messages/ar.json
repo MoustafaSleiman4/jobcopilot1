@@ -312,7 +312,8 @@
       "coverLetter": "خطاب التقديم",
       "certifications": "الشهادات",
       "reports": "التقارير",
-      "autoApply": "التقديم التلقائي"
+      "autoApply": "التقديم التلقائي",
+      "employerDashboard": "لوحة صاحب العمل"
     },
     "overview": {
       "title": "مرحبًا بعودتك",
@@ -891,7 +892,8 @@
       "employerBadge": "صاحب عمل",
       "postings": "إعلانات الوظائف",
       "profile": "ملف الشركة",
-      "signOut": "تسجيل الخروج"
+      "signOut": "تسجيل الخروج",
+      "jobSeekerDashboard": "لوحة الباحث عن عمل"
     },
     "postings": {
       "title": "إعلانات الوظائف",

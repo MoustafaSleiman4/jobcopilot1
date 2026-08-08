@@ -312,7 +312,8 @@
       "coverLetter": "Cover letter",
       "certifications": "Certifications",
       "reports": "Reports",
-      "autoApply": "Auto Apply"
+      "autoApply": "Auto Apply",
+      "employerDashboard": "Employer dashboard"
     },
     "overview": {
       "title": "Welcome back",
@@ -891,7 +892,8 @@
       "employerBadge": "Employer",
       "postings": "Job postings",
       "profile": "Company profile",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "jobSeekerDashboard": "Job seeker dashboard"
     },
     "postings": {
       "title": "Job postings",

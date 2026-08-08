@@ -9,6 +9,12 @@ export type AuthUser = {
   fullName: string | null;
   phone: string | null;
   plan: "free" | "pro";
+  // Whether this account also owns a row in public.companies — i.e. the
+  // same login can act as both a job seeker (/dashboard) and an employer
+  // (/employer/dashboard). Used to surface a "switch to employer view" link
+  // in the job-seeker dashboard's account menu without showing it to every
+  // job seeker who has never touched the employer side.
+  hasCompany: boolean;
 };
 
 /**
@@ -40,11 +46,13 @@ export function useAuthUser() {
         const authedUser = data.user;
         if (!authedUser || cancelled) return;
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, phone, plan")
-          .eq("id", authedUser.id)
-          .single();
+        // Run in parallel — the company lookup is a cheap `select id` (RLS
+        // allows anyone to read public.companies) and shouldn't add latency
+        // on top of the profile fetch every dashboard load already does.
+        const [{ data: profile }, { data: company }] = await Promise.all([
+          supabase.from("profiles").select("full_name, phone, plan").eq("id", authedUser.id).single(),
+          supabase.from("companies").select("id").eq("owner_id", authedUser.id).maybeSingle(),
+        ]);
         if (cancelled) return;
 
         setUser({
@@ -53,6 +61,7 @@ export function useAuthUser() {
           fullName: profile?.full_name ?? null,
           phone: profile?.phone ?? null,
           plan: profile?.plan === "pro" ? "pro" : "free",
+          hasCompany: Boolean(company),
         });
       } catch {
         if (!cancelled) setConfigured(false);
