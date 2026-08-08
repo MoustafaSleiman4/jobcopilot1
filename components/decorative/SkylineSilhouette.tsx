@@ -4,8 +4,10 @@
  *  - Al Faisaliah Tower (Riyadh) — tapered obelisk with its signature
  *    gold sphere near the top
  *  - Kingdom Centre / Al Mamlakah Tower (Riyadh) — the "bottle-opener"
- *    silhouette: twin legs rising from a shared base, joined by an arch
- *    opening, capped by a connecting lintel at the top
+ *    silhouette: a solid tapered slab from the ground up through about
+ *    two-thirds of its height, flaring into two shoulders near the top
+ *    that curve back in to nearly meet, leaving a lens-shaped keyhole
+ *    opening capped by a short lintel — not a full-height arch/gateway
  *  - Burj Khalifa (Dubai) — the tallest element, a tiered, stepped tower
  *    tapering to a needle spire
  *  - Beirut Digital District — represented as a cluster of low/mid-rise
@@ -77,17 +79,23 @@ export default function SkylineSilhouette({ className = "" }: { className?: stri
           <circle cx="140" cy="12" r="2.6" />
         </g>
 
-        {/* Kingdom Centre / Al Mamlakah Tower — "bottle-opener" silhouette,
-            narrowed and slimmed (legs and overall width both reduced) from
-            an earlier version that read as a fat rainbow/gateway arch
-            rather than a slender skyscraper — two legs rising and leaning
-            inward, meeting a pointed (parabolic, not semicircular) arch
-            opening near the top, capped by a flat crown lintel that sits
-            slightly proud of the legs on either side. */}
+        {/* Kingdom Centre / Al Mamlakah Tower — redrawn against a real
+            reference photo after the previous version read as a plain
+            rounded gateway/arch (a hole running the full height, down to
+            the ground on both sides) rather than the actual building. The
+            real tower is a single solid slab from the ground up through
+            about two-thirds of its height — the "keyhole" opening only
+            appears in the upper third, where the body flares outward into
+            two shoulders, curves back inward, and nearly meets at the top,
+            leaving a lens-shaped negative space with a short flat lintel
+            closing it at the very top. Drawn as one solid outline (the
+            tapered, flared body) with a second, smaller lens-shaped path
+            cut out of just the upper portion via evenodd — not two full-
+            height legs. */}
         <path
           fillRule="evenodd"
-          d="M300,260 L306,145 Q310,95 322,76 Q333,62 350,60 L370,60 Q387,62 398,76 Q410,95 414,145 L420,260 Z
-             M333,260 L337,165 Q339,115 346,100 Q351,92 360,92 Q369,92 374,100 Q381,115 383,165 L387,260 Z"
+          d="M305,260 L305,80 Q305,62 322,58 L398,58 Q415,62 415,80 L415,260 Z
+             M360,148 Q332,135 325,95 Q330,68 355,64 L365,64 Q390,68 395,95 Q388,135 360,148 Z"
         />
 
         {/* Burj Khalifa — the tallest element by a clear margin, and drawn
