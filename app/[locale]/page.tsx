@@ -180,20 +180,20 @@ export default async function HomePage({
             Placed as the very first thing on the page — above the hero's
             trust badge/headline — so it's the first thing a visitor sees,
             not something that requires scrolling past the hero to find. */}
-        <section className="bg-background py-16 sm:py-20">
+        <section className="bg-background py-2 sm:py-3">
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
-              <p className="text-center text-sm font-bold uppercase tracking-wide text-gold-600">
+              <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600 sm:text-sm">
                 {t("jobsShowcase.eyebrow")}
               </p>
-              <h2 className="mt-2 text-center text-3xl font-bold text-foreground sm:text-4xl">
+              <h2 className="mt-0.5 text-center text-xl font-bold text-foreground sm:text-2xl">
                 {t("jobsShowcase.title")}
               </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-foreground/60">
+              <p className="mx-auto mt-1 max-w-2xl text-center text-xs leading-relaxed text-foreground/60 sm:text-sm">
                 {t("jobsShowcase.subtitle")}
               </p>
             </ScrollReveal>
-            <ScrollReveal delay={150} className="mt-10">
+            <ScrollReveal delay={150} className="mt-2">
               <JobsShowcase />
             </ScrollReveal>
           </div>
@@ -219,26 +219,23 @@ export default async function HomePage({
             style={{ bottom: "18%", left: "18%" }}
             aria-hidden="true"
           />
-          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-40 w-full text-emerald-800 sm:h-56" />
-          <div className="relative mx-auto max-w-4xl px-6 pb-52 pt-6 text-center sm:pb-64 sm:pt-8">
-            {/* 3D centerpiece — a fully 3D "AI copilot" orb (glowing core,
-                orbiting job-icon cards, a drifting ring of light) as its own
-                block above the badge/headline, rather than real building
-                shapes flanking the text. The earlier tower-based version
-                (Faisaliah/Burj Khalifa as literal 3D buildings) kept
-                fighting the headline's own width no matter how it was laid
-                out — either overlapping the words or getting pushed to the
-                far edges of the frame. An abstract centerpiece sidesteps
-                that entirely: it's its own compact block, so there's no
-                text to collide with, while still reading as a real,
-                animated 3D scene rather than a static illustration. Kept
-                short so the animation and the headline/subtitle both sit in
-                view together instead of pushing the copy below the fold. */}
-            <ScrollReveal direction="none">
-              <div className="relative mx-auto h-40 w-full max-w-md sm:h-40 md:h-44">
-                <Hero3DLoader />
-              </div>
-            </ScrollReveal>
+          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-0 h-20 w-full text-emerald-800 sm:h-28" />
+          {/* 3D "AI copilot" orb (glowing core, orbiting job-icon cards, a
+              drifting ring of light) — kept as a small corner accent rather
+              than a full-width block above the headline. It previously sat
+              in normal document flow above the badge, pushing the badge/
+              headline/CTA down by its own height; now it's absolutely
+              positioned in the top-right corner (matching how the other
+              decorative hero elements — the glow orbs, the skyline — are
+              layered in), so the hero's actual copy starts right at the top
+              of the section instead of below the animation. */}
+          <div
+            className="pointer-events-none absolute right-0 top-0 h-14 w-14 opacity-50 sm:right-6 sm:top-4 sm:h-36 sm:w-36 sm:opacity-90"
+            aria-hidden="true"
+          >
+            <Hero3DLoader />
+          </div>
+          <div className="relative mx-auto max-w-4xl px-6 pb-8 pt-2 text-center sm:pb-10 sm:pt-3">
             <ScrollReveal direction="none">
               <div className="relative mt-1 inline-block">
                 {/* Confetti layer — deliberately OUTSIDE the pill's own
@@ -265,7 +262,7 @@ export default async function HomePage({
                     />
                   ))}
                 </div>
-                <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-6 py-2.5 text-base font-bold text-gold-700 shadow-sm sm:px-8 sm:py-3.5 sm:text-xl">
+                <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-5 py-1.5 text-sm font-bold text-gold-700 shadow-sm sm:px-7 sm:py-2.5 sm:text-lg">
                   <span className="relative">
                     {badgeBefore}
                     {badgeTrophy && (
@@ -277,27 +274,27 @@ export default async function HomePage({
               </div>
             </ScrollReveal>
             <ScrollReveal delay={150}>
-              <h1 className="gradient-text-sweep mt-2 text-4xl font-extrabold tracking-tight sm:text-6xl">
+              <h1 className="gradient-text-sweep mt-1 text-2xl font-extrabold tracking-tight sm:text-4xl">
                 {t("title")}
               </h1>
             </ScrollReveal>
             <ScrollReveal delay={300}>
-              <p className="mx-auto mt-2 max-w-2xl text-lg leading-relaxed text-foreground/70">
+              <p className="mx-auto mt-1 max-w-2xl text-sm leading-relaxed text-foreground/70 sm:text-base">
                 {t("subtitle")}
               </p>
             </ScrollReveal>
             <ScrollReveal delay={450}>
-              <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:mt-4 sm:flex-row sm:gap-4">
+              <div className="mt-2 flex flex-col items-center justify-center gap-2 sm:mt-2 sm:flex-row sm:gap-3">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}
                   loggedInLabel={t("goToDashboard")}
-                  className="cta-pulse w-full rounded-full bg-emerald-600 px-8 py-3.5 text-base font-semibold text-white transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-emerald-700 active:translate-y-0 active:scale-95 sm:w-auto"
+                  className="cta-pulse w-full rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-emerald-700 active:translate-y-0 active:scale-95 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
                 />
                 <HideIfPro>
                   <Link
                     href="/pricing"
-                    className="w-full rounded-full border border-border bg-surface px-8 py-3.5 text-base font-semibold text-foreground transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto"
+                    className="w-full rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
                   >
                     {t("ctaSecondary")}
                   </Link>
@@ -305,11 +302,11 @@ export default async function HomePage({
               </div>
             </ScrollReveal>
             <ScrollReveal delay={600}>
-              <p className="mt-8 text-sm text-foreground/50">{t("trustedBy")}</p>
+              <p className="mt-2 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
             </ScrollReveal>
 
             <ScrollReveal delay={750}>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                 <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
                 {regions.map((region) => (
                   <span

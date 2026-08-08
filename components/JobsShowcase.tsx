@@ -92,19 +92,19 @@ export default function JobsShowcase() {
   return (
     <div className="relative">
       {stats && (
-        <div className="mb-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-          <span className="rounded-full border border-gold-400/40 bg-gold-50 px-5 py-2 text-sm font-semibold text-gold-700 shadow-sm">
+        <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+          <span className="rounded-full border border-gold-400/40 bg-gold-50 px-3 py-1 text-xs font-semibold text-gold-700 shadow-sm sm:px-4 sm:text-sm">
             {t("statsRoles", { count: stats.total })}
           </span>
-          <span className="rounded-full border border-emerald-400/30 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm sm:px-4 sm:text-sm">
             {t("statsCompanies", { count: stats.companies })}
           </span>
-          <span className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-semibold text-foreground/70 shadow-sm">
+          <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-foreground/70 shadow-sm sm:px-4 sm:text-sm">
             {t("statsIndustries", { count: stats.industries })}
           </span>
         </div>
       )}
-      <div className="relative mx-auto h-80 w-full max-w-4xl sm:h-96 md:h-[28rem]">
+      <div className="relative mx-auto h-28 w-full max-w-4xl sm:h-36 md:h-44">
         <JobsShowcase3D key={live ? "live" : "fallback"} jobs={jobs} />
       </div>
     </div>
