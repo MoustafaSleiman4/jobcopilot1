@@ -1,0 +1,723 @@
+{
+  "nav": {
+    "product": "Product",
+    "pricing": "Pricing",
+    "login": "Log in",
+    "signup": "Get started",
+    "dashboard": "Dashboard",
+    "signOut": "Sign out"
+  },
+  "seo": {
+    "pricing": {
+      "title": "Pricing",
+      "description": "Simple, transparent pricing for GulfJobCopilot. Start free with 1 resume and 1 AI enhancement, or go Pro for unlimited AI resume tools, smart job search, one-click apply, and application tracking across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
+    },
+    "login": {
+      "title": "Log in",
+      "description": "Log in to your GulfJobCopilot account to keep building your AI-optimized resume and applying to real jobs across the Gulf, Lebanon and the Middle East."
+    },
+    "signup": {
+      "title": "Create your free account",
+      "description": "Sign up free for GulfJobCopilot — build an AI-optimized resume, get matched to real openings across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region, and apply in one click."
+    },
+    "forgotPassword": {
+      "title": "Reset your password"
+    },
+    "resetPassword": {
+      "title": "Set a new password"
+    }
+  },
+  "home": {
+    "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
+    "title": "Your AI copilot for landing the next job",
+    "subtitle": "Build a standout resume, get matched to real openings across the Gulf, Lebanon, and the wider Middle East & Africa region, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
+    "ctaPrimary": "Start free",
+    "ctaSecondary": "See pricing",
+    "goToDashboard": "Go to dashboard",
+    "trustedBy": "Trusted by job seekers across Riyadh, Jeddah, Dubai, Abu Dhabi, Beirut, Cairo, Amman & beyond",
+    "regionsLabel": "Proudly serving job seekers across",
+    "regions": [
+      "Saudi Arabia",
+      "UAE",
+      "Lebanon",
+      "Qatar",
+      "Kuwait",
+      "Bahrain",
+      "Oman",
+      "Egypt",
+      "Jordan"
+    ],
+    "features": {
+      "title": "Everything you need to get hired, faster",
+      "proBadge": "Pro",
+      "proNote": "Cards marked <badge>PRO</badge> are part of the Pro plan. <link>Compare plans</link>.",
+      "resume": {
+        "title": "Build & enhance your resume",
+        "desc": "Upload an existing resume or build one from scratch. Our AI rewrites bullet points, tailors it to each job, and checks it against ATS keyword filters."
+      },
+      "search": {
+        "title": "Smart Job Search & Copilot",
+        "desc": "Your copilot scans thousands of real openings from verified company career pages and job boards across the Gulf, the Levant, Egypt, and globally, matches them to your profile every day, and preps your contact info and a tailored cover letter for every job you apply to."
+      },
+      "apply": {
+        "title": "One-click apply",
+        "desc": "Apply instantly where supported, or get a pre-filled application ready in one extra click on the source site — never a blind auto-submit bot."
+      },
+      "coverLetter": {
+        "title": "AI cover letter generator",
+        "desc": "Generate a tailored cover letter for any job in seconds — matched to the role, the company, and your own resume, in a tone you choose."
+      },
+      "tracker": {
+        "title": "Application tracker",
+        "desc": "See every application's status in one board: saved, applied, interview, offer."
+      },
+      "reports": {
+        "title": "Reports & job-market insights",
+        "desc": "Track your response rate and application funnel over time, see which resume version performs best, and get a live snapshot of top hiring companies and locations for your target role. Export to CSV or PDF anytime."
+      },
+      "certifications": {
+        "title": "AI-recommended certifications",
+        "desc": "Get a short list of real, in-demand certifications tailored to your resume and target role — each with why it matters, how long it takes, and a link to start studying. Add earned ones straight to your resume."
+      },
+      "chatbot": {
+        "title": "AI job-search assistant",
+        "desc": "Ask anything — resume feedback, interview prep, salary questions — and get answers grounded in your own profile, any time."
+      },
+      "bilingual": {
+        "title": "Arabic & English, built in",
+        "desc": "A fully right-to-left Arabic experience alongside English, not a bolt-on translation."
+      }
+    },
+    "finalCta": {
+      "title": "Ready to find your next role?",
+      "subtitle": "Create your free account and build your first resume in minutes.",
+      "button": "Create free account"
+    },
+    "howItWorks": {
+      "title": "How GulfJobCopilot works",
+      "steps": {
+        "resume": {
+          "title": "Build or upload your resume",
+          "desc": "Start from scratch or upload an existing CV — we structure it into clean sections and suggest improvements automatically."
+        },
+        "match": {
+          "title": "Get matched to real openings",
+          "desc": "We scan verified company career pages and job boards across the Gulf, the Levant, and MEA every day and match them to your profile."
+        },
+        "apply": {
+          "title": "Apply in one click",
+          "desc": "Apply instantly where supported, or get a pre-filled application ready in one extra click — never a blind auto-submit bot."
+        },
+        "track": {
+          "title": "Track every application",
+          "desc": "See saved, applied, interview, and offer stages in one board, so nothing falls through the cracks."
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Job seekers across the region are landing interviews faster",
+      "subtitle": "Early feedback from people using GulfJobCopilot to search, apply, and track their job hunt.",
+      "items": [
+        {
+          "quote": "Uploading my old CV and getting a cleaned-up, ATS-ready version back in minutes saved me a whole weekend.",
+          "role": "Marketing Coordinator",
+          "location": "Dubai"
+        },
+        {
+          "quote": "I like that it pulls jobs straight from company career pages, not just the same recycled listings I'd already seen everywhere else.",
+          "role": "Software Engineer",
+          "location": "Riyadh"
+        },
+        {
+          "quote": "Having Arabic and English both feel native, not like an afterthought, made this the first job tool that actually felt built for us.",
+          "role": "HR Specialist",
+          "location": "Amman"
+        },
+        {
+          "quote": "The application tracker is what finally got me organized — I could actually see which companies I still owed a follow-up.",
+          "role": "Finance Analyst",
+          "location": "Beirut"
+        },
+        {
+          "quote": "One-click apply on the boards that support it is a genuine time saver when you're applying to a dozen roles a week.",
+          "role": "Project Coordinator",
+          "location": "Abu Dhabi"
+        },
+        {
+          "quote": "The AI assistant answering my interview-prep questions felt like having a career coach on call at 11pm.",
+          "role": "Recent Graduate",
+          "location": "Cairo"
+        }
+      ]
+    }
+  },
+  "pricing": {
+    "title": "Simple, transparent pricing",
+    "subtitle": "Start free. Upgrade when you're ready to apply faster.",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "period": "forever",
+      "desc": "Try the essentials",
+      "features": [
+        "1 resume",
+        "1 free AI resume enhancement",
+        "Community support"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "monthlyPrice": "$9.99",
+      "monthlyPeriod": "/ month",
+      "yearlyPrice": "$99.90",
+      "yearlyPeriod": "/ year",
+      "badge": "Most popular",
+      "desc": "Everything you need to land the job",
+      "features": [
+        "Unlimited resumes & AI enhancement",
+        "Smart Job Search & Copilot",
+        "Unlimited applications",
+        "One-click apply where supported",
+        "AI cover letter generator",
+        "AI job-search chatbot",
+        "Application tracker",
+        "AI-recommended certifications",
+        "Application reports & job-market insights",
+        "Mock interview practice",
+        "Priority support"
+      ],
+      "cta": "Upgrade to Pro",
+      "currentPlan": "You're on Pro",
+      "currentPlanNote": "You already have an active Pro subscription."
+    },
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "yearlySave": "Save ~17%",
+    "startingCheckout": "Starting checkout…",
+    "checkoutError": "Couldn't start checkout. Please try again in a moment."
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Log in to continue your job search",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "forgotLink": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "It's free to get started",
+      "name": "Full name",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "pendingPlanNotice": "Create your account and we'll take you straight to secure checkout.",
+      "redirectingToCheckout": "Redirecting to checkout…",
+      "confirmTitle": "Check your email",
+      "confirmBody": "We sent a confirmation link and a 6-digit code to {email}.",
+      "confirmSpam": "Not seeing it? Check your spam/junk folder — and if you're on Hotmail/Outlook, note that their link-safety scanning can sometimes use up the link before you click it. The code below works either way.",
+      "codeLabel": "Enter the 6-digit code",
+      "codePlaceholder": "123456",
+      "verifyCode": "Confirm",
+      "verifying": "Confirming...",
+      "codeError": "That code didn't work — it may have expired. Try resending.",
+      "orClickLink": "or click the link in the email",
+      "resendButton": "Resend email",
+      "resendSending": "Resending...",
+      "resendSent": "Sent — check your inbox again.",
+      "resendError": "Couldn't resend — please try again shortly.",
+      "backToLogin": "Back to log in"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a link to reset it",
+      "email": "Email",
+      "submit": "Send reset link",
+      "success": "If an account exists for that email, a reset link is on its way. Check your inbox (and spam folder).",
+      "backToLogin": "Back to log in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "subtitle": "Enter a new password for your account",
+      "password": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Update password",
+      "success": "Your password has been updated. Redirecting you to your dashboard…",
+      "mismatch": "Passwords don't match.",
+      "invalidLink": "This reset link is invalid or has expired. Request a new one below.",
+      "requestNewLink": "Request a new reset link"
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "overview": "Overview",
+      "resume": "Resume",
+      "jobs": "Job Copilot",
+      "applications": "Applications",
+      "chat": "Assistant",
+      "account": "Account",
+      "planFree": "Free plan",
+      "planPro": "Pro plan",
+      "signOut": "Sign out",
+      "coverLetter": "Cover letter",
+      "certifications": "Certifications",
+      "reports": "Reports"
+    },
+    "overview": {
+      "title": "Welcome back",
+      "subtitle": "Here's what's happening with your job search.",
+      "statResumes": "Resumes",
+      "statApplications": "Applications",
+      "statInterviews": "Interviews",
+      "planFree": "Free plan",
+      "planPro": "Pro plan",
+      "upgrade": "Upgrade to Pro",
+      "recentActivity": "Recent activity",
+      "viewAll": "View all",
+      "noActivity": "Nothing tracked yet. Save or apply to a job to see it here.",
+      "upgradedSuccess": "You're on Pro now — unlimited applications, AI enhancement, and one-click apply are all unlocked.",
+      "upgradedPending": "Payment received — we're finishing setting up your Pro plan. This is usually instant; refresh in a minute if it's still showing here."
+    },
+    "resume": {
+      "title": "Resume builder",
+      "subtitle": "Upload, build, and enhance your resume with AI.",
+      "upload": "Upload resume (PDF or DOCX)",
+      "uploading": "Uploading...",
+      "uploaded": "Uploaded",
+      "uploadError": "Upload failed",
+      "uploadTooBig": "That file is larger than 10MB — please use a smaller file.",
+      "loginRequired": "Please log in to upload or save a resume.",
+      "orBuild": "or build one from scratch",
+      "enhance": "Enhance with AI",
+      "enhancing": "Enhancing...",
+      "save": "Save resume",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "download": "Download PDF",
+      "downloadLocked": "Downloading your resume is a Pro feature. Upgrade to export polished, ready-to-send PDFs anytime.",
+      "upgradeCta": "Upgrade to Pro",
+      "parsing": "Reading your resume...",
+      "rewriting": "AI is rewriting your resume...",
+      "viewOriginal": "View original text",
+      "hideOriginal": "Hide original text",
+      "aiImprovedLabel": "AI-improved resume",
+      "aiImprovedNote": "This is the version our AI improved for you — free to view. Upgrade to Pro to download it as a polished PDF.",
+      "reEnhance": "Re-run AI",
+      "sectionSummary": "Summary",
+      "sectionSkills": "Skills",
+      "sectionExperience": "Experience",
+      "sectionEducation": "Education",
+      "loadError": "Couldn't load your saved resume — try refreshing the page.",
+      "noResumeYet": "This is a sample layout — upload your resume above to see your own AI-improved version.",
+      "enhanceLimitReached": "You've used your one free AI resume enhancement. Upgrade to Pro for unlimited AI rewrites.",
+      "sectionCertifications": "Certifications",
+      "sectionLanguages": "Languages",
+      "myResumes": "My resumes",
+      "newResume": "New resume",
+      "untitledResume": "Untitled resume",
+      "loadingVersions": "Loading your resumes...",
+      "noVersionsYet": "No saved resumes yet — upload one above or build one from scratch.",
+      "versionActionError": "Something went wrong — please try again.",
+      "primary": "Primary",
+      "open": "Open",
+      "duplicate": "Duplicate",
+      "setPrimary": "Set as primary",
+      "delete": "Delete",
+      "confirmDelete": "Delete this resume version? This can't be undone.",
+      "copyOf": "Copy of {title}",
+      "editManually": "Edit manually"
+    },
+    "resumeBuilder": {
+      "title": "CV builder",
+      "subtitle": "Build a fully custom resume section by section, with a live preview and AI assist wherever you need it.",
+      "backToResumes": "Back to my resumes",
+      "uploadSection": "Upload your CV",
+      "uploadSectionHelp": "Upload a PDF or Word file and we'll fill in your name, summary, skills, experience, and education automatically. You can edit or remove anything afterward.",
+      "uploadCta": "Click to upload a PDF or Word file",
+      "uploadParsing": "Reading your file...",
+      "uploadEnhancing": "Filling in your details...",
+      "uploadSuccess": "Filled in from {filename}",
+      "uploadError": "Couldn't process that file automatically. You can still fill in the fields below by hand.",
+      "uploadTooBig": "That file is too large (10MB max).",
+      "uploadConfirmReplace": "This will replace your name, summary, skills, experience, and education with content from the uploaded file. Your contact details, format, and any custom sections stay untouched. Continue?",
+      "versionName": "Resume name",
+      "untitledResume": "Untitled resume",
+      "contactSection": "Contact details",
+      "fullName": "Full name",
+      "jobTitle": "Job title / headline",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "links": "LinkedIn / portfolio / GitHub",
+      "summarySection": "Summary",
+      "summaryPlaceholder": "A 2-3 sentence pitch — who you are, your experience, and what you're looking for.",
+      "improveWithAi": "Improve with AI",
+      "skillsSection": "Skills",
+      "addSkillPlaceholder": "Type a skill and press Enter",
+      "add": "Add",
+      "removeSkill": "Remove skill",
+      "experienceSection": "Experience",
+      "addExperience": "Add role",
+      "role": "Job title",
+      "company": "Company",
+      "periodPlaceholder": "e.g. Jan 2022 – Present",
+      "bulletPlaceholder": "Describe an achievement or responsibility",
+      "addBullet": "Add bullet point",
+      "removeBullet": "Remove bullet",
+      "removeExperience": "Remove this role",
+      "noExperienceYet": "No roles added yet.",
+      "educationSection": "Education",
+      "addEducation": "Add education",
+      "degree": "Degree",
+      "school": "School",
+      "removeEducation": "Remove",
+      "noEducationYet": "No education added yet.",
+      "certificationsSection": "Certifications",
+      "addCertification": "Add certification",
+      "certName": "Certification name",
+      "issuer": "Issuing organization",
+      "year": "Year",
+      "removeCertification": "Remove",
+      "languagesSection": "Languages",
+      "addLanguage": "Add language",
+      "languageName": "Language",
+      "languageOther": "Other",
+      "languageOtherPlaceholder": "Type the language",
+      "level": "Proficiency level",
+      "removeLanguage": "Remove",
+      "themeSection": "Style",
+      "editTab": "Edit",
+      "previewTab": "Preview",
+      "setPrimary": "Set as primary",
+      "primary": "Primary",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "confirmDelete": "Delete this resume version? This can't be undone.",
+      "copyOf": "Copy of {title}",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "saveError": "Save failed — please try again.",
+      "unsavedChanges": "Unsaved changes",
+      "download": "Download PDF",
+      "downloadLocked": "Downloading your resume is a Pro feature. Upgrade to export polished, ready-to-send PDFs anytime.",
+      "upgradeCta": "Upgrade to Pro",
+      "aiLimitReached": "You've used your one free AI rewrite. Upgrade to Pro for unlimited AI assistance across your resume.",
+      "aiError": "AI rewrite failed — please try again.",
+      "loading": "Loading...",
+      "loadError": "Couldn't load this resume — try refreshing the page.",
+      "notFound": "This resume couldn't be found — it may have been deleted.",
+      "resumeFormatSection": "Resume format",
+      "resumeFormatHelp": "Changes the order and emphasis of your sections — nothing you've written is ever hidden or deleted when you switch.",
+      "formats": {
+        "reverse-chronological": {
+          "label": "Reverse-Chronological",
+          "description": "The standard, most widely expected format — skills, then your work history, most recent first."
+        },
+        "functional": {
+          "label": "Functional / Skills-Based",
+          "description": "Leads with skills and any custom sections (e.g. key projects) — good for career changes or employment gaps."
+        },
+        "combination": {
+          "label": "Combination / Hybrid",
+          "description": "Full work history up front, blended with a strong skills section — the modern all-purpose default."
+        },
+        "ats-friendly": {
+          "label": "ATS-Friendly",
+          "description": "Plain, single-column layout with no colors or graphics — built to parse cleanly through automated screening."
+        },
+        "academic-cv": {
+          "label": "Academic CV",
+          "description": "Education leads, with room for publications, research, and teaching experience right after it."
+        },
+        "executive": {
+          "label": "Executive",
+          "description": "Key achievements get top billing right after your summary — built for senior/leadership roles."
+        }
+      },
+      "customSectionsSection": "Custom sections",
+      "customSectionsHelp": "Add your own tables or lists — publications, key achievements, board memberships, anything the built-in sections don't cover.",
+      "addTable": "Add table",
+      "addList": "Add list",
+      "customSectionTitlePlaceholder": "Section title (e.g. Publications)",
+      "removeSection": "Remove this section",
+      "column": "Column",
+      "removeColumn": "Remove column",
+      "addColumn": "Add column",
+      "removeRow": "Remove row",
+      "addRow": "Add row",
+      "listItemPlaceholder": "List item",
+      "addListItem": "Add item",
+      "noCustomSectionsYet": "No custom sections yet — add a table or list above.",
+      "themeSectionNote": "Applied consistently across the whole resume — the preview and your downloaded PDF always match.",
+      "accentColor": "Accent color",
+      "fontFamily": "Font",
+      "fontSize": "Text size",
+      "fontSans": "Sans-serif",
+      "fontSerif": "Serif",
+      "fontMono": "Monospace",
+      "sizeCompact": "Compact",
+      "sizeStandard": "Standard",
+      "sizeLarge": "Large"
+    },
+    "jobs": {
+      "title": "Smart Job Search & Copilot",
+      "subtitle": "Real openings across the Gulf, the Levant, and MEA — matched to your profile, with a copilot that preps your application for every job.",
+      "searchPlaceholder": "Search by title, company, or keyword",
+      "apply": "Apply",
+      "smartApply": "Smart apply",
+      "loading": "Searching for jobs...",
+      "lockedTitle": "Unlock Smart Job Search & Copilot",
+      "lockedBody": "Upgrade to Pro to search real openings across the Gulf, the Levant, and MEA, apply in one click, and let the copilot prep your contact info and a tailored cover letter for every job automatically.",
+      "allLocations": "All locations",
+      "allIndustries": "All industries",
+      "allWorkTypes": "Remote, hybrid & onsite",
+      "remoteOnly": "Remote only",
+      "location": "Location",
+      "industry": "Industry",
+      "clearFilters": "Clear filters",
+      "searchButton": "Search",
+      "searchOnLinkedIn": "Search on LinkedIn",
+      "noResults": "No matching jobs found — try a different search or filters.",
+      "resultsCount": "{count, plural, one {# job found} other {# jobs found}}",
+      "matchedToResume": "Showing roles matched to your resume title, \"{title}\" — search to see more.",
+      "searchesRemainingToday": "{count} of {limit} searches left today",
+      "searchLimitReachedToday": "You've used today's searches — showing free-board results only. More opens up tomorrow.",
+      "upgradeCta": "Upgrade to Pro",
+      "workTypes": {
+        "remote": "Remote",
+        "hybrid": "Hybrid",
+        "onsite": "Onsite"
+      },
+      "industryNames": {
+        "Technology": "Technology",
+        "Marketing": "Marketing",
+        "Finance & Banking": "Finance & Banking",
+        "Sales & Business Development": "Sales & Business Development",
+        "Operations & Supply Chain": "Operations & Supply Chain",
+        "Human Resources": "Human Resources",
+        "Customer Support": "Customer Support",
+        "Design": "Design",
+        "Other": "Other"
+      },
+      "locationNames": {
+        "United Arab Emirates": "United Arab Emirates",
+        "Saudi Arabia": "Saudi Arabia",
+        "Qatar": "Qatar",
+        "Kuwait": "Kuwait",
+        "Bahrain": "Bahrain",
+        "Oman": "Oman",
+        "Lebanon": "Lebanon",
+        "Jordan": "Jordan",
+        "Egypt": "Egypt"
+      },
+      "save": "Save",
+      "saved": "Saved",
+      "prepare": {
+        "title": "Application opened",
+        "subtitle": "For {title} at {company}",
+        "note": "We opened the employer's application page in a new tab and marked this Applied on your tracker — GulfJobCopilot doesn't submit the form on your behalf, so finish it there. Your info, resume, and a tailored cover letter are ready below.",
+        "contactHeading": "Your contact info",
+        "notSet": "Not set — add this in your profile",
+        "resumeHeading": "Your resume",
+        "yourResume": "Your resume",
+        "noResume": "No saved resume yet — build one first so it's ready to attach.",
+        "coverLetterHeading": "Cover letter",
+        "generateLetter": "Generate for this job",
+        "generating": "Generating...",
+        "letterError": "Couldn't generate a cover letter — please try again.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "confirmCta": "Open application",
+        "popupBlocked": "Your browser blocked the automatic pop-up. Open it manually instead:",
+        "openAgain": "Open application",
+        "retryLetter": "Try again",
+        "doneCta": "Done"
+      },
+      "bulk": {
+        "select": "Select for bulk apply",
+        "selectedCount": "{count, plural, one {# job selected} other {# jobs selected}}",
+        "cappedNote": "(applying to the first {max})",
+        "clear": "Clear",
+        "applyCta": "{count, plural, one {Apply to # job} other {Apply to # jobs}}",
+        "applying": "Applying {done}/{total}…",
+        "resultsRunningTitle": "Applying to your selected jobs…",
+        "resultsRunningSubtitle": "Preparing a tailored cover letter and marking each one Applied — this stays open until it's done.",
+        "resultsTitle": "Done — review and open each application",
+        "resultsSubtitle": "{count, plural, one {# job is ready — all marked Applied on your tracker.} other {# jobs are ready — all marked Applied on your tracker.}} Open each one to finish submitting it on the employer's site.",
+        "openApplication": "Open",
+        "pending": "Waiting…"
+      }
+    },
+    "applications": {
+      "title": "Applications",
+      "subtitle": "Track every application in one place.",
+      "saved": "Saved",
+      "applied": "Applied",
+      "interview": "Interview",
+      "offer": "Offer",
+      "rejected": "Rejected",
+      "addApplication": "Add application",
+      "editApplication": "Edit application",
+      "demoNotice": "You're viewing sample data. Log in to track your real applications.",
+      "historyUnavailableNotice": "Your applications are loading, but status timelines aren't available yet for this account. This clears up automatically once a pending database update finishes.",
+      "searchPlaceholder": "Search by company or title",
+      "totalCount": "{count, plural, =0 {No applications} one {# application} other {# applications}}",
+      "loading": "Loading your applications…",
+      "emptyTitle": "No applications yet",
+      "emptySubtitle": "Save a job or apply to one from your job search to start tracking it here.",
+      "emptyCta": "Search jobs",
+      "edit": "Edit",
+      "moveTo": "Move to {status}",
+      "viewPosting": "View posting",
+      "delete": "Delete",
+      "columnEmpty": "Nothing here",
+      "fieldCompany": "Company",
+      "fieldTitle": "Job title",
+      "fieldLocation": "Location",
+      "fieldUrl": "Job posting URL",
+      "fieldStatus": "Status",
+      "fieldNotes": "Notes",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "confirmDelete": "Delete this application? This can't be undone.",
+      "formRequired": "Company and job title are required.",
+      "formError": "Something went wrong saving this application. Please try again.",
+      "appliedOn": "Applied {date}",
+      "viewHistory": "View history",
+      "hideHistory": "Hide history"
+    },
+    "chat": {
+      "title": "AI job-search assistant",
+      "subtitle": "Ask about your resume, interviews, or the job market.",
+      "placeholder": "Ask me anything about your job search...",
+      "placeholderLocked": "Upgrade to Pro to keep chatting",
+      "send": "Send",
+      "limitReached": "You've used your 3 free messages. Upgrade to Pro for unlimited access to the AI assistant.",
+      "messagesLeft": "{count, plural, one {# free message left} other {# free messages left}}",
+      "upgradeCta": "Upgrade to Pro"
+    },
+    "coverLetter": {
+      "title": "Cover letter generator",
+      "subtitle": "AI-written, tailored to the job you're applying for.",
+      "loading": "Loading...",
+      "lockedTitle": "Cover letters are a Pro feature",
+      "lockedBody": "Upgrade to Pro to generate tailored, AI-written cover letters for any job in seconds.",
+      "upgradeCta": "Upgrade to Pro",
+      "untitledResume": "Untitled resume",
+      "noResumesYet": "You don't have a saved resume yet — build one first so the generator has something to work from.",
+      "goBuildResume": "Go build your resume",
+      "resumeLabel": "Resume version",
+      "jobTitleLabel": "Job title",
+      "jobTitlePlaceholder": "e.g. Marketing Manager",
+      "companyLabel": "Company",
+      "companyPlaceholder": "e.g. Careem",
+      "jobDescriptionLabel": "Job description (optional)",
+      "jobDescriptionPlaceholder": "Paste the job description here for a more tailored letter.",
+      "toneLabel": "Tone",
+      "toneProfessional": "Professional",
+      "toneEnthusiastic": "Enthusiastic",
+      "toneConcise": "Concise",
+      "generate": "Generate cover letter",
+      "generating": "Generating...",
+      "generateError": "Couldn't generate a cover letter — please try again.",
+      "noResumeSelected": "Select a resume version first.",
+      "resultLabel": "Your cover letter",
+      "copy": "Copy",
+      "copied": "Copied",
+      "downloadPdf": "Download PDF",
+      "editableNote": "Feel free to edit the text above before copying or downloading.",
+      "pdfTitle": "Cover Letter"
+    },
+    "certifications": {
+      "title": "Recommended certifications",
+      "subtitle": "AI-picked certifications based on your resume — what to earn next, why it matters, and where to start.",
+      "loading": "Loading...",
+      "lockedTitle": "Certification recommendations are a Pro feature",
+      "lockedBody": "Upgrade to Pro to get AI-powered certification recommendations tailored to your resume, with reasoning and study links.",
+      "upgradeCta": "Upgrade to Pro",
+      "untitledResume": "Untitled resume",
+      "noResumesYet": "You don't have a saved resume yet — build one first so we can recommend certifications based on it.",
+      "goBuildResume": "Go build your resume",
+      "resumeLabel": "Resume version",
+      "analyzing": "Analyzing your resume...",
+      "regenerate": "Regenerate",
+      "generateCta": "Get recommendations",
+      "noResumeSelected": "Select a resume version first.",
+      "generateError": "Couldn't generate recommendations — please try again.",
+      "addToResumeError": "Couldn't add this certification to your resume — please try again.",
+      "currentHeading": "Your current certifications",
+      "emptyTitle": "See what to learn next",
+      "emptySubtitle": "Click \"Get recommendations\" and we'll analyze your resume to suggest certifications that will move the needle for your target role.",
+      "recommendedHeading": "{count} recommended for you",
+      "priority": {
+        "high": "High impact",
+        "medium": "Worth it",
+        "low": "Optional"
+      },
+      "level": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "startStudying": "Start studying",
+      "addToResume": "Add to my resume",
+      "addedToResume": "Added"
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "See how your job search is actually going.",
+      "loading": "Loading...",
+      "lockedTitle": "Reports are a Pro feature",
+      "lockedBody": "Upgrade to Pro to see your application funnel, resume performance, and job market insights.",
+      "upgradeCta": "Upgrade to Pro",
+      "exportCsv": "Export CSV",
+      "exportPdf": "Export PDF",
+      "noDataYet": "No applications tracked yet — save or apply to a job from the Job search page to start building your report.",
+      "allRoles": "all roles",
+      "unknownResume": "Unknown resume",
+      "statApplied": "Applications sent",
+      "statInterviewsOffers": "Interviews & offers",
+      "statResponseRate": "Response rate",
+      "funnelHeading": "Application funnel",
+      "status": {
+        "saved": "Saved",
+        "applied": "Applied",
+        "interview": "Interview",
+        "offer": "Offer",
+        "rejected": "Rejected"
+      },
+      "activityHeading": "Activity — last 6 months",
+      "resumeHeading": "Resume performance",
+      "resumeNoData": "Apply to jobs with a saved resume version to see how each one performs.",
+      "appliedCount": "{count, plural, one {# application} other {# applications}}",
+      "interviewRate": "{rate}% interview rate",
+      "marketHeading": "Job market insights",
+      "marketFor": "for \"{query}\"",
+      "marketNoData": "No live market data yet — set target roles on your profile and check back.",
+      "topCompanies": "Top hiring companies",
+      "topLocations": "Top locations",
+      "pdfTitle": "GulfJobCopilot — Activity Report",
+      "pdfGeneratedOn": "Generated on {date}",
+      "pdfFunnelHeading": "Application funnel:",
+      "pdfResponseRate": "Response rate: {rate}%",
+      "pdfResumeHeading": "Resume performance:",
+      "pdfApplications": "applications",
+      "pdfInterviewsOrBetter": "interviews/offers",
+      "pdfNoData": "No resume-linked applications yet."
+    }
+  },
+  "footer": {
+    "tagline": "Your AI copilot for the Gulf & MEA job market.",
+    "rights": "All rights reserved.",
+    "facebookAriaLabel": "Follow GulfJobCopilot on Facebook",
+    "linkedinAriaLabel": "Follow GulfJobCopilot on LinkedIn",
+    "tiktokAriaLabel": "Follow GulfJobCopilot on TikTok"
+  }
+}
