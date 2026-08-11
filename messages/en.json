@@ -5,17 +5,12 @@
     "login": "Log in",
     "signup": "Get started",
     "dashboard": "Dashboard",
-    "signOut": "Sign out",
-    "forEmployers": "For employers"
+    "signOut": "Sign out"
   },
   "seo": {
     "pricing": {
       "title": "Pricing",
       "description": "Simple, transparent pricing for GulfJobCopilot. Start free with 1 resume and 1 AI enhancement, or go Pro for unlimited AI resume tools, smart job search, one-click apply, and application tracking across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
-    },
-    "help": {
-      "title": "Help & Support | GulfJobCopilot",
-      "description": "Find answers about resumes, job search, Auto Apply, cover letters, billing, and more — or contact the GulfJobCopilot support team directly."
     },
     "login": {
       "title": "Log in",
@@ -30,18 +25,10 @@
     },
     "resetPassword": {
       "title": "Set a new password"
-    },
-    "employerSignup": {
-      "title": "Post jobs for free — Hire on GulfJobCopilot",
-      "description": "Create a free employer account on GulfJobCopilot to post job openings and reach job seekers across Saudi Arabia, UAE, Lebanon and the wider Gulf & MEA region."
-    },
-    "employerLogin": {
-      "title": "Employer log in",
-      "description": "Log in to your GulfJobCopilot employer account to manage your company's job postings."
     }
   },
   "home": {
-    "badge": "🏆 #1 Trusted Job Search App in the Gulf",
+    "badge": "Built for job seekers across the Gulf, the Levant & MEA — including Lebanon",
     "title": "Your AI copilot for landing the next job",
     "subtitle": "Build a standout resume, get matched to real openings across the Gulf, Lebanon, and the wider Middle East & Africa region, apply in one click, and let an AI assistant guide you the whole way — in Arabic or English.",
     "ctaPrimary": "Start free",
@@ -60,14 +47,6 @@
       "Egypt",
       "Jordan"
     ],
-    "jobsShowcase": {
-      "eyebrow": "Live job feed",
-      "title": "Thousands of real jobs, updating every day",
-      "subtitle": "Every card below is a real, live opening pulled straight from our jobs database — not a mockup.",
-      "statsRoles": "{count}+ live roles",
-      "statsCompanies": "{count}+ hiring companies",
-      "statsIndustries": "{count} industries"
-    },
     "features": {
       "title": "Everything you need to get hired, faster",
       "proBadge": "Pro",
@@ -184,8 +163,7 @@
         "1 resume",
         "1 free AI resume enhancement",
         "Community support"
-      ],
-      "noCardRequired": "No credit card required"
+      ]
     },
     "pro": {
       "name": "Pro",
@@ -216,18 +194,7 @@
     "yearly": "Yearly",
     "yearlySave": "Save ~17%",
     "startingCheckout": "Starting checkout…",
-    "checkoutError": "Couldn't start checkout. Please try again in a moment.",
-    "eyebrow": "Pricing",
-    "trust": {
-      "secureCheckout": "Secure checkout",
-      "cancelAnytime": "Cancel anytime",
-      "noHiddenFees": "No hidden fees"
-    },
-    "employerBanner": {
-      "title": "Hiring, not job hunting?",
-      "subtitle": "Post jobs for free and reach candidates across the Gulf & Middle East.",
-      "cta": "Post a job for free"
-    }
+    "checkoutError": "Couldn't start checkout. Please try again in a moment."
   },
   "auth": {
     "login": {
@@ -284,17 +251,6 @@
       "mismatch": "Passwords don't match.",
       "invalidLink": "This reset link is invalid or has expired. Request a new one below.",
       "requestNewLink": "Request a new reset link"
-    },
-    "authPanel": {
-      "badge": "Free to get started",
-      "heading": "Land your next job faster with AI",
-      "subtitle": "Build a standout resume, get matched to real openings, and apply in one click — all in one place.",
-      "bullets": [
-        "AI-optimized resume builder",
-        "Smart job matching across the Gulf, Lebanon & the wider Middle East",
-        "One-click apply where supported",
-        "Track every application from one dashboard"
-      ]
     }
   },
   "dashboard": {
@@ -305,15 +261,12 @@
       "applications": "Applications",
       "chat": "Assistant",
       "account": "Account",
-      "help": "Help & support",
       "planFree": "Free plan",
       "planPro": "Pro plan",
       "signOut": "Sign out",
       "coverLetter": "Cover letter",
       "certifications": "Certifications",
-      "reports": "Reports",
-      "autoApply": "Auto Apply",
-      "employerDashboard": "Employer dashboard"
+      "reports": "Reports"
     },
     "overview": {
       "title": "Welcome back",
@@ -516,16 +469,11 @@
       "title": "Smart Job Search & Copilot",
       "subtitle": "Real openings across the Gulf, the Levant, and MEA — matched to your profile, with a copilot that preps your application for every job.",
       "searchPlaceholder": "Search by title, company, or keyword",
-      "exactPhrase": "Exact phrase",
-      "exactPhraseHint": "Match your search words in this exact order, instead of any job matching any of them.",
       "apply": "Apply",
       "smartApply": "Smart apply",
       "loading": "Searching for jobs...",
       "lockedTitle": "Unlock Smart Job Search & Copilot",
       "lockedBody": "Upgrade to Pro to search real openings across the Gulf, the Levant, and MEA, apply in one click, and let the copilot prep your contact info and a tailored cover letter for every job automatically.",
-      "limitedTitle": "You're viewing limited results",
-      "limitedBody": "Upgrade to Pro to see company locations, apply in one click, and get a tailored cover letter for every job.",
-      "upgradeToApply": "Upgrade to apply",
       "allLocations": "All locations",
       "allIndustries": "All industries",
       "allWorkTypes": "Remote, hybrid & onsite",
@@ -547,17 +495,7 @@
         "onsite": "Onsite"
       },
       "industryNames": {
-        "Healthcare": "Healthcare",
-        "Oil & Gas & Energy": "Oil & Gas & Energy",
-        "Construction & Engineering": "Construction & Engineering",
-        "Aviation, Travel & Hospitality": "Aviation, Travel & Hospitality",
-        "Real Estate & Property": "Real Estate & Property",
-        "Legal": "Legal",
-        "Manufacturing & Industrial": "Manufacturing & Industrial",
-        "Retail & E-commerce": "Retail & E-commerce",
-        "Government & Public Sector": "Government & Public Sector",
-        "Education": "Education",
-        "Technology/Software/IT": "Technology/Software/IT",
+        "Technology": "Technology",
         "Marketing": "Marketing",
         "Finance & Banking": "Finance & Banking",
         "Sales & Business Development": "Sales & Business Development",
@@ -580,11 +518,6 @@
       },
       "save": "Save",
       "saved": "Saved",
-      "matchScore": "{score}% match",
-      "sendApplication": "Send application",
-      "dismiss": "Dismiss",
-      "loadMore": "Load {count} more",
-      "loadingMore": "Loading more...",
       "prepare": {
         "title": "Application opened",
         "subtitle": "For {title} at {company}",
@@ -778,494 +711,13 @@
       "pdfApplications": "applications",
       "pdfInterviewsOrBetter": "interviews/offers",
       "pdfNoData": "No resume-linked applications yet."
-    },
-    "autoApply": {
-      "title": "Auto Apply",
-      "subtitle": "Set your criteria once — we'll find new matching jobs every day, prepare a tailored cover letter for each, and queue them for your one-click send.",
-      "loading": "Loading...",
-      "lockedTitle": "Auto Apply is a Pro feature",
-      "lockedBody": "Upgrade to Pro to have GulfJobCopilot search for new matching jobs every day and prepare ready-to-send applications for you to approve.",
-      "upgradeCta": "Upgrade to Pro",
-      "howItWorks": "Every day, we search for new jobs matching your criteria below, score them against your resume, and prepare a tailored cover letter for the best matches — up to your daily limit. Nothing is ever sent without you clicking Send: no job source here lets an app submit applications on your behalf, so review-then-send keeps you in full control of every application.",
-      "settings": {
-        "heading": "Your criteria",
-        "enableLabel": "Auto Apply is on",
-        "enableHint": "Turn off any time — nothing new gets queued while this is off.",
-        "dailyCapLabel": "New matches per day",
-        "dailyCapHint": "How many ready-to-send matches to prepare each day (1–50).",
-        "resumeLabel": "Resume to use",
-        "resumeHint": "Which resume to match jobs against and write cover letters from.",
-        "resumeAuto": "Auto (primary / most recently updated)",
-        "resumeUntitled": "Untitled resume",
-        "resumePrimaryTag": "primary",
-        "keywordsLabel": "Job title / keywords",
-        "keywordsPlaceholder": "e.g. Product Manager, Data Analyst",
-        "locationLabel": "Location",
-        "anyLocation": "Any location",
-        "workTypeLabel": "Work type",
-        "anyWorkType": "Any work type",
-        "excludedCompaniesLabel": "Companies to skip (optional)",
-        "excludedCompaniesPlaceholder": "One per line",
-        "saveButton": "Save settings",
-        "saved": "Saved",
-        "saveError": "Couldn't save your settings — try again."
-      },
-      "queue": {
-        "heading": "Ready to send",
-        "empty": "No matches queued yet — once Auto Apply is on, new matches will show up here within a day.",
-        "matchScore": "{score}% match",
-        "coverLetterHeading": "Cover letter",
-        "sendCta": "Send application",
-        "dismissCta": "Dismiss",
-        "sending": "Opening…",
-        "copy": "Copy",
-        "copied": "Copied",
-        "noResume": "Build a resume first so we can match jobs and write cover letters for you.",
-        "popupBlocked": "Your browser blocked the new tab — open it manually below.",
-        "openAgain": "Open application",
-        "runNow": "Run now",
-        "running": "Checking…",
-        "nextRunIn": "Next check in {time}",
-        "runError": "Couldn't run Auto Apply — please try again.",
-        "reason": {
-          "no_resume": "No matches yet — your resume needs your full name saved before Auto Apply can match jobs or write cover letters for you.",
-          "daily_cap_reached": "You've already hit today's match limit. Check back tomorrow, or raise your daily limit above.",
-          "no_matches": "No jobs matched your current criteria this time — try widening your location, work type, or keywords.",
-          "fixResumeLink": "Go to Resume Builder"
-        }
-      }
     }
   },
   "footer": {
     "tagline": "Your AI copilot for the Gulf & MEA job market.",
     "rights": "All rights reserved.",
-    "forEmployers": "For employers",
-    "help": "Help & support"
-  },
-  "employer": {
-    "signup": {
-      "title": "Hire on GulfJobCopilot",
-      "subtitle": "Post jobs for free and reach job seekers across the Gulf, Lebanon & the wider Middle East.",
-      "companyName": "Company name",
-      "workEmail": "Work email",
-      "workEmailPlaceholder": "you@yourcompany.com",
-      "workEmailHint": "Please use your company email address, not a personal one.",
-      "password": "Password",
-      "submit": "Create employer account",
-      "submitting": "Creating account...",
-      "professionalEmailError": "Please sign up with your company work email, not a personal address (Gmail, Yahoo, Hotmail, etc).",
-      "hasAccount": "Already hiring with us?",
-      "loginLink": "Log in",
-      "jobSeeker": "Looking for a job instead?",
-      "jobSeekerLink": "Sign up as a job seeker",
-      "confirmTitle": "Check your email",
-      "confirmBody": "We sent a confirmation code to {email}. Enter it below to activate your employer account.",
-      "codeLabel": "Confirmation code",
-      "codePlaceholder": "123456",
-      "verifyCode": "Verify code",
-      "verifying": "Verifying...",
-      "codeError": "That code didn't work. Please try again.",
-      "resendButton": "Resend code",
-      "resendSending": "Sending...",
-      "resendSent": "A new code has been sent.",
-      "resendError": "Couldn't resend the code. Please try again.",
-      "backToLogin": "Back to log in"
-    },
-    "login": {
-      "title": "Employer log in",
-      "subtitle": "Welcome back — manage your job postings.",
-      "email": "Email",
-      "password": "Password",
-      "forgotLink": "Forgot password?",
-      "submit": "Log in",
-      "noAccount": "New to hiring here?",
-      "signupLink": "Create an employer account"
-    },
-    "onboarding": {
-      "title": "Set up your company",
-      "subtitle": "Just your company name to get started — you can fill in the rest later.",
-      "companyName": "Company name",
-      "saving": "Saving...",
-      "continue": "Continue"
-    },
-    "nav": {
-      "employerBadge": "Employer",
-      "postings": "Job postings",
-      "profile": "Company profile",
-      "signOut": "Sign out",
-      "jobSeekerDashboard": "Job seeker dashboard"
-    },
-    "postings": {
-      "title": "Job postings",
-      "subtitle": "Manage the jobs your company has posted.",
-      "postJob": "Post a job",
-      "loading": "Loading your postings...",
-      "emptyTitle": "No job postings yet",
-      "emptyBody": "Post your first job for free and start reaching job seekers across the Gulf and Middle East.",
-      "postFirstJob": "Post your first job",
-      "status": {
-        "active": "Active",
-        "closed": "Closed",
-        "draft": "Draft"
-      },
-      "employmentTypes": {
-        "full_time": "Full-time",
-        "part_time": "Part-time",
-        "contract": "Contract",
-        "internship": "Internship"
-      },
-      "publish": "Publish",
-      "close": "Close",
-      "edit": "Edit",
-      "delete": "Delete",
-      "deleteConfirmTitle": "Delete this posting?",
-      "deleteConfirmBody": "“{title}” will be permanently deleted. This can't be undone.",
-      "cancel": "Cancel"
-    },
-    "jobForm": {
-      "basicsHeading": "Job basics",
-      "title": "Job title",
-      "titlePlaceholder": "e.g. Senior Software Engineer",
-      "description": "Job description",
-      "descriptionPlaceholder": "Describe the role, the team, and what makes it a great opportunity.",
-      "responsibilities": "Responsibilities",
-      "responsibilitiesPlaceholder": "List the key responsibilities (optional).",
-      "requirements": "Requirements",
-      "requirementsPlaceholder": "List required skills, experience and qualifications (optional).",
-      "detailsHeading": "Job details",
-      "location": "Location",
-      "workType": "Work type",
-      "workTypes": {
-        "remote": "Remote",
-        "hybrid": "Hybrid",
-        "onsite": "On-site"
-      },
-      "employmentType": "Employment type",
-      "employmentTypes": {
-        "full_time": "Full-time",
-        "part_time": "Part-time",
-        "contract": "Contract",
-        "internship": "Internship"
-      },
-      "industry": "Industry",
-      "industryUnset": "Select an industry",
-      "salaryRange": "Salary range (optional)",
-      "salaryMin": "Min",
-      "salaryMax": "Max",
-      "salaryOptionalHint": "Leave blank if you'd rather not disclose salary.",
-      "applyHeading": "How should candidates apply?",
-      "applyViaUrl": "Application link",
-      "applyViaEmail": "Application email",
-      "applyUrlRequired": "Please enter an application URL.",
-      "applyEmailRequired": "Please enter an application email address.",
-      "saveChanges": "Save changes",
-      "publish": "Publish job",
-      "saveDraft": "Save as draft",
-      "backToPostings": "Back to postings",
-      "newTitle": "Post a new job",
-      "newSubtitle": "Fill in the details below — it's free to post.",
-      "loadingForm": "Loading...",
-      "companyLookupError": "We couldn't find your company account. Please refresh and try again.",
-      "editTitle": "Edit job posting",
-      "editSubtitle": "Update the details of this posting.",
-      "jobNotFound": "This job posting couldn't be found."
-    },
-    "profile": {
-      "title": "Company profile",
-      "subtitle": "This information may be shown to job seekers alongside your postings.",
-      "loading": "Loading...",
-      "companyName": "Company name",
-      "website": "Company website",
-      "industry": "Industry",
-      "industryUnset": "Select an industry",
-      "companySize": "Company size",
-      "companySizeUnset": "Select a company size",
-      "hqLocation": "Headquarters location",
-      "hqLocationUnset": "Select a location",
-      "logoUrl": "Logo URL",
-      "description": "Company description",
-      "descriptionPlaceholder": "Tell job seekers about your company.",
-      "contactEmail": "Contact email",
-      "save": "Save changes",
-      "saving": "Saving...",
-      "saved": "Saved"
-    },
-    "authPanel": {
-      "badge": "Post jobs 100% free",
-      "heading": "Hire top talent across the Gulf & Middle East",
-      "subtitle": "Join the companies posting jobs and connecting with motivated candidates on GulfJobCopilot.",
-      "bullets": [
-        "Post unlimited jobs for free — no credit card required",
-        "Reach job seekers across the Gulf, Lebanon & the wider Middle East",
-        "Manage every posting from one simple dashboard",
-        "Your listings are matched directly into candidates' job search & Auto Apply"
-      ]
-    }
-  },
-  "help": {
-    "eyebrow": "Help & support",
-    "title": "What can we help with?",
-    "subtitle": "Search our help center or browse answers by topic — and if you can't find what you need, reach our team directly.",
-    "searchPlaceholder": "Search for an answer (e.g. \"cancel subscription\", \"resume\", \"Auto Apply\")",
-    "noResults": "No matching questions found. Try a different search, or contact us below.",
-    "quickTopics": [
-      {
-        "id": "jobs-no-matches",
-        "question": "Not seeing enough job matches"
-      },
-      {
-        "id": "auto-apply-how",
-        "question": "How does Auto Apply work?"
-      },
-      {
-        "id": "resume-build",
-        "question": "Build or upload my resume"
-      },
-      {
-        "id": "cover-letter-not-generating",
-        "question": "Cover letter isn't generating"
-      },
-      {
-        "id": "applications-track",
-        "question": "Track my applications"
-      },
-      {
-        "id": "billing-cancel",
-        "question": "Manage or cancel my subscription"
-      },
-      {
-        "id": "account-language",
-        "question": "Switch between Arabic and English"
-      },
-      {
-        "id": "employer-post-job",
-        "question": "Post a job as an employer"
-      }
-    ],
-    "somethingElseQuestion": "Something else",
-    "viewFullFaq": "View full FAQ",
-    "contact": {
-      "heading": "Still need help?",
-      "body": "Our team typically replies within one business day.",
-      "emailCta": "Email support",
-      "email": "support@gulfjobcopilot.com"
-    },
-    "categories": [
-      {
-        "name": "Getting started",
-        "items": [
-          {
-            "id": "start-what-is",
-            "q": "What is GulfJobCopilot?",
-            "a": "GulfJobCopilot is an AI-powered job search copilot for Saudi Arabia, the UAE, and the wider Gulf, Levant, and MEA region. It helps you build a stronger resume, find real openings that match your profile, apply faster, and track every application in one place — in Arabic or English."
-          },
-          {
-            "id": "start-free",
-            "q": "Is GulfJobCopilot free to use?",
-            "a": "Yes. The Free plan lets you build one resume, run one free AI resume enhancement, and browse job listings at no cost — no credit card required. Pro unlocks unlimited resumes, full search results, one-click apply, Auto Apply, cover letters, reports, and more."
-          },
-          {
-            "id": "start-account",
-            "q": "Do I need to create an account?",
-            "a": "You can browse job listings without an account, but you'll need a free account to save a resume, track applications, or use any Pro feature."
-          },
-          {
-            "id": "start-regions",
-            "q": "Which countries does GulfJobCopilot cover?",
-            "a": "We focus on Saudi Arabia, the UAE, Lebanon, Qatar, Kuwait, Bahrain, Oman, Egypt, and Jordan, with listings drawn from verified employer postings and job boards across the Gulf, Levant, and MEA region."
-          },
-          {
-            "id": "account-language",
-            "q": "Can I use the site in Arabic?",
-            "a": "Yes — use the EN / AR switch in the top navigation bar to switch the entire site, including your resume and cover letters, between English and Arabic at any time."
-          }
-        ]
-      },
-      {
-        "name": "Resume",
-        "items": [
-          {
-            "id": "resume-build",
-            "q": "How do I build or upload my resume?",
-            "a": "Go to Resume in your dashboard and either upload an existing resume (PDF or DOCX) or build one from scratch using the on-page editor. Uploaded resumes are automatically parsed into structured sections you can edit."
-          },
-          {
-            "id": "resume-filetypes",
-            "q": "What file types can I upload?",
-            "a": "PDF and DOCX files up to 10MB."
-          },
-          {
-            "id": "resume-enhance",
-            "q": "What does \"Enhance with AI\" do?",
-            "a": "It rewrites your summary, skills, and experience sections to be clearer and more results-focused, based on what you've already written. Free accounts get one AI enhancement; Pro accounts get unlimited re-runs."
-          },
-          {
-            "id": "resume-download",
-            "q": "Can I download my resume as a PDF?",
-            "a": "Downloading a polished PDF is a Pro feature. On the Free plan you can still view and edit your AI-improved resume online — upgrading unlocks the PDF download."
-          },
-          {
-            "id": "resume-multiple",
-            "q": "Can I have more than one resume?",
-            "a": "Yes — with a Pro plan you can save unlimited resume versions, useful if you're targeting more than one type of role. Free accounts are limited to one saved resume."
-          }
-        ]
-      },
-      {
-        "name": "Job search & Auto Apply",
-        "items": [
-          {
-            "id": "jobs-sources",
-            "q": "Where do job listings come from?",
-            "a": "We combine verified employer postings from our Employer portal with public job boards across the Gulf, Levant, and MEA region, refreshed daily, plus curated regional listings — all matched against your resume and search filters."
-          },
-          {
-            "id": "jobs-no-matches",
-            "q": "Why am I not seeing enough job matches?",
-            "a": "Try broadening your keywords, or clearing location or industry filters. Matching is based on what's actually in your resume, so make sure it lists the skills and job titles you're targeting. If you're on the Free plan, upgrading to Pro also unlocks the full result set rather than a limited view."
-          },
-          {
-            "id": "jobs-limited-results",
-            "q": "Why do I only see limited results?",
-            "a": "Free accounts see job titles, companies, and match info, but the company location and the real apply link are hidden until you upgrade to Pro — that's what \"limited results\" means. Search and filtering still work the same for everyone."
-          },
-          {
-            "id": "jobs-smart-apply",
-            "q": "What does \"Smart apply\" / one-click apply mean?",
-            "a": "It prepares your application for a specific job — pre-filling your contact details and drafting a tailored cover letter — so applying takes one click where the employer supports it. This is a Pro feature."
-          },
-          {
-            "id": "auto-apply-how",
-            "q": "How does Auto Apply work?",
-            "a": "Set your target keywords, locations, and a daily limit once. Every day, Auto Apply searches for new matching jobs, scores them against your resume, and prepares a ready-to-send application with a tailored cover letter for the best matches — up to your daily cap."
-          },
-          {
-            "id": "auto-apply-control",
-            "q": "Will Auto Apply send applications without my approval?",
-            "a": "No. Nothing is ever sent without you clicking Send. No job source we work with allows fully automated submission on your behalf, so Auto Apply always stops at \"ready to review\" and waits for your approval."
-          },
-          {
-            "id": "auto-apply-off",
-            "q": "Can I turn Auto Apply off?",
-            "a": "Yes, toggle \"Auto Apply is on\" off any time in your Auto Apply settings. Nothing new gets queued while it's off, and you can turn it back on whenever you're ready."
-          }
-        ]
-      },
-      {
-        "name": "Cover letters & certifications",
-        "items": [
-          {
-            "id": "cover-letter-how",
-            "q": "How do I generate a cover letter?",
-            "a": "Go to Cover letter in your dashboard, pick a resume version, enter the job title, company, and (optionally) the job description, choose a tone, and click Generate. This is a Pro feature."
-          },
-          {
-            "id": "cover-letter-not-generating",
-            "q": "My cover letter isn't generating — what should I check?",
-            "a": "Make sure you've selected a saved resume version first — the generator needs one to work from. If it still fails, try again in a moment; if it keeps failing, contact us with the job title and company you were using."
-          },
-          {
-            "id": "cover-letter-edit",
-            "q": "Can I edit the AI-generated cover letter?",
-            "a": "Yes — the result is fully editable before you copy it or download it as a PDF."
-          },
-          {
-            "id": "certifications-what",
-            "q": "What are AI-recommended certifications?",
-            "a": "An AI-powered analysis of your saved resume that recommends specific certifications to pursue next, with the reasoning behind each one, a priority level, and where to start studying. This is a Pro feature."
-          }
-        ]
-      },
-      {
-        "name": "Applications & reports",
-        "items": [
-          {
-            "id": "applications-track",
-            "q": "How do I track my applications?",
-            "a": "Every application you submit through GulfJobCopilot is added to your Applications board automatically. You can also add one manually and move it between Saved, Applied, Interview, Offer, and Rejected as it progresses."
-          },
-          {
-            "id": "applications-manual",
-            "q": "Can I add an application I made outside the site?",
-            "a": "Yes — use \"Add application\" on the Applications page to log a job you applied to outside GulfJobCopilot, so your tracker stays complete."
-          },
-          {
-            "id": "reports-what",
-            "q": "What do Reports show me?",
-            "a": "Your application funnel, response rate, how each resume version is performing, and job-market insights like top hiring companies and locations for your target roles. This is a Pro feature."
-          },
-          {
-            "id": "reports-export",
-            "q": "Can I export my reports?",
-            "a": "Yes, export your report as a CSV or a PDF at any time from the Reports page."
-          }
-        ]
-      },
-      {
-        "name": "AI assistant",
-        "items": [
-          {
-            "id": "chat-what",
-            "q": "What can the AI assistant help with?",
-            "a": "Ask it about your resume, interview prep, or general questions about the job market — it uses your profile to tailor its answers."
-          },
-          {
-            "id": "chat-limit",
-            "q": "How many free messages do I get?",
-            "a": "Free accounts get 3 messages total; Pro accounts get unlimited access to the assistant."
-          }
-        ]
-      },
-      {
-        "name": "Account & billing",
-        "items": [
-          {
-            "id": "billing-plans",
-            "q": "What's the difference between Free and Pro?",
-            "a": "Free gives you one resume, one AI enhancement, and browsing access. Pro ($9.99/month or $99.90/year) unlocks unlimited resumes and AI enhancement, full Smart Job Search results, one-click apply, Auto Apply, AI cover letters, the application tracker, certification recommendations, reports, and priority support."
-          },
-          {
-            "id": "billing-price",
-            "q": "How much does Pro cost?",
-            "a": "Pro is $9.99/month, or $99.90/year (about 17% less than paying monthly)."
-          },
-          {
-            "id": "billing-upgrade",
-            "q": "How do I upgrade to Pro?",
-            "a": "Go to Pricing, choose monthly or yearly, and click Upgrade to Pro — you'll be taken to a secure checkout page."
-          },
-          {
-            "id": "billing-cancel",
-            "q": "How do I cancel my Pro subscription?",
-            "a": "Pro is cancel-anytime. Use the manage-subscription link in your payment confirmation email, or email us at support@gulfjobcopilot.com with the address on your account and we'll cancel it for you — you'll keep Pro access through the end of your current billing period."
-          },
-          {
-            "id": "billing-secure",
-            "q": "Is my payment information secure?",
-            "a": "Yes — all payments are handled by our payment provider's secure checkout. We never see or store your full card details."
-          },
-          {
-            "id": "billing-stuck-free",
-            "q": "I upgraded but my account still shows Free plan — what do I do?",
-            "a": "This is usually instant, but can occasionally take a minute to sync. Refresh your dashboard after a minute; if it's still showing Free after that, contact us with your account email and we'll check it right away."
-          }
-        ]
-      },
-      {
-        "name": "For employers",
-        "items": [
-          {
-            "id": "employer-post-job",
-            "q": "How do I post a job?",
-            "a": "Create a free employer account from \"For employers,\" complete your company profile, and post your first job — it'll be visible to job seekers across the region."
-          },
-          {
-            "id": "employer-free",
-            "q": "Is posting jobs free?",
-            "a": "Yes, posting jobs on GulfJobCopilot is free for employers."
-          }
-        ]
-      }
-    ]
+    "facebookAriaLabel": "Follow GulfJobCopilot on Facebook",
+    "linkedinAriaLabel": "Follow GulfJobCopilot on LinkedIn",
+    "tiktokAriaLabel": "Follow GulfJobCopilot on TikTok"
   }
 }
