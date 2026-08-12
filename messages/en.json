@@ -378,7 +378,17 @@
       "delete": "Delete",
       "confirmDelete": "Delete this resume version? This can't be undone.",
       "copyOf": "Copy of {title}",
-      "editManually": "Edit manually"
+      "editManually": "Edit manually",
+      "photoSection": "Personal photo",
+      "photoSectionHelp": "Optional. Shown in the preview and included in the downloaded PDF — set once here, used across every resume version.",
+      "photoUpload": "Upload photo",
+      "photoChange": "Change photo",
+      "photoRemove": "Remove",
+      "photoUploading": "Uploading...",
+      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
+      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
+      "photoTooBig": "That photo is too large (5MB max).",
+      "photoUploadError": "Couldn't upload that photo. Please try again."
     },
     "resumeBuilder": {
       "title": "CV builder",
@@ -513,15 +523,9 @@
       "sizeStandard": "Standard",
       "sizeLarge": "Large",
       "photoSection": "Personal photo",
-      "photoSectionHelp": "Optional. Add a photo to your resume — shown in the preview and included in the downloaded PDF.",
+      "photoSectionHelp": "Set once, shown on every version of your resume — edit it from My Resumes.",
       "photoUpload": "Upload photo",
-      "photoChange": "Change photo",
-      "photoRemove": "Remove",
-      "photoUploading": "Uploading...",
-      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
-      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
-      "photoTooBig": "That photo is too large (5MB max).",
-      "photoUploadError": "Couldn't upload that photo. Please try again."
+      "photoChange": "Change photo"
     },
     "jobs": {
       "title": "Smart Job Search & Copilot",

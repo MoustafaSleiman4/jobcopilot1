@@ -19,12 +19,20 @@ import { getFormatConfig, type SectionKey } from "@/lib/resume-formats";
  * section-heading color always matches the preview's hardcoded gold-600,
  * which is NOT tied to `accentColor` there either — see the comment on
  * `HEADING_GOLD` below.
+ *
+ * `photoUrl` (a public Supabase Storage URL, or null/undefined) is passed in
+ * separately rather than read off `structured` — a personal photo lives on
+ * public.profiles (account-level, shared across every resume version), not
+ * inside any one resume's saved content. Callers fetch the profile's
+ * avatar_url once and pass it through here and to ResumePreview.tsx, so
+ * whichever resume version someone is viewing/downloading always shows the
+ * same photo.
  */
-// Fetches `resume.photoUrl` (a public Supabase Storage URL) and converts it
-// to a data: URL jsPDF's addImage() can embed directly. Best-effort: any
-// failure (network, CORS, an unreachable/deleted file) just means the PDF
-// renders without a photo rather than failing the whole download — a resume
-// download is the one flow that must never come back empty-handed.
+// Fetches `photoUrl` and converts it to a data: URL jsPDF's addImage() can
+// embed directly. Best-effort: any failure (network, CORS, an
+// unreachable/deleted file) just means the PDF renders without a photo
+// rather than failing the whole download — a resume download is the one
+// flow that must never come back empty-handed.
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
@@ -41,12 +49,16 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
-export async function downloadResumePdf(structured: StructuredResume, filename = "resume.pdf") {
+export async function downloadResumePdf(
+  structured: StructuredResume,
+  filename = "resume.pdf",
+  photoUrl?: string | null
+) {
   const { jsPDF } = await import("jspdf");
 
   // Kicked off before any synchronous jsPDF work below so the network round
   // trip overlaps with it instead of adding to it.
-  const photoDataUrlPromise = structured.photoUrl ? loadImageAsDataUrl(structured.photoUrl) : Promise.resolve(null);
+  const photoDataUrlPromise = photoUrl ? loadImageAsDataUrl(photoUrl) : Promise.resolve(null);
 
   const config = getFormatConfig(structured.format);
   const plain = config.plain;

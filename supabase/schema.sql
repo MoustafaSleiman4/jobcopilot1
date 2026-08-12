@@ -14,6 +14,14 @@ create table if not exists public.profiles (
   target_roles text[],
   country text,
   plan text default 'free' check (plan in ('free', 'pro')),
+  -- Personal photo, set from the "Personal photo" section on
+  -- /dashboard/resume — account-level and shared across every resume
+  -- version (see components/ResumePreview.tsx and lib/resume-pdf.ts, both
+  -- of which take it as a separate argument rather than reading it off any
+  -- one resume's saved content). A plain public URL into the
+  -- "resume-photos" Storage bucket (see storage-setup.sql), not a storage
+  -- path, so it can be used directly wherever it's rendered.
+  avatar_url text,
   created_at timestamptz default now()
 );
 

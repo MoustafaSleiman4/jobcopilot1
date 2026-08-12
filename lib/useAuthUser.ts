@@ -9,6 +9,11 @@ export type AuthUser = {
   fullName: string | null;
   phone: string | null;
   plan: "free" | "pro";
+  // Personal photo set from the Resume & Profile Builder (/dashboard/resume)
+  // — account-level, shared across every resume version. Surfaced here too
+  // so it can also stand in for the initial-letter bubble in the dashboard
+  // header (see DashboardShell.tsx) once someone has set one.
+  avatarUrl: string | null;
   // Whether this account also owns a row in public.companies — i.e. the
   // same login can act as both a job seeker (/dashboard) and an employer
   // (/employer/dashboard). Used to surface a "switch to employer view" link
@@ -50,7 +55,7 @@ export function useAuthUser() {
         // allows anyone to read public.companies) and shouldn't add latency
         // on top of the profile fetch every dashboard load already does.
         const [{ data: profile }, { data: company }] = await Promise.all([
-          supabase.from("profiles").select("full_name, phone, plan").eq("id", authedUser.id).single(),
+          supabase.from("profiles").select("full_name, phone, plan, avatar_url").eq("id", authedUser.id).single(),
           supabase.from("companies").select("id").eq("owner_id", authedUser.id).maybeSingle(),
         ]);
         if (cancelled) return;
@@ -61,6 +66,7 @@ export function useAuthUser() {
           fullName: profile?.full_name ?? null,
           phone: profile?.phone ?? null,
           plan: profile?.plan === "pro" ? "pro" : "free",
+          avatarUrl: profile?.avatar_url ?? null,
           hasCompany: Boolean(company),
         });
       } catch {

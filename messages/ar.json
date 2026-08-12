@@ -378,7 +378,17 @@
       "delete": "حذف",
       "confirmDelete": "حذف نسخة السيرة الذاتية هذه؟ لا يمكن التراجع عن هذا الإجراء.",
       "copyOf": "نسخة من {title}",
-      "editManually": "تعديل يدوي"
+      "editManually": "تعديل يدوي",
+      "photoSection": "الصورة الشخصية",
+      "photoSectionHelp": "اختياري. تظهر في المعاينة وتُضاف إلى ملف PDF عند التحميل — تُضبط مرة واحدة هنا وتُستخدم في كل نسخة من سيرتك الذاتية.",
+      "photoUpload": "رفع صورة",
+      "photoChange": "تغيير الصورة",
+      "photoRemove": "إزالة",
+      "photoUploading": "جارٍ الرفع...",
+      "photoHint": "JPG أو PNG أو WEBP، بحد أقصى 5 ميغابايت.",
+      "photoInvalidType": "الرجاء اختيار صورة بصيغة JPG أو PNG أو WEBP.",
+      "photoTooBig": "حجم الصورة كبير جدًا (الحد الأقصى 5 ميغابايت).",
+      "photoUploadError": "تعذّر رفع الصورة. حاول مرة أخرى."
     },
     "resumeBuilder": {
       "title": "منشئ السيرة الذاتية",
@@ -513,15 +523,9 @@
       "sizeStandard": "قياسي",
       "sizeLarge": "كبير",
       "photoSection": "الصورة الشخصية",
-      "photoSectionHelp": "اختياري. أضف صورة إلى سيرتك الذاتية — تظهر في المعاينة وتُضاف إلى ملف PDF عند التحميل.",
+      "photoSectionHelp": "تُضبط مرة واحدة وتظهر في كل نسخة من سيرتك الذاتية — يمكنك تعديلها من صفحة سيّرتي الذاتية.",
       "photoUpload": "رفع صورة",
-      "photoChange": "تغيير الصورة",
-      "photoRemove": "إزالة",
-      "photoUploading": "جارٍ الرفع...",
-      "photoHint": "JPG أو PNG أو WEBP، بحد أقصى 5 ميغابايت.",
-      "photoInvalidType": "الرجاء اختيار صورة بصيغة JPG أو PNG أو WEBP.",
-      "photoTooBig": "حجم الصورة كبير جدًا (الحد الأقصى 5 ميغابايت).",
-      "photoUploadError": "تعذّر رفع الصورة. حاول مرة أخرى."
+      "photoChange": "تغيير الصورة"
     },
     "jobs": {
       "title": "البحث الذكي عن الوظائف والمساعد الذكي",

@@ -97,14 +97,12 @@ export type StructuredResume = {
   format?: ResumeFormat;
   customSections?: CustomSection[];
   style?: ResumeStyle;
-  // Public URL of a personal photo, uploaded to the "resume-photos" Supabase
-  // Storage bucket (public-read, owner-scoped write — see
-  // supabase/storage-setup.sql). Optional/defaulted like the fields above so
-  // every resume saved before this existed still loads fine with no photo.
-  // Stored as a plain public URL (not a storage path) so ResumePreview.tsx
-  // and lib/resume-pdf.ts can both use it directly as an <img>/addImage
-  // source without an extra lookup.
-  photoUrl?: string;
+  // Note: there is deliberately NO photo field here. A personal photo is an
+  // account-level thing (public.profiles.avatar_url), shared across every
+  // resume version, not something that changes per resume — see
+  // ResumePreview.tsx's separate `photoUrl` prop and
+  // downloadResumePdf()'s separate `photoUrl` argument, both sourced from
+  // the profile rather than from resume.content.
 };
 
 /** A fully-populated empty resume — the one place every optional field gets
@@ -126,6 +124,5 @@ export function emptyStructuredResume(): StructuredResume {
     format: "reverse-chronological",
     customSections: [],
     style: { ...DEFAULT_RESUME_STYLE },
-    photoUrl: "",
   };
 }

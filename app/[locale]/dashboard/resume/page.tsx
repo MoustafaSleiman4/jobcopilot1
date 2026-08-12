@@ -19,6 +19,8 @@ import {
   Trash2,
   Star,
   PenSquare,
+  ImagePlus,
+  User,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ResumePreview from "@/components/ResumePreview";
@@ -27,6 +29,8 @@ import { emptyStructuredResume } from "@/lib/resume-types";
 import { downloadResumePdf } from "@/lib/resume-pdf";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — matches the resume-photos bucket's file_size_limit
+const PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]; // matches the bucket's allowed_mime_types
 
 const DEMO_STRUCTURED: StructuredResume = {
   fullName: "Your Name",
@@ -73,6 +77,15 @@ export default function ResumeBuilderPage() {
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [loadErrorMsg, setLoadErrorMsg] = useState<string | null>(null);
+
+  // Personal photo — account-level (public.profiles.avatar_url), shared
+  // across every resume version rather than saved inside any one resume's
+  // content. Set here, before someone has necessarily created a resume at
+  // all, since it belongs to the profile, not to a resume.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoErrorMsg, setPhotoErrorMsg] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
@@ -160,10 +173,11 @@ export default function ResumeBuilderPage() {
 
           const { data: profile } = await supabase
             .from("profiles")
-            .select("plan")
+            .select("plan, avatar_url")
             .eq("id", uid)
             .single();
           if (!cancelled && profile?.plan === "pro") setPlan("pro");
+          if (!cancelled) setAvatarUrl(profile?.avatar_url ?? null);
 
           await loadExistingResume(supabase, uid);
           if (!cancelled) await loadVersions(supabase, uid);
@@ -240,6 +254,74 @@ export default function ResumeBuilderPage() {
       setPipelineErrorMsg(err instanceof Error ? err.message : "AI enhancement failed");
     } finally {
       setEnhancing(false);
+    }
+  }
+
+  // --- Profile photo ---
+  // Uploaded to the "resume-photos" bucket (public-read, owner-scoped write
+  // — see supabase/storage-setup.sql) at "<user_id>/photo-<timestamp>.<ext>",
+  // same folder-per-user convention as the "resumes" bucket. Saved onto
+  // public.profiles.avatar_url — account-level, not per-resume — so it's
+  // set once here, before someone necessarily has a resume yet, and then
+  // shows up automatically across every resume version's preview/PDF (see
+  // ResumeBuilderForm.tsx and the ResumePreview/downloadResumePdf calls
+  // below, all of which read this same profile field). The bucket's own
+  // file_size_limit/allowed_mime_types are the real enforcement; the checks
+  // here just give a fast, friendly error before spending an upload
+  // round-trip on a file that would be rejected anyway.
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file again later
+    if (!file) return;
+    setPhotoErrorMsg(null);
+
+    if (!userId) return;
+    if (!PHOTO_MIME_TYPES.includes(file.type)) {
+      setPhotoErrorMsg(t("photoInvalidType"));
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoErrorMsg(t("photoTooBig"));
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${userId}/photo-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("resume-photos").upload(path, file, { upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("resume-photos").getPublicUrl(path);
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: data.publicUrl })
+        .eq("id", userId);
+      if (profileError) throw profileError;
+
+      setAvatarUrl(data.publicUrl);
+    } catch (err) {
+      console.error("[resume] photo upload failed:", err);
+      setPhotoErrorMsg(t("photoUploadError"));
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoErrorMsg(null);
+    if (!userId) return;
+    const previousAvatarUrl = avatarUrl;
+    setAvatarUrl(null); // optimistic — this is a plain preference toggle, not data loss
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("[resume] failed to remove photo:", err);
+      setAvatarUrl(previousAvatarUrl);
+      setPhotoErrorMsg(t("photoUploadError"));
     }
   }
 
@@ -393,7 +475,7 @@ export default function ResumeBuilderPage() {
       setShowPaywall(true);
       return;
     }
-    await downloadResumePdf(structured, "resume.pdf");
+    await downloadResumePdf(structured, "resume.pdf", avatarUrl);
   }
 
   // --- Version management (My resumes) ---
@@ -499,6 +581,61 @@ export default function ResumeBuilderPage() {
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="mt-0.5 flex-none" size={16} />
           <span>{loadErrorMsg}</span>
+        </div>
+      )}
+
+      {/* Profile photo — set once here, account-level (public.profiles.
+          avatar_url), before someone has necessarily created any resume at
+          all. Shown first, above "My resumes", precisely so it's available
+          to set before creating a resume, and every version created after
+          (or already existing) picks it up automatically since
+          ResumeBuilderForm.tsx and the preview/PDF below all read this same
+          profile field rather than anything saved per resume. */}
+      {userId && (
+        <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-surface p-5">
+          <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
+            {avatarUrl ? (
+              // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <User className="text-foreground/30" size={24} />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">{t("photoSection")}</p>
+            <p className="mt-0.5 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
+            <p className="mt-0.5 text-[11px] text-foreground/40">{t("photoHint")}</p>
+            {photoErrorMsg && <p className="mt-1 text-xs text-red-600">{photoErrorMsg}</p>}
+          </div>
+          <div className="flex flex-none items-center gap-2">
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoUploading}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300 disabled:opacity-60"
+            >
+              {photoUploading ? <Loader2 className="animate-spin" size={13} /> : <ImagePlus size={13} />}
+              {photoUploading ? t("photoUploading") : avatarUrl ? t("photoChange") : t("photoUpload")}
+            </button>
+            {avatarUrl && (
+              <button
+                type="button"
+                onClick={removePhoto}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-red-600 hover:border-red-300"
+              >
+                <Trash2 size={13} />
+                {t("photoRemove")}
+              </button>
+            )}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
         </div>
       )}
 
@@ -718,6 +855,7 @@ export default function ResumeBuilderPage() {
 
         <ResumePreview
           resume={structured}
+          photoUrl={avatarUrl}
           labels={{
             summary: t("sectionSummary"),
             skills: t("sectionSkills"),

@@ -13,6 +13,12 @@ import { getFormatConfig, type SectionKey } from "@/lib/resume-formats";
  * used to always render) — see lib/resume-formats.ts for what each format
  * changes. Nothing is ever hidden or deleted based on format, only
  * reordered/restyled, so switching formats is always non-destructive.
+ *
+ * `photoUrl` is a separate prop, not part of `resume` — a personal photo is
+ * account-level (public.profiles.avatar_url) and shared across every resume
+ * version, not saved-per-resume content. Callers fetch the profile's photo
+ * once and pass it through here (and to downloadResumePdf) so the same
+ * photo shows up no matter which resume version is being viewed.
  */
 // Base font-size (px) for each fontSize setting. Every text-size class in
 // this component is expressed as an em value relative to this base (see the
@@ -34,9 +40,11 @@ const FONT_FAMILY_CLASS: Record<NonNullable<StructuredResume["style"]>["fontFami
 
 export default function ResumePreview({
   resume,
+  photoUrl,
   labels,
 }: {
   resume: StructuredResume;
+  photoUrl?: string | null;
   labels: {
     summary: string;
     skills: string;
@@ -283,11 +291,11 @@ export default function ResumePreview({
               </div>
             )}
           </div>
-          {resume.photoUrl && (
+          {photoUrl && (
             // Remote, user-uploaded photo — a fixed set of next/image domains isn't a good fit here.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={resume.photoUrl}
+              src={photoUrl}
               alt=""
               className={`h-16 w-16 flex-none rounded-full object-cover ${
                 plain ? "border border-foreground/20" : "border-2 border-white/50"

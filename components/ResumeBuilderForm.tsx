@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -34,13 +34,10 @@ import {
   Columns,
   Upload,
   FileCheck2,
-  ImagePlus,
   User,
 } from "lucide-react";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB, matches the /dashboard/resume upload flow
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — matches the resume-photos bucket's file_size_limit
-const PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]; // matches the bucket's allowed_mime_types
 
 function newSectionId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -132,9 +129,11 @@ export default function ResumeBuilderForm() {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadErrorMsg, setUploadErrorMsg] = useState<string | null>(null);
 
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoErrorMsg, setPhotoErrorMsg] = useState<string | null>(null);
+  // A personal photo is account-level (public.profiles.avatar_url), managed
+  // from /dashboard/resume, not edited per resume version here — this
+  // builder just reads it, so the same photo shows up in the preview and
+  // the downloaded PDF for every resume version.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,8 +149,13 @@ export default function ResumeBuilderForm() {
           return;
         }
 
-        const { data: profile } = await supabase.from("profiles").select("plan").eq("id", uid).single();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan, avatar_url")
+          .eq("id", uid)
+          .single();
         if (!cancelled && profile?.plan === "pro") setPlan("pro");
+        if (!cancelled) setAvatarUrl(profile?.avatar_url ?? null);
 
         if (idParam) {
           const { data: row, error } = await supabase
@@ -207,51 +211,6 @@ export default function ResumeBuilderForm() {
   // font and color" bug this fixes).
   function updateStyle(patch: Partial<NonNullable<StructuredResume["style"]>>) {
     update("style", { ...DEFAULT_RESUME_STYLE, ...structured.style, ...patch });
-  }
-
-  // --- Photo ---
-  // Uploaded to the "resume-photos" bucket (public-read, owner-scoped write
-  // — see supabase/storage-setup.sql) at "<user_id>/photo-<timestamp>.<ext>",
-  // same folder-per-user convention as the "resumes" bucket. The bucket's
-  // own file_size_limit/allowed_mime_types are the real enforcement; the
-  // checks here just give a fast, friendly error before spending an upload
-  // round-trip on a file that would be rejected anyway.
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file again later
-    if (!file) return;
-    setPhotoErrorMsg(null);
-
-    if (!userId) return;
-    if (!PHOTO_MIME_TYPES.includes(file.type)) {
-      setPhotoErrorMsg(t("photoInvalidType"));
-      return;
-    }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoErrorMsg(t("photoTooBig"));
-      return;
-    }
-
-    setPhotoUploading(true);
-    try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/photo-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("resume-photos").upload(path, file, { upsert: false });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("resume-photos").getPublicUrl(path);
-      update("photoUrl", data.publicUrl);
-    } catch (err) {
-      console.error("[resume-builder] photo upload failed:", err);
-      setPhotoErrorMsg(t("photoUploadError"));
-    } finally {
-      setPhotoUploading(false);
-    }
-  }
-
-  function removePhoto() {
-    setPhotoErrorMsg(null);
-    update("photoUrl", "");
   }
 
   // --- Skills ---
@@ -627,7 +586,11 @@ export default function ResumeBuilderForm() {
       setShowPaywall(true);
       return;
     }
-    await downloadResumePdf(structured, `${(versionTitle || structured.fullName || "resume").replace(/\s+/g, "-")}.pdf`);
+    await downloadResumePdf(
+      structured,
+      `${(versionTitle || structured.fullName || "resume").replace(/\s+/g, "-")}.pdf`,
+      avatarUrl
+    );
   }
 
   async function handleDuplicate() {
@@ -769,52 +732,31 @@ export default function ResumeBuilderForm() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-5">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("photoSection")}</h3>
-        <p className="mt-1 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
-            {structured.photoUrl ? (
-              // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={structured.photoUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <User className="text-foreground/30" size={28} />
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                disabled={photoUploading}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300 disabled:opacity-60"
-              >
-                {photoUploading ? <Loader2 className="animate-spin" size={13} /> : <ImagePlus size={13} />}
-                {photoUploading ? t("photoUploading") : structured.photoUrl ? t("photoChange") : t("photoUpload")}
-              </button>
-              {structured.photoUrl && (
-                <button
-                  type="button"
-                  onClick={removePhoto}
-                  className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-red-600 hover:border-red-300"
-                >
-                  <Trash2 size={13} />
-                  {t("photoRemove")}
-                </button>
-              )}
-            </div>
-            <p className="text-[11px] text-foreground/40">{t("photoHint")}</p>
-            {photoErrorMsg && <p className="text-[11px] text-red-600">{photoErrorMsg}</p>}
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
+      {/* The personal photo itself is edited on /dashboard/resume (it's
+          account-level, shared across every resume version — see
+          avatarUrl above) — this is just a visible pointer to it so someone
+          editing a resume here isn't left wondering why there's no photo
+          field in a "photo" section. */}
+      <section className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex h-14 w-14 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
+          {avatarUrl ? (
+            // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <User className="text-foreground/30" size={20} />
+          )}
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("photoSection")}</p>
+          <p className="mt-1 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
+        </div>
+        <Link
+          href="/dashboard/resume"
+          className="flex-none rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300"
+        >
+          {avatarUrl ? t("photoChange") : t("photoUpload")}
+        </Link>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5">
@@ -1521,7 +1463,7 @@ export default function ResumeBuilderForm() {
         <div className={`min-w-0 ${mobileTab === "edit" ? "block" : "hidden md:block"}`}>{editPane}</div>
         <div className={`min-w-0 ${mobileTab === "preview" ? "block" : "hidden md:block"}`}>
           <div className="md:sticky md:top-6">
-            <ResumePreview resume={structured} labels={previewLabels} />
+            <ResumePreview resume={structured} photoUrl={avatarUrl} labels={previewLabels} />
           </div>
         </div>
       </div>

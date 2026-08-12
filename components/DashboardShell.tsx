@@ -146,9 +146,15 @@ export default function DashboardShell({
                   onClick={() => setMenuOpen((v) => !v)}
                   className="flex items-center gap-2 rounded-full border border-border bg-background py-1 ps-1 pe-2.5 text-sm font-medium text-foreground/80 hover:border-emerald-300"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                    {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
-                  </span>
+                  {user.avatarUrl ? (
+                    // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatarUrl} alt="" className="h-7 w-7 flex-none rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                      {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
+                    </span>
+                  )}
                   <span className="hidden max-w-[9rem] truncate sm:inline">
                     {user.fullName || user.email}
                   </span>
