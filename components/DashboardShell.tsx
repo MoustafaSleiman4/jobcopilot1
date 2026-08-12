@@ -22,6 +22,7 @@ import {
   Zap,
   HelpCircle,
   Building2,
+  UserPlus,
 } from "lucide-react";
 
 const navItems = [
@@ -33,6 +34,11 @@ const navItems = [
   { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
   { key: "certifications", href: "/dashboard/certifications", icon: GraduationCap },
   { key: "reports", href: "/dashboard/reports", icon: BarChart3 },
+  // Kept last in the sidebar (and last in the mobile tab bar) — it's a
+  // secondary, occasional action rather than something used every visit,
+  // so it shouldn't compete with the core job-search tools above it for
+  // the prime top-of-list positions.
+  { key: "invite", href: "/dashboard/invite", icon: UserPlus },
 ] as const;
 
 export default function DashboardShell({

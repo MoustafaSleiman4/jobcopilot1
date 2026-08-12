@@ -313,7 +313,8 @@
       "certifications": "Certifications",
       "reports": "Reports",
       "autoApply": "Auto Apply",
-      "employerDashboard": "Employer dashboard"
+      "employerDashboard": "Employer dashboard",
+      "invite": "Invite Friends"
     },
     "overview": {
       "title": "Welcome back",
@@ -834,6 +835,28 @@
           "fixResumeLink": "Go to Resume Builder"
         }
       }
+    },
+    "invite": {
+      "title": "Invite Friends",
+      "subtitle": "Know someone job hunting? Send them a professional invite to GulfJobCopilot — sent from GulfJobCopilot, not your personal inbox.",
+      "emailsLabel": "Their email address(es)",
+      "emailsPlaceholder": "Enter one or more emails, separated by commas or new lines",
+      "emailsHint": "Up to 10 at a time",
+      "showNameLabel": "Show my name to the people I invite",
+      "showNameHint": "When off, the invite is sent anonymously as \"a member of the GulfJobCopilot community\"",
+      "sendButton": "Send Invitations",
+      "sending": "Sending...",
+      "successMessage": "Invitation sent to {count} people",
+      "skippedMessage": "{count} already invited recently — skipped",
+      "failedMessage": "{count} invitation(s) couldn't be sent",
+      "invalidEmail": "Enter at least one valid email address",
+      "tooMany": "You can invite up to 10 people at a time",
+      "error": "Something went wrong sending your invitations. Please try again.",
+      "historyTitle": "Your Invitations",
+      "historyEmpty": "You haven't invited anyone yet",
+      "statusSent": "Sent",
+      "statusJoined": "Joined",
+      "loading": "Loading..."
     }
   },
   "footer": {

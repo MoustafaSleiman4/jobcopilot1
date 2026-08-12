@@ -313,7 +313,8 @@
       "certifications": "الشهادات",
       "reports": "التقارير",
       "autoApply": "التقديم التلقائي",
-      "employerDashboard": "لوحة صاحب العمل"
+      "employerDashboard": "لوحة صاحب العمل",
+      "invite": "دعوة الأصدقاء"
     },
     "overview": {
       "title": "مرحبًا بعودتك",
@@ -834,6 +835,28 @@
           "fixResumeLink": "الانتقال إلى منشئ السيرة الذاتية"
         }
       }
+    },
+    "invite": {
+      "title": "دعوة الأصدقاء",
+      "subtitle": "تعرف شخصًا يبحث عن عمل؟ أرسل له دعوة احترافية للانضمام إلى GulfJobCopilot — تُرسل من GulfJobCopilot وليس من بريدك الشخصي.",
+      "emailsLabel": "عنوان (عناوين) بريدهم الإلكتروني",
+      "emailsPlaceholder": "أدخل بريدًا إلكترونيًا واحدًا أو أكثر، مفصولة بفواصل أو أسطر جديدة",
+      "emailsHint": "حتى 10 في المرة الواحدة",
+      "showNameLabel": "إظهار اسمي لمن أدعوهم",
+      "showNameHint": "عند الإيقاف، تُرسل الدعوة بشكل مجهول باسم \"أحد أعضاء مجتمع GulfJobCopilot\"",
+      "sendButton": "إرسال الدعوات",
+      "sending": "جارٍ الإرسال...",
+      "successMessage": "تم إرسال الدعوة إلى {count} شخص",
+      "skippedMessage": "تم تخطي {count} ممن تمت دعوتهم مؤخرًا",
+      "failedMessage": "تعذر إرسال {count} من الدعوات",
+      "invalidEmail": "أدخل عنوان بريد إلكتروني صالح واحدًا على الأقل",
+      "tooMany": "يمكنك دعوة حتى 10 أشخاص في المرة الواحدة",
+      "error": "حدث خطأ أثناء إرسال دعواتك. يرجى المحاولة مرة أخرى.",
+      "historyTitle": "دعواتك",
+      "historyEmpty": "لم تقم بدعوة أي شخص بعد",
+      "statusSent": "تم الإرسال",
+      "statusJoined": "انضم",
+      "loading": "جارٍ التحميل..."
     }
   },
   "footer": {
