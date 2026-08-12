@@ -294,10 +294,16 @@ export default function ResumeBuilderPage() {
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("resume-photos").getPublicUrl(path);
 
+      // upsert, not update: an UPDATE against a profiles row that doesn't
+      // exist matches 0 rows and succeeds without error — which is exactly
+      // what silently discarded photo uploads for any account whose
+      // profiles row hadn't been created yet (see the on_auth_user_created
+      // trigger in supabase/profile-trigger.sql, now applied). Upserting
+      // here means a photo save can never again look successful in the UI
+      // while quietly not persisting.
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ avatar_url: data.publicUrl })
-        .eq("id", userId);
+        .upsert({ id: userId, avatar_url: data.publicUrl }, { onConflict: "id" });
       if (profileError) throw profileError;
 
       setAvatarUrl(data.publicUrl);
@@ -316,7 +322,9 @@ export default function ResumeBuilderPage() {
     setAvatarUrl(null); // optimistic — this is a plain preference toggle, not data loss
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ id: userId, avatar_url: null }, { onConflict: "id" });
       if (error) throw error;
     } catch (err) {
       console.error("[resume] failed to remove photo:", err);
