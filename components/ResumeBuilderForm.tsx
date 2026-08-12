@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -34,9 +34,13 @@ import {
   Columns,
   Upload,
   FileCheck2,
+  ImagePlus,
+  User,
 } from "lucide-react";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB, matches the /dashboard/resume upload flow
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — matches the resume-photos bucket's file_size_limit
+const PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]; // matches the bucket's allowed_mime_types
 
 function newSectionId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -128,6 +132,10 @@ export default function ResumeBuilderForm() {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadErrorMsg, setUploadErrorMsg] = useState<string | null>(null);
 
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoErrorMsg, setPhotoErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -199,6 +207,51 @@ export default function ResumeBuilderForm() {
   // font and color" bug this fixes).
   function updateStyle(patch: Partial<NonNullable<StructuredResume["style"]>>) {
     update("style", { ...DEFAULT_RESUME_STYLE, ...structured.style, ...patch });
+  }
+
+  // --- Photo ---
+  // Uploaded to the "resume-photos" bucket (public-read, owner-scoped write
+  // — see supabase/storage-setup.sql) at "<user_id>/photo-<timestamp>.<ext>",
+  // same folder-per-user convention as the "resumes" bucket. The bucket's
+  // own file_size_limit/allowed_mime_types are the real enforcement; the
+  // checks here just give a fast, friendly error before spending an upload
+  // round-trip on a file that would be rejected anyway.
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file again later
+    if (!file) return;
+    setPhotoErrorMsg(null);
+
+    if (!userId) return;
+    if (!PHOTO_MIME_TYPES.includes(file.type)) {
+      setPhotoErrorMsg(t("photoInvalidType"));
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoErrorMsg(t("photoTooBig"));
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${userId}/photo-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("resume-photos").upload(path, file, { upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("resume-photos").getPublicUrl(path);
+      update("photoUrl", data.publicUrl);
+    } catch (err) {
+      console.error("[resume-builder] photo upload failed:", err);
+      setPhotoErrorMsg(t("photoUploadError"));
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  function removePhoto() {
+    setPhotoErrorMsg(null);
+    update("photoUrl", "");
   }
 
   // --- Skills ---
@@ -713,6 +766,54 @@ export default function ResumeBuilderForm() {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("photoSection")}</h3>
+        <p className="mt-1 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
+        <div className="mt-3 flex items-center gap-4">
+          <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
+            {structured.photoUrl ? (
+              // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={structured.photoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <User className="text-foreground/30" size={28} />
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300 disabled:opacity-60"
+              >
+                {photoUploading ? <Loader2 className="animate-spin" size={13} /> : <ImagePlus size={13} />}
+                {photoUploading ? t("photoUploading") : structured.photoUrl ? t("photoChange") : t("photoUpload")}
+              </button>
+              {structured.photoUrl && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-red-600 hover:border-red-300"
+                >
+                  <Trash2 size={13} />
+                  {t("photoRemove")}
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-foreground/40">{t("photoHint")}</p>
+            {photoErrorMsg && <p className="text-[11px] text-red-600">{photoErrorMsg}</p>}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
         </div>
       </section>
 

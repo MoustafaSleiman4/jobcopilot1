@@ -300,7 +300,7 @@
   "dashboard": {
     "nav": {
       "overview": "Overview",
-      "resume": "Resume",
+      "resume": "Resume & Profile",
       "jobs": "Job Copilot",
       "applications": "Applications",
       "chat": "Assistant",
@@ -332,7 +332,7 @@
       "upgradedPending": "Payment received — we're finishing setting up your Pro plan. This is usually instant; refresh in a minute if it's still showing here."
     },
     "resume": {
-      "title": "Resume builder",
+      "title": "Resume & Profile Builder",
       "subtitle": "Upload, build, and enhance your resume with AI.",
       "upload": "Upload resume (PDF or DOCX)",
       "uploading": "Uploading...",
@@ -511,7 +511,17 @@
       "fontMono": "Monospace",
       "sizeCompact": "Compact",
       "sizeStandard": "Standard",
-      "sizeLarge": "Large"
+      "sizeLarge": "Large",
+      "photoSection": "Personal photo",
+      "photoSectionHelp": "Optional. Add a photo to your resume — shown in the preview and included in the downloaded PDF.",
+      "photoUpload": "Upload photo",
+      "photoChange": "Change photo",
+      "photoRemove": "Remove",
+      "photoUploading": "Uploading...",
+      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
+      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
+      "photoTooBig": "That photo is too large (5MB max).",
+      "photoUploadError": "Couldn't upload that photo. Please try again."
     },
     "jobs": {
       "title": "Smart Job Search & Copilot",

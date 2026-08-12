@@ -20,8 +20,33 @@ import { getFormatConfig, type SectionKey } from "@/lib/resume-formats";
  * which is NOT tied to `accentColor` there either — see the comment on
  * `HEADING_GOLD` below.
  */
+// Fetches `resume.photoUrl` (a public Supabase Storage URL) and converts it
+// to a data: URL jsPDF's addImage() can embed directly. Best-effort: any
+// failure (network, CORS, an unreachable/deleted file) just means the PDF
+// renders without a photo rather than failing the whole download — a resume
+// download is the one flow that must never come back empty-handed.
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function downloadResumePdf(structured: StructuredResume, filename = "resume.pdf") {
   const { jsPDF } = await import("jspdf");
+
+  // Kicked off before any synchronous jsPDF work below so the network round
+  // trip overlaps with it instead of adding to it.
+  const photoDataUrlPromise = structured.photoUrl ? loadImageAsDataUrl(structured.photoUrl) : Promise.resolve(null);
 
   const config = getFormatConfig(structured.format);
   const plain = config.plain;
@@ -71,6 +96,25 @@ export async function downloadResumePdf(structured: StructuredResume, filename =
     }
   }
 
+  // Top-right headshot, mirroring where ResumePreview.tsx places it relative
+  // to the name/title block. Drawn before the header text below so it never
+  // ends up on top of anything; the header text itself stays within
+  // pageWidth - marginX * 2 - PHOTO_RESERVED, so long names/links wrap
+  // before reaching under the photo instead of running behind it.
+  const photoDataUrl = await photoDataUrlPromise;
+  const PHOTO_SIZE = 64;
+  const PHOTO_RESERVED = photoDataUrl ? PHOTO_SIZE + 16 : 0;
+  if (photoDataUrl) {
+    const match = /^data:image\/(\w+);base64,/.exec(photoDataUrl);
+    const imageFormat = (match?.[1] ?? "jpeg").toUpperCase();
+    try {
+      doc.addImage(photoDataUrl, imageFormat, pageWidth - marginX - PHOTO_SIZE, 40, PHOTO_SIZE, PHOTO_SIZE, undefined, "FAST");
+    } catch {
+      // Malformed/unsupported image data — skip it, the rest of the PDF
+      // still renders fine without a photo.
+    }
+  }
+
   doc.setFont(fontName, "bold");
   doc.setFontSize(FS(20));
   doc.text(structured.fullName || "Resume", marginX, y);
@@ -101,7 +145,13 @@ export async function downloadResumePdf(structured: StructuredResume, filename =
     doc.setFontSize(FS(9.5));
     const linkColor: [number, number, number] = plain ? [60, 60, 60] : accentColor;
     doc.setTextColor(...linkColor);
-    const wrapped = doc.splitTextToSize(structured.links, pageWidth - marginX * 2);
+    // Reserve room for the photo on lines that could still fall within its
+    // vertical band (it ends at y=104) — links normally come after the name/
+    // title/contact lines already push y past that, but a resume with no
+    // title and no contact details would otherwise wrap links text straight
+    // under the photo.
+    const linksWidth = pageWidth - marginX * 2 - (y < 104 ? PHOTO_RESERVED : 0);
+    const wrapped = doc.splitTextToSize(structured.links, linksWidth);
     for (const l of wrapped) {
       ensureRoom(FS(12));
       doc.text(l, marginX, y);
@@ -110,6 +160,15 @@ export async function downloadResumePdf(structured: StructuredResume, filename =
     doc.setTextColor(0);
   }
   y += FS(6);
+
+  // If the photo extends below wherever the header text ended (a short
+  // name/title/contact block next to a 64pt-tall photo), make sure the
+  // header rule and first section heading start below it too — otherwise a
+  // short header would draw the divider line, and the first section, right
+  // through the bottom of the photo.
+  if (photoDataUrl) {
+    y = Math.max(y, 40 + PHOTO_SIZE + FS(10));
+  }
 
   // A thin rule under the header block echoes the preview's colored top
   // banner in a print-friendly way (a full gradient-filled rect would fight

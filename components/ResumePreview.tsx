@@ -254,32 +254,47 @@ export default function ResumePreview({
       style={{ fontSize: `${basePx}px` }}
     >
       <div className={plain ? "border-b-2 border-foreground/80 px-6 py-5" : `bg-gradient-to-r ${headerGradient} px-6 py-5 text-white`}>
-        <h3 className={`text-[1.43em] font-bold ${plain ? "text-foreground" : ""}`}>{resume.fullName || "—"}</h3>
-        {resume.title && <p className={`mt-1 text-[1em] ${plain ? "text-foreground/70" : "text-white/90"}`}>{resume.title}</p>}
-        {hasContact && (
-          <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.86em] ${plain ? "text-foreground/60" : "text-white/80"}`}>
-            {resume.email && (
-              <span className="flex items-center gap-1.5">
-                <Mail size={12} /> {resume.email}
-              </span>
-            )}
-            {resume.phone && (
-              <span className="flex items-center gap-1.5">
-                <Phone size={12} /> {resume.phone}
-              </span>
-            )}
-            {resume.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPin size={12} /> {resume.location}
-              </span>
-            )}
-            {resume.links && (
-              <span className="flex items-center gap-1.5">
-                <LinkIcon size={12} /> {resume.links}
-              </span>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h3 className={`text-[1.43em] font-bold ${plain ? "text-foreground" : ""}`}>{resume.fullName || "—"}</h3>
+            {resume.title && <p className={`mt-1 text-[1em] ${plain ? "text-foreground/70" : "text-white/90"}`}>{resume.title}</p>}
+            {hasContact && (
+              <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.86em] ${plain ? "text-foreground/60" : "text-white/80"}`}>
+                {resume.email && (
+                  <span className="flex items-center gap-1.5">
+                    <Mail size={12} /> {resume.email}
+                  </span>
+                )}
+                {resume.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone size={12} /> {resume.phone}
+                  </span>
+                )}
+                {resume.location && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={12} /> {resume.location}
+                  </span>
+                )}
+                {resume.links && (
+                  <span className="flex items-center gap-1.5">
+                    <LinkIcon size={12} /> {resume.links}
+                  </span>
+                )}
+              </div>
             )}
           </div>
-        )}
+          {resume.photoUrl && (
+            // Remote, user-uploaded photo — a fixed set of next/image domains isn't a good fit here.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resume.photoUrl}
+              alt=""
+              className={`h-16 w-16 flex-none rounded-full object-cover ${
+                plain ? "border border-foreground/20" : "border-2 border-white/50"
+              }`}
+            />
+          )}
+        </div>
       </div>
 
       <div className="space-y-6 p-6">
