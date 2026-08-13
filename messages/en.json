@@ -6,7 +6,9 @@
     "signup": "Get started",
     "dashboard": "Dashboard",
     "signOut": "Sign out",
-    "forEmployers": "For employers"
+    "forEmployers": "For employers",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "seo": {
     "pricing": {
@@ -378,17 +380,7 @@
       "delete": "Delete",
       "confirmDelete": "Delete this resume version? This can't be undone.",
       "copyOf": "Copy of {title}",
-      "editManually": "Edit manually",
-      "photoSection": "Personal photo",
-      "photoSectionHelp": "Optional. Shown in the preview and included in the downloaded PDF — set once here, used across every resume version.",
-      "photoUpload": "Upload photo",
-      "photoChange": "Change photo",
-      "photoRemove": "Remove",
-      "photoUploading": "Uploading...",
-      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
-      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
-      "photoTooBig": "That photo is too large (5MB max).",
-      "photoUploadError": "Couldn't upload that photo. Please try again."
+      "editManually": "Edit manually"
     },
     "resumeBuilder": {
       "title": "CV builder",
@@ -523,9 +515,15 @@
       "sizeStandard": "Standard",
       "sizeLarge": "Large",
       "photoSection": "Personal photo",
-      "photoSectionHelp": "Set once, shown on every version of your resume — edit it from My Resumes.",
+      "photoSectionHelp": "Optional. Add a photo to your resume — shown in the preview and included in the downloaded PDF.",
       "photoUpload": "Upload photo",
-      "photoChange": "Change photo"
+      "photoChange": "Change photo",
+      "photoRemove": "Remove",
+      "photoUploading": "Uploading...",
+      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
+      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
+      "photoTooBig": "That photo is too large (5MB max).",
+      "photoUploadError": "Couldn't upload that photo. Please try again."
     },
     "jobs": {
       "title": "Smart Job Search & Copilot",

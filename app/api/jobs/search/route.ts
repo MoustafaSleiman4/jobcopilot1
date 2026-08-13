@@ -15,6 +15,7 @@ import {
   fetchLeverJobs,
   fetchAshbyJobs,
   fetchRemoteOkJobs,
+  dedupeJobs,
 } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
 import { getActiveCompanyJobs } from "@/lib/companyJobs";
@@ -211,15 +212,13 @@ export async function GET(request: NextRequest) {
   // silently push out every relevant curated listing.
   let jobs = [...realJobs, ...FALLBACK_JOBS];
 
-  // De-dupe by apply URL (Jooble in particular can return the same posting
-  // more than once across nearby locations, and a real listing could in
-  // theory collide with a fallback one).
-  const seen = new Set<string>();
-  jobs = jobs.filter((j) => {
-    if (seen.has(j.applyUrl)) return false;
-    seen.add(j.applyUrl);
-    return true;
-  });
+  // De-dupe by apply URL AND by normalized title+company (see dedupeJobs'
+  // comment in lib/jobSources.ts) — apply-URL-only used to miss the same
+  // real posting re-fetched under a different tracking link across
+  // different keyword searches/sources/refresh days, which is what showed
+  // up as literal duplicate cards (identical title, company, tags, match %)
+  // in Job Search.
+  jobs = dedupeJobs(jobs);
 
   if (q && exactPhrase) {
     // "Exact phrase" checkbox, checked: the whole query has to appear
@@ -233,20 +232,16 @@ export async function GET(request: NextRequest) {
     // project manager" used to require ALL five words present somewhere,
     // which almost nothing matches; someone typing several role titles into
     // one box means "show me jobs for any of these", not "show me the one
-    // job whose text happens to contain every word". A job matching more of
-    // the words is still more relevant than one matching just one, so
-    // results are ranked by match count (most matched words first) rather
-    // than left in whatever order the underlying sources returned.
+    // job whose text happens to contain every word". Matching is still by
+    // word count (a job hitting more of the words still has to match at
+    // least one to appear at all) — ordering itself is handled by the
+    // newest-first sort below, applied the same way whether or not a
+    // search was typed.
     const words = q.split(/\s+/).filter(Boolean);
-    jobs = jobs
-      .map((j) => {
-        const haystack = `${j.title} ${j.company} ${j.location}`.toLowerCase();
-        const matchCount = words.reduce((n, w) => (haystack.includes(w) ? n + 1 : n), 0);
-        return { job: j, matchCount };
-      })
-      .filter((x) => x.matchCount > 0)
-      .sort((a, b) => b.matchCount - a.matchCount)
-      .map((x) => x.job);
+    jobs = jobs.filter((j) => {
+      const haystack = `${j.title} ${j.company} ${j.location}`.toLowerCase();
+      return words.some((w) => haystack.includes(w));
+    });
   }
 
   if (locationFilter) {
@@ -269,6 +264,25 @@ export async function GET(request: NextRequest) {
   if (workTypeFilter) {
     jobs = jobs.filter((j) => j.workType === workTypeFilter);
   }
+
+  // Newest posting first, always — Job Search's one sort order, regardless
+  // of search/filters. `postedAt` is the real upstream posted/updated date
+  // for live-board and employer-posted jobs, and the cache-retrieval time
+  // for the cached-source pool (see each source's mapping in
+  // lib/jobSources.ts / lib/jobCache.ts / lib/companyJobs.ts). A job with no
+  // date at all (only the static curated FALLBACK_JOBS list) sorts after
+  // every dated job rather than being guessed into some position — we don't
+  // actually know when those were posted, so we don't claim to.
+  jobs = [...jobs].sort((a, b) => {
+    const aTime = a.postedAt ? Date.parse(a.postedAt) : NaN;
+    const bTime = b.postedAt ? Date.parse(b.postedAt) : NaN;
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid) return bTime - aTime;
+    if (aValid) return -1;
+    if (bValid) return 1;
+    return 0;
+  });
 
   // Attach a match score per job when we have a usable resume — cheap, pure
   // keyword-overlap scoring (see scoreJob in lib/autoApplyRun.ts), same

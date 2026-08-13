@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchFreeSourceJobs } from "@/lib/jobSources";
+import { fetchFreeSourceJobs, dedupeJobs } from "@/lib/jobSources";
 import { getCachedJobs } from "@/lib/jobCache";
 import { getActiveCompanyJobs } from "@/lib/companyJobs";
 import { runAutoApplyForUser, type AutoApplyPreferences } from "@/lib/autoApplyRun";
@@ -54,11 +54,15 @@ export async function GET(request: NextRequest) {
   // listings too instead of only the always-free boards.
   // Also blends in free employer-posted jobs (see the "For Employers"
   // portal) so opted-in candidates get matched against those too.
-  const candidateJobs = [
+  // De-duped the same way Job Search dedupes (see dedupeJobs' comment in
+  // lib/jobSources.ts) — without this, the same real posting cached under
+  // two different tracking URLs (see that comment) could get queued and
+  // sent a cover letter for TWICE in one run, for what's actually one job.
+  const candidateJobs = dedupeJobs([
     ...(await fetchFreeSourceJobs()),
     ...(await getCachedJobs(admin)),
     ...(await getActiveCompanyJobs(admin)),
-  ];
+  ]);
 
   let totalQueued = 0;
 

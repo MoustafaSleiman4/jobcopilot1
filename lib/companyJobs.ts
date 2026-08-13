@@ -74,6 +74,8 @@ function toJob(row: CompanyJobWithCompanyName): Job {
     applyType: "external",
     industry: row.industry || "Other",
     workType: row.work_type,
+    // Real posting date — when the employer created this listing.
+    postedAt: row.created_at,
   };
 }
 

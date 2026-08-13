@@ -28,6 +28,13 @@ export type Job = {
   applyType: "one_click" | "external";
   industry: string;
   workType: WorkType;
+  // ISO 8601 timestamp — when the listing was actually posted/updated
+  // upstream (Greenhouse/Lever/Ashby/RemoteOK) or, for the cached/
+  // employer-posted sources, when it entered our own table. Optional
+  // because the curated FALLBACK_JOBS demo list has no real posting date —
+  // Job Search sorts by this, newest first, with undated jobs pushed to the
+  // end rather than guessed at.
+  postedAt?: string;
 };
 
 export const GREENHOUSE_BOARDS = [
@@ -147,17 +154,86 @@ const COMPILED_INDUSTRY_KEYWORDS: [string, RegExp[], RegExp[]][] = INDUSTRY_KEYW
 );
 
 // True when a job's own location text actually mentions one of the 9
+const US_STATE_CODES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY",
+  "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND",
+  "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
+]);
+
+// Several Gulf/Levant countries this app is scoped to happen to share a
+// name with an ordinary US city — Lebanon, Tennessee being the big one in
+// practice (a real, frequently-listed logistics/warehouse hub whose raw
+// location text is just "Lebanon, TN": one report found 974 of ~3,000
+// cached jobs were this single US posting, re-fetched under different
+// tracking URLs across many keyword searches, all incorrectly accepted as
+// "Lebanon" the country by the plain substring check below). US job listings
+// are reliably formatted as "City, XX" (a 2-letter state code) in a way no
+// genuine Gulf/Levant/Egypt listing this app's sources return ever is, so
+// that shape is rejected outright before the substring match ever runs.
+function looksLikeUSLocation(location: string): boolean {
+  const match = /,\s*([A-Za-z]{2})\s*(\(.*\))?\s*$/.exec(location.trim());
+  return !!match && US_STATE_CODES.has(match[1].toUpperCase());
+}
+
 // Gulf/Levant/Egypt countries this app is scoped to (or a known
 // abbreviation — see LOCATION_ALIASES). Used to keep US/global-remote
 // listings that a broad job-board search can otherwise pull in (RemoteOK in
 // particular has no geography filter of its own) out of results that are
 // supposed to be Gulf/Arab-region-only.
 export function isRegionLocation(location: string): boolean {
+  if (looksLikeUSLocation(location)) return false;
   const loc = location.toLowerCase();
   return LOCATIONS.some((country) => {
     const needles = [country.toLowerCase(), ...(LOCATION_ALIASES[country] ?? [])];
     return needles.some((n) => loc.includes(n));
   });
+}
+
+function normalizeForDedupe(value: string): string {
+  return value.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+/**
+ * De-dupes a job list two ways: first by exact apply URL (the original,
+ * narrow check), then by a normalized title+company key.
+ *
+ * The second pass is what actually fixes "the same job shows up twice" —
+ * reported as literal duplicate cards in Job Search (identical title,
+ * company, tags, match %). Jooble/SerpApi/Careerjet frequently wrap the
+ * SAME underlying posting in a DIFFERENT tracking/redirect URL depending on
+ * which keyword search or which day's refresh happened to surface it (the
+ * seed alone runs ~30 keyword combos per location — see SEED_KEYWORDS in
+ * lib/jobCache.ts — so the same real PwC/Careem/etc. posting is easily
+ * fetched more than once, each time wrapped in a fresh tracking link).
+ * Apply-URL-only dedup lets every one of those accumulate as a "different"
+ * job forever, since none of the URLs ever collide.
+ *
+ * Keying on title+company only (not location) is a deliberate tradeoff:
+ * location text format varies MORE across sources for the identical
+ * posting than title/company do (e.g. "Dubai" vs "Dubai, UAE" vs "United
+ * Arab Emirates"), so requiring it to match too would under-dedupe and miss
+ * real duplicates. The cost is that two genuinely distinct simultaneous
+ * openings with the exact same title at the same company would also
+ * collapse into one — judged rarer, and far less visibly broken, than
+ * showing duplicate cards.
+ *
+ * Order matters: first-seen wins, so callers should put their
+ * highest-quality/most-complete source first if that ever matters (today it
+ * doesn't — every source populates the same fields).
+ */
+export function dedupeJobs<T extends Job>(jobs: T[]): T[] {
+  const seenUrls = new Set<string>();
+  const seenKeys = new Set<string>();
+  const out: T[] = [];
+  for (const job of jobs) {
+    if (job.applyUrl && job.applyUrl !== "#" && seenUrls.has(job.applyUrl)) continue;
+    const key = `${normalizeForDedupe(job.title)}|${normalizeForDedupe(job.company)}`;
+    if (seenKeys.has(key)) continue;
+    if (job.applyUrl && job.applyUrl !== "#") seenUrls.add(job.applyUrl);
+    seenKeys.add(key);
+    out.push(job);
+  }
+  return out;
 }
 
 // `company` is optional and folded into the same matching text as `title` —
@@ -215,7 +291,7 @@ export async function fetchGreenhouseJobs(slug: string, host: string, company?: 
     const res = await fetch(`https://${host}/v1/boards/${slug}/jobs?content=false`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.jobs ?? []).slice(0, 25).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string }) =>
+    return (data.jobs ?? []).slice(0, 25).map((j: { id: number; title: string; location?: { name?: string }; absolute_url: string; updated_at?: string }) =>
       finalize({
         id: `${slug}-${j.id}`,
         title: j.title,
@@ -227,6 +303,10 @@ export async function fetchGreenhouseJobs(slug: string, host: string, company?: 
         location: j.location?.name ?? "Remote",
         applyUrl: j.absolute_url,
         applyType: "external" as const,
+        // Greenhouse's board API returns `updated_at` (bumped whenever the
+        // posting itself changes, which is the closest thing to a "posted"
+        // date it exposes) — real per-job dates instead of a guess.
+        postedAt: j.updated_at || undefined,
       })
     );
   } catch {
@@ -234,7 +314,7 @@ export async function fetchGreenhouseJobs(slug: string, host: string, company?: 
   }
 }
 
-type LeverPosting = { id?: string; text?: string; categories?: { location?: string; team?: string }; hostedUrl?: string; applyUrl?: string };
+type LeverPosting = { id?: string; text?: string; categories?: { location?: string; team?: string }; hostedUrl?: string; applyUrl?: string; createdAt?: number };
 
 export async function fetchLeverJobs(slug: string, company: string): Promise<Job[]> {
   try {
@@ -249,6 +329,8 @@ export async function fetchLeverJobs(slug: string, company: string): Promise<Job
         location: p.categories?.location ?? "Remote",
         applyUrl: p.applyUrl ?? p.hostedUrl ?? "#",
         applyType: "external" as const,
+        // Lever returns `createdAt` as an epoch-millisecond number.
+        postedAt: p.createdAt ? new Date(p.createdAt).toISOString() : undefined,
       })
     );
   } catch {
@@ -256,7 +338,7 @@ export async function fetchLeverJobs(slug: string, company: string): Promise<Job
   }
 }
 
-type AshbyPosting = { id?: string; title?: string; location?: string; jobUrl?: string; applyUrl?: string };
+type AshbyPosting = { id?: string; title?: string; location?: string; jobUrl?: string; applyUrl?: string; publishedAt?: string; publishedDate?: string };
 
 export async function fetchAshbyJobs(slug: string, companyName: string): Promise<Job[]> {
   try {
@@ -272,6 +354,9 @@ export async function fetchAshbyJobs(slug: string, companyName: string): Promise
         location: p.location ?? "Remote",
         applyUrl: p.applyUrl ?? p.jobUrl ?? "#",
         applyType: "external" as const,
+        // Ashby's field name has varied across board versions — accept
+        // either.
+        postedAt: p.publishedAt || p.publishedDate || undefined,
       })
     );
   } catch {
@@ -279,7 +364,7 @@ export async function fetchAshbyJobs(slug: string, companyName: string): Promise
   }
 }
 
-type RemoteOkJob = { id?: string; slug?: string; position?: string; company?: string; location?: string; url?: string; apply_url?: string };
+type RemoteOkJob = { id?: string; slug?: string; position?: string; company?: string; location?: string; url?: string; apply_url?: string; date?: string; epoch?: number };
 
 export async function fetchRemoteOkJobs(): Promise<Job[]> {
   try {
@@ -306,6 +391,8 @@ export async function fetchRemoteOkJobs(): Promise<Job[]> {
         location: j.location || "Remote",
         applyUrl: j.url ?? j.apply_url ?? "#",
         applyType: "external" as const,
+        // RemoteOK gives an ISO `date`, or failing that an `epoch` (seconds).
+        postedAt: j.date || (j.epoch ? new Date(j.epoch * 1000).toISOString() : undefined),
       })
     );
   } catch {

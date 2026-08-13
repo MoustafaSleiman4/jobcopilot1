@@ -139,6 +139,7 @@ type JobRow = {
   apply_type: string;
   industry: string;
   work_type: string;
+  created_at: string;
 };
 
 function rowToJob(row: JobRow): Job {
@@ -151,6 +152,9 @@ function rowToJob(row: JobRow): Job {
     applyType: row.apply_type === "one_click" ? "one_click" : "external",
     industry: row.industry || "Other",
     workType: (row.work_type === "remote" || row.work_type === "hybrid" ? row.work_type : "onsite") as WorkType,
+    // When this row was cached — the closest available proxy for "posted"
+    // for these sources, used to sort Job Search newest-first.
+    postedAt: row.created_at,
   };
 }
 
@@ -195,7 +199,7 @@ export async function getCachedJobs(admin: SupabaseClient, filters: CachedJobFil
     const to = from + CACHE_PAGE_SIZE - 1;
     let query = admin
       .from("retrieved_jobs")
-      .select("id, title, company, location, apply_url, apply_type, industry, work_type")
+      .select("id, title, company, location, apply_url, apply_type, industry, work_type, created_at")
       .gt("expires_at", new Date().toISOString());
 
     if (filters.industry) query = query.eq("industry", filters.industry);
@@ -298,26 +302,69 @@ export async function refreshGlobalJobCacheIfStale(
   return { refreshed: true, stored };
 }
 
+function normalizeTitleCompanyKey(title: string, company: string): string {
+  return `${title.toLowerCase().trim().replace(/\s+/g, " ")}|${company.toLowerCase().trim().replace(/\s+/g, " ")}`;
+}
+
 // Shared by both refreshGlobalJobCacheIfStale (1 location/day) and
-// seedGlobalJobCacheOnce (all locations, one-time) — dedupes by apply URL,
-// upserts into retrieved_jobs, and self-prunes anything past its 30-day
-// TTL. expires_at is intentionally never included in the upsert payload:
-// new rows get it from the column default (now() + 30 days); existing rows
-// (matched on apply_url) keep whatever they were first assigned, so the
-// 1-month lifespan counts from first-seen, not last-seen.
+// seedGlobalJobCacheOnce (all locations, one-time) — dedupes, upserts into
+// retrieved_jobs, and self-prunes anything past its 30-day TTL. expires_at
+// is intentionally never included in the upsert payload: new rows get it
+// from the column default (now() + 30 days); existing rows (matched on
+// apply_url) keep whatever they were first assigned, so the 1-month
+// lifespan counts from first-seen, not last-seen.
+//
+// Dedup is two-layered, same reasoning as dedupeJobs() in lib/jobSources.ts
+// (used at read time in Job Search/Auto Apply): apply_url alone isn't
+// enough because Jooble/SerpApi/Careerjet often wrap the exact same real
+// posting in a different tracking URL depending on which keyword search
+// surfaced it, so relying only on the upsert's onConflict:"apply_url" let
+// the same job accumulate as multiple rows over time (reported as literal
+// duplicate cards in Job Search). This function additionally checks the
+// normalized title+company against BOTH the rest of this batch AND
+// whatever's already sitting in retrieved_jobs (unexpired), so a
+// duplicate-under-a-new-URL never gets inserted as a "new" row in the first
+// place — read-time dedup alone would keep working even without this, but
+// this is what keeps the table itself from growing unbounded with
+// near-duplicates.
 async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
   if (jobs.length === 0) return 0;
 
-  const seen = new Set<string>();
+  const existingKeys = new Set<string>();
+  {
+    // Same 1000-row PostgREST page cap as getCachedJobs — page through
+    // rather than risk silently missing existing keys past row 1000 once
+    // the cache is large, which would defeat the point of this check.
+    for (let page = 0; page < CACHE_PAGE_CAP; page++) {
+      const from = page * CACHE_PAGE_SIZE;
+      const to = from + CACHE_PAGE_SIZE - 1;
+      const { data, error } = await admin
+        .from("retrieved_jobs")
+        .select("title, company")
+        .gt("expires_at", new Date().toISOString())
+        .range(from, to);
+      if (error || !data) break;
+      for (const row of data as { title: string; company: string }[]) {
+        existingKeys.add(normalizeTitleCompanyKey(row.title, row.company));
+      }
+      if (data.length < CACHE_PAGE_SIZE) break;
+    }
+  }
+
+  const seenUrls = new Set<string>();
+  const seenKeys = new Set<string>();
   const rows = jobs
     .filter((j) => {
-      if (!j.applyUrl || j.applyUrl === "#" || seen.has(j.applyUrl)) return false;
+      if (!j.applyUrl || j.applyUrl === "#" || seenUrls.has(j.applyUrl)) return false;
       // Gulf/Levant/Egypt-only, per the app's scope — a search made "in
       // Saudi Arabia" can still come back with a US-based listing Google
       // happened to index under that query, so this checks the job's own
       // returned location text rather than trusting the search parameter.
       if (!isRegionLocation(j.location)) return false;
-      seen.add(j.applyUrl);
+      const key = normalizeTitleCompanyKey(j.title, j.company);
+      if (seenKeys.has(key) || existingKeys.has(key)) return false;
+      seenUrls.add(j.applyUrl);
+      seenKeys.add(key);
       return true;
     })
     .map((j) => ({
@@ -332,7 +379,9 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
       work_type: j.workType,
     }));
 
-  await admin.from("retrieved_jobs").upsert(rows, { onConflict: "apply_url" });
+  if (rows.length > 0) {
+    await admin.from("retrieved_jobs").upsert(rows, { onConflict: "apply_url" });
+  }
   await admin.from("retrieved_jobs").delete().lt("expires_at", new Date().toISOString());
 
   return rows.length;
