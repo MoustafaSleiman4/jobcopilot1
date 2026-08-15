@@ -196,7 +196,11 @@ function FindPeopleTab() {
     fetch("/api/people/suggestions")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setSuggestions(Array.isArray(data) ? data : []);
+        // GET /api/people/suggestions responds { items: [...] }, not a bare
+        // array — this previously read `Array.isArray(data)` directly on
+        // that object, which is always false, so suggestions silently
+        // rendered empty regardless of what the API actually returned.
+        if (!cancelled) setSuggestions(Array.isArray(data?.items) ? data.items : []);
       })
       .finally(() => {
         if (!cancelled) setLoadingSuggestions(false);
@@ -217,7 +221,11 @@ function FindPeopleTab() {
     const handle = setTimeout(() => {
       fetch(`/api/people/search?q=${encodeURIComponent(q)}`)
         .then((res) => res.json())
-        .then((data) => setResults(Array.isArray(data) ? data : []))
+        // Same { items: [...] } vs bare-array mismatch as the suggestions
+        // fetch above — this is the actual cause of "Find People" (and
+        // search) never returning results, regardless of what the backend
+        // matched.
+        .then((data) => setResults(Array.isArray(data?.items) ? data.items : []))
         .finally(() => setSearching(false));
     }, 350);
     return () => clearTimeout(handle);

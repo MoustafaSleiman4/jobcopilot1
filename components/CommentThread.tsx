@@ -54,7 +54,11 @@ export default function CommentThread({
       try {
         const res = await fetch(`/api/posts/${postId}/comments`);
         const data = await res.json();
-        if (!cancelled) setComments(Array.isArray(data) ? data : []);
+        // GET /api/posts/[id]/comments responds { items: [...] }, not a
+        // bare array — same shape mismatch as connections/page.tsx's
+        // search/suggestions fetches. Comments were silently never
+        // rendering because of this, independent of whether any existed.
+        if (!cancelled) setComments(Array.isArray(data?.items) ? data.items : []);
       } catch {
         if (!cancelled) setComments([]);
       } finally {
