@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Bell, Loader2 } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
 import { formatRelativeTime } from "@/lib/socialFormat";
+import { notificationHref } from "@/lib/notificationLink";
 import type { NotificationItem, NotificationType } from "@/lib/social-types";
 
 const TYPE_KEY: Record<NotificationType, string> = {
@@ -98,28 +100,36 @@ export default function NotificationsPage() {
           <EmptyState icon={Bell} title={t("empty")} />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-            {items.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => markRead(n.id)}
-                className={`flex w-full items-start gap-3 border-b border-border px-4 py-3.5 text-start last:border-0 hover:bg-sand-100 ${
-                  n.readAt ? "" : "bg-emerald-50/60"
-                }`}
-              >
-                {n.actor.avatarUrl ? (
-                  <img src={n.actor.avatarUrl} alt="" className="h-10 w-10 flex-none rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
-                    {(n.actor.fullName || "?").charAt(0).toUpperCase()}
+            {items.map((n) => {
+              const href = notificationHref(n);
+              const content = (
+                <>
+                  {n.actor.avatarUrl ? (
+                    <img src={n.actor.avatarUrl} alt="" className="h-10 w-10 flex-none rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
+                      {(n.actor.fullName || "?").charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-foreground/90">{t(TYPE_KEY[n.type], { name: n.actor.fullName })}</span>
+                    <span className="mt-0.5 block text-xs text-foreground/40">{formatRelativeTime(n.createdAt, locale)}</span>
                   </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm text-foreground/90">{t(TYPE_KEY[n.type], { name: n.actor.fullName })}</span>
-                  <span className="mt-0.5 block text-xs text-foreground/40">{formatRelativeTime(n.createdAt, locale)}</span>
-                </span>
-              </button>
-            ))}
+                </>
+              );
+              const rowClassName = `flex w-full items-start gap-3 border-b border-border px-4 py-3.5 text-start last:border-0 hover:bg-sand-100 ${
+                n.readAt ? "" : "bg-emerald-50/60"
+              }`;
+              return href ? (
+                <Link key={n.id} href={href} onClick={() => markRead(n.id)} className={rowClassName}>
+                  {content}
+                </Link>
+              ) : (
+                <button key={n.id} type="button" onClick={() => markRead(n.id)} className={rowClassName}>
+                  {content}
+                </button>
+              );
+            })}
           </div>
         )}
 

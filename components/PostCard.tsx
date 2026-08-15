@@ -16,10 +16,19 @@ export default function PostCard({
   post,
   onDeleted,
   onUpdated,
+  highlighted = false,
+  defaultCommentsOpen = false,
 }: {
   post: PostItem;
   onDeleted?: (postId: string) => void;
   onUpdated?: (post: PostItem) => void;
+  // Set when this card is the target of a notification deep-link
+  // (?postId=... on /dashboard/posts) — a brief ring so it's obvious which
+  // post the click was about, since it can land anywhere in a long feed.
+  highlighted?: boolean;
+  // Same deep-link case: a reaction/comment notification should land with
+  // the comment thread already expanded, not require a second click.
+  defaultCommentsOpen?: boolean;
 }) {
   const t = useTranslations("posts");
   const locale = useLocale();
@@ -37,7 +46,7 @@ export default function PostCard({
   const [reactionCount, setReactionCount] = useState(post.reactionCount);
   const [likeBusy, setLikeBusy] = useState(false);
 
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen);
   const [commentCount, setCommentCount] = useState(post.commentCount);
 
   const supabase = useMemo(() => createClient(), []);
@@ -115,7 +124,10 @@ export default function PostCard({
   const headline = [post.author.jobTitle, post.author.currentCompany].filter(Boolean).join(" @ ");
 
   return (
-    <Card>
+    <Card
+      id={`post-${post.id}`}
+      className={highlighted ? "ring-2 ring-emerald-400 ring-offset-2 ring-offset-sand-100" : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {post.author.avatarUrl ? (

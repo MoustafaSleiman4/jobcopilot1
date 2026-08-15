@@ -424,7 +424,9 @@
       "aboutSaveError": "تعذّر حفظ بياناتك، يرجى المحاولة مرة أخرى.",
       "aboutVisibilityTitle": "ظهور بيانات التواصل",
       "aboutShowEmail": "إظهار بريدي الإلكتروني للمستخدمين الآخرين",
-      "aboutShowPhone": "إظهار رقم جوالي للمستخدمين الآخرين"
+      "aboutShowPhone": "إظهار رقم جوالي للمستخدمين الآخرين",
+      "aboutCountry": "الدولة",
+      "aboutCountryHint": "تُملأ تلقائياً من سيرتك الذاتية عند توفرها — تظهر لجهات اتصالك وتُستخدم في البحث."
     },
     "resumeBuilder": {
       "title": "منشئ السيرة الذاتية",
@@ -1355,9 +1357,10 @@
     "title": "التواصل",
     "subtitle": "وسّع شبكتك المهنية.",
     "tabs": {
-      "myConnections": "تواصلاتي",
-      "requests": "الطلبات",
-      "findPeople": "ابحث عن أشخاص"
+      "myConnections": "جهات اتصالي",
+      "sentRequests": "قيد الانتظار",
+      "receivedRequests": "الطلبات",
+      "findPeople": "البحث عن أشخاص"
     },
     "connect": "تواصل",
     "pending": "قيد الانتظار",
@@ -1369,8 +1372,8 @@
     "loadMore": "تحميل المزيد",
     "noConnections": "لا يوجد تواصلات بعد",
     "noConnectionsHint": "ابحث عن أشخاص تعرفهم وأرسل طلب تواصل.",
-    "noRequests": "لا توجد طلبات معلّقة",
-    "noRequestsHint": "عندما يرسل لك أحد طلب تواصل، سيظهر هنا.",
+    "noRequests": "لا توجد طلبات لمراجعتها",
+    "noRequestsHint": "عندما يرسل لك أحدهم طلب تواصل، سيظهر هنا.",
     "searchPlaceholder": "ابحث عن أشخاص بالاسم…",
     "suggestionsTitle": "أشخاص قد تعرفهم",
     "noResults": "لم يتم العثور على أشخاص",
@@ -1378,7 +1381,12 @@
     "noSuggestions": "لا توجد اقتراحات حاليًا",
     "message": "مراسلة",
     "inviteFriends": "دعوة أصدقاء",
-    "inviteFriendsHint": "لا تجد من تبحث عنه؟ ادعُه للانضمام إلى شبكتك."
+    "inviteFriendsHint": "لا تجد من تبحث عنه؟ ادعُه للانضمام إلى شبكتك.",
+    "cancel": "إلغاء",
+    "noSentRequests": "لا توجد طلبات قيد الانتظار",
+    "noSentRequestsHint": "ستظهر هنا الطلبات التي ترسلها إلى أن يستجيب الشخص.",
+    "suggestionsHint": "يتم عرض حتى 10 اقتراحات",
+    "country": "الدولة"
   },
   "posts": {
     "title": "المنشورات",

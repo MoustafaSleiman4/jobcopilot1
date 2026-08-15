@@ -12,6 +12,14 @@ export type Person = {
   avatarUrl: string | null;
   jobTitle: string | null;
   currentCompany: string | null;
+  // Filled from profiles.country — either typed into "About you" directly,
+  // or auto-filled from the account's CV location line (see
+  // supabase/backfill-profile-country.sql and the equivalent client-side
+  // prefill in app/[locale]/dashboard/resume/page.tsx). Unlike
+  // email/phone, this is not privacy-gated — it was always shown in
+  // "people you may know" matching and is intentionally low-sensitivity
+  // (a country, not an address).
+  country: string | null;
   // Both null unless the profile owner has opted in (profiles.show_email /
   // show_phone) or the viewer IS that profile's owner — the API routes
   // decide this server-side per row, never the client. See

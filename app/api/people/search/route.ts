@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone")
+    .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone")
     .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
     .neq("id", user.id)
     .eq("hidden_from_discovery", false)
@@ -91,6 +91,7 @@ export async function GET(request: Request) {
       avatarUrl: profile.avatar_url,
       jobTitle: profile.job_title,
       currentCompany: profile.current_company,
+      country: profile.country,
       email: contact.email,
       phone: contact.phone,
       connectionStatus: statusByOtherId.get(profile.id as string) ?? "none",

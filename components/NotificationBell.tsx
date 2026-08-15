@@ -7,6 +7,7 @@ import { Bell, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { formatRelativeTime } from "@/lib/socialFormat";
+import { notificationHref } from "@/lib/notificationLink";
 import type { NotificationItem, NotificationType } from "@/lib/social-types";
 
 const TYPE_KEY: Record<NotificationType, string> = {
@@ -180,32 +181,53 @@ export default function NotificationBell() {
               ) : items.length === 0 ? (
                 <p className="px-3.5 py-8 text-center text-sm text-foreground/50">{t("empty")}</p>
               ) : (
-                items.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => markRead(n.id)}
-                    className={`flex w-full items-start gap-2.5 px-3.5 py-2.5 text-start text-sm hover:bg-sand-100 ${
-                      n.readAt ? "" : "bg-emerald-50/60"
-                    }`}
-                  >
-                    {n.actor.avatarUrl ? (
-                      <img src={n.actor.avatarUrl} alt="" className="h-8 w-8 flex-none rounded-full object-cover" />
-                    ) : (
-                      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                        {(n.actor.fullName || "?").charAt(0).toUpperCase()}
+                items.map((n) => {
+                  const href = notificationHref(n);
+                  const content = (
+                    <>
+                      {n.actor.avatarUrl ? (
+                        <img src={n.actor.avatarUrl} alt="" className="h-8 w-8 flex-none rounded-full object-cover" />
+                      ) : (
+                        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                          {(n.actor.fullName || "?").charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-foreground/90">
+                          {t(TYPE_KEY[n.type], { name: n.actor.fullName })}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-foreground/40">
+                          {formatRelativeTime(n.createdAt, locale)}
+                        </span>
                       </span>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-foreground/90">
-                        {t(TYPE_KEY[n.type], { name: n.actor.fullName })}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-foreground/40">
-                        {formatRelativeTime(n.createdAt, locale)}
-                      </span>
-                    </span>
-                  </button>
-                ))
+                    </>
+                  );
+                  const rowClassName = `flex w-full items-start gap-2.5 px-3.5 py-2.5 text-start text-sm hover:bg-sand-100 ${
+                    n.readAt ? "" : "bg-emerald-50/60"
+                  }`;
+                  // Clicking both marks read AND takes you to the relevant
+                  // section — a request notification opens Requests, a
+                  // reaction/comment opens that post, a message opens that
+                  // thread. Falls back to a plain (non-navigating) button
+                  // for a notification type/row with nothing to link to.
+                  return href ? (
+                    <Link
+                      key={n.id}
+                      href={href}
+                      onClick={() => {
+                        markRead(n.id);
+                        setOpen(false);
+                      }}
+                      className={rowClassName}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <button key={n.id} type="button" onClick={() => markRead(n.id)} className={rowClassName}>
+                      {content}
+                    </button>
+                  );
+                })
               )}
             </div>
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { sendConnectionAcceptedEmail } from "@/lib/email";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -26,7 +28,7 @@ export async function POST(
 
   const { data: row, error: fetchError } = await supabase
     .from("connections")
-    .select("id, addressee_id, status")
+    .select("id, requester_id, addressee_id, status")
     .eq("id", id)
     .maybeSingle();
 
@@ -47,6 +49,30 @@ export async function POST(
 
   if (updateError) {
     return NextResponse.json({ error: "Could not accept connection request" }, { status: 500 });
+  }
+
+  // Best-effort, same reasoning as the request-sent email in
+  // app/api/connections/request/route.ts — awaited so it isn't killed by
+  // the function tearing down, non-fatal to the accept itself.
+  const { data: pair } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, job_title, current_company")
+    .in("id", [user.id, row.requester_id]);
+  const accepterProfile = pair?.find((p) => p.id === user.id);
+  const requesterProfile = pair?.find((p) => p.id === row.requester_id);
+  if (requesterProfile?.email) {
+    const accepterName = deriveDisplayName(
+      accepterProfile?.full_name as string | null,
+      (accepterProfile?.email as string | null) ?? user.email ?? null
+    );
+    const accepterSubtitle = [accepterProfile?.job_title, accepterProfile?.current_company]
+      .filter(Boolean)
+      .join(" @ ") || null;
+    await sendConnectionAcceptedEmail({
+      to: requesterProfile.email as string,
+      accepterName,
+      accepterSubtitle,
+    }).catch((err) => console.error("[connections] accepted email failed:", err));
   }
 
   return NextResponse.json({ ok: true, status: "accepted" });

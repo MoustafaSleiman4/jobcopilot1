@@ -424,7 +424,9 @@
       "aboutSaveError": "Couldn't save your details — please try again.",
       "aboutVisibilityTitle": "Contact visibility",
       "aboutShowEmail": "Show my email address to other users",
-      "aboutShowPhone": "Show my mobile number to other users"
+      "aboutShowPhone": "Show my mobile number to other users",
+      "aboutCountry": "Country",
+      "aboutCountryHint": "Filled in from your CV when available — shown to connections and used in search."
     },
     "resumeBuilder": {
       "title": "CV builder",
@@ -1356,7 +1358,8 @@
     "subtitle": "Grow your professional network.",
     "tabs": {
       "myConnections": "My Connections",
-      "requests": "Requests",
+      "sentRequests": "Pending",
+      "receivedRequests": "Requests",
       "findPeople": "Find People"
     },
     "connect": "Connect",
@@ -1369,7 +1372,7 @@
     "loadMore": "Load more",
     "noConnections": "No connections yet",
     "noConnectionsHint": "Search for people you know and send a connection request.",
-    "noRequests": "No pending requests",
+    "noRequests": "No requests to review",
     "noRequestsHint": "When someone sends you a connection request, it will show up here.",
     "searchPlaceholder": "Search people by name…",
     "suggestionsTitle": "People you may know",
@@ -1378,7 +1381,12 @@
     "noSuggestions": "No suggestions right now",
     "message": "Message",
     "inviteFriends": "Invite friends",
-    "inviteFriendsHint": "Don't see who you're looking for? Invite them to join your network."
+    "inviteFriendsHint": "Don't see who you're looking for? Invite them to join your network.",
+    "cancel": "Cancel",
+    "noSentRequests": "No pending requests",
+    "noSentRequestsHint": "Requests you send will appear here until the person responds.",
+    "suggestionsHint": "Showing up to 10 suggestions",
+    "country": "Country"
   },
   "posts": {
     "title": "Posts",

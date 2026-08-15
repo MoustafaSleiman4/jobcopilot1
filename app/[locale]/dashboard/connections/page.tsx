@@ -1,19 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Users, Inbox, Search as SearchIcon, Loader2, UserPlus } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Users, Inbox, Send, Search as SearchIcon, Loader2, UserPlus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import PersonCard from "@/components/PersonCard";
 import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
 import type { ConnectionListItem, PersonResult } from "@/lib/social-types";
 
-type Tab = "myConnections" | "requests" | "findPeople";
+// "requests" used to be one tab covering only requests received. Split in
+// two per explicit request: "sentRequests" (Pending — requests I sent,
+// awaiting their response) and "receivedRequests" (Requests — people who
+// asked to connect with me, awaiting mine). Keeping both as distinct tabs
+// rather than sub-tabs of one "Requests" tab matches this page's existing
+// flat tab-bar pattern and keeps each list's empty/loading state simple.
+type Tab = "myConnections" | "sentRequests" | "receivedRequests" | "findPeople";
 
+const VALID_TABS: Tab[] = ["myConnections", "sentRequests", "receivedRequests", "findPeople"];
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (VALID_TABS as string[]).includes(value);
+}
+
+// Wrapped in Suspense below because useSearchParams() requires it — same
+// pattern as messages/page.tsx and posts/page.tsx, needed here so a
+// notification link like /dashboard/connections?tab=receivedRequests lands
+// on the right tab instead of always defaulting to myConnections.
 export default function ConnectionsPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-foreground/50">Loading…</p>}>
+      <ConnectionsPageContent />
+    </Suspense>
+  );
+}
+
+function ConnectionsPageContent() {
   const t = useTranslations("connections");
-  const [tab, setTab] = useState<Tab>("myConnections");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "myConnections");
 
   return (
     <div className="max-w-3xl">
@@ -42,7 +69,7 @@ export default function ConnectionsPage() {
       </div>
 
       <div className="mt-6 flex gap-1 border-b border-border">
-        {(["myConnections", "requests", "findPeople"] as Tab[]).map((key) => (
+        {(["myConnections", "sentRequests", "receivedRequests", "findPeople"] as Tab[]).map((key) => (
           <button
             key={key}
             type="button"
@@ -60,7 +87,8 @@ export default function ConnectionsPage() {
 
       <div className="mt-6">
         {tab === "myConnections" && <MyConnectionsTab />}
-        {tab === "requests" && <RequestsTab />}
+        {tab === "sentRequests" && <SentRequestsTab />}
+        {tab === "receivedRequests" && <ReceivedRequestsTab />}
         {tab === "findPeople" && <FindPeopleTab />}
       </div>
     </div>
@@ -132,7 +160,8 @@ function MyConnectionsTab() {
   );
 }
 
-function RequestsTab() {
+// People who asked to connect with me — the actionable list (accept/decline).
+function ReceivedRequestsTab() {
   const t = useTranslations("connections");
   const [items, setItems] = useState<ConnectionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +206,57 @@ function RequestsTab() {
           connectionId={item.connectionId}
           onAccept={handleAccept}
           onDecline={handleDecline}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Requests I sent that are still awaiting the other person's response —
+// the outbound counterpart to ReceivedRequestsTab above, reading from the
+// new GET /api/connections/requests/sent. Only action available is
+// withdrawing the request (DELETE /api/connections/[id], same endpoint
+// MyConnectionsTab uses to remove an accepted connection — the route
+// already supports removing a still-pending row too).
+function SentRequestsTab() {
+  const t = useTranslations("connections");
+  const [items, setItems] = useState<ConnectionListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/connections/requests/sent")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setItems(data.items ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleCancel(connectionId: string) {
+    const res = await fetch(`/api/connections/${connectionId}`, { method: "DELETE" });
+    if (res.ok) setItems((prev) => prev.filter((i) => i.connectionId !== connectionId));
+  }
+
+  if (loading) return <p className="text-sm text-foreground/50">{t("loading")}</p>;
+
+  if (items.length === 0) {
+    return <EmptyState icon={Send} title={t("noSentRequests")} description={t("noSentRequestsHint")} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <PersonCard
+          key={item.connectionId}
+          person={{ ...item.person, connectionStatus: "pending_sent" }}
+          connectionId={item.connectionId}
+          onCancel={handleCancel}
         />
       ))}
     </div>
@@ -265,7 +345,13 @@ function FindPeopleTab() {
       </div>
 
       {!showingSearch && (
-        <p className="mt-4 text-xs font-bold uppercase tracking-wide text-gold-600">{t("suggestionsTitle")}</p>
+        <div className="mt-4 flex items-baseline justify-between gap-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-gold-600">{t("suggestionsTitle")}</p>
+          {/* GET /api/people/suggestions caps its result at 10 (see LIMIT
+              in that route) — flagging that here so "only 10 show up" reads
+              as by-design, not as another missing-results bug. */}
+          <p className="text-[11px] text-foreground/40">{t("suggestionsHint")}</p>
+        </div>
       )}
 
       <div className="mt-3 space-y-3">

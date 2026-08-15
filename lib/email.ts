@@ -254,6 +254,257 @@ You received this because someone using GulfJobCopilot invited you directly. If 
   }
 }
 
+/**
+ * Shared compact template for the two "someone did something with your
+ * network" transactional emails below (connection request received /
+ * connection request accepted) — LinkedIn's own equivalents are a short,
+ * single-purpose notice with one clear button, not a marketing pitch like
+ * sendInviteEmail's hero, so this is intentionally a much smaller layout:
+ * a name line, one sentence of context, a subtitle (job title @ company)
+ * when available, and one CTA button.
+ */
+function renderConnectionNotificationEmail({
+  headline,
+  bodyLine,
+  personName,
+  personSubtitle,
+  ctaLabel,
+  ctaUrl,
+  unsubscribeMailto,
+}: {
+  headline: string;
+  bodyLine: string;
+  personName: string;
+  personSubtitle: string | null;
+  ctaLabel: string;
+  ctaUrl: string;
+  unsubscribeMailto: string;
+}): { html: string; text: string } {
+  const initial = escapeHtml(personName.trim().charAt(0).toUpperCase() || "?");
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GulfJobCopilot</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f4f5">
+<tr>
+<td align="center" style="padding:24px 16px;">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width:480px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden;">
+
+<tr>
+<td style="padding:20px 28px; border-bottom:1px solid #e4e4e7; font-family:Arial, Helvetica, sans-serif; font-size:13px; font-weight:bold; letter-spacing:0.5px; color:#065f46;">
+GULFJOBCOPILOT
+</td>
+</tr>
+
+<tr>
+<td style="padding:32px 28px 8px 28px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="vertical-align:top; padding-inline-end:14px;">
+<span style="display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:999px; background-color:#d1fae5; color:#065f46; font-family:Arial, Helvetica, sans-serif; font-size:18px; font-weight:bold;">${initial}</span>
+</td>
+<td style="vertical-align:middle;">
+<p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#18181b;">${escapeHtml(personName)}</p>
+${personSubtitle ? `<p style="margin:2px 0 0 0; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#71717a;">${escapeHtml(personSubtitle)}</p>` : ""}
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td style="padding:18px 28px 4px 28px; font-family:Arial, Helvetica, sans-serif; font-size:18px; font-weight:bold; color:#18181b;">
+${escapeHtml(headline)}
+</td>
+</tr>
+<tr>
+<td style="padding:6px 28px 24px 28px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f3f46;">
+${escapeHtml(bodyLine)}
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 28px 32px 28px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" bgcolor="#059669" style="border-radius:999px;">
+<a href="${ctaUrl}" target="_blank" style="display:inline-block; padding:12px 28px; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:999px;">${escapeHtml(ctaLabel)} →</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td style="padding:16px 28px 24px 28px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.6; color:#a1a1aa; border-top:1px solid #e4e4e7; padding-top:18px;">
+GulfJobCopilot · Your professional network + AI job copilot for the Gulf &amp; MEA
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  const text = `${headline}
+
+${bodyLine}
+
+${ctaLabel}: ${ctaUrl}
+
+GulfJobCopilot · Your professional network + AI job copilot for the Gulf & MEA`;
+
+  return { html, text };
+}
+
+/**
+ * "X wants to connect with you" — sent to the addressee the moment a
+ * connection request is created (see app/api/connections/request/route.ts).
+ * Mirrors LinkedIn's own "new invitation" email: who's asking, what they
+ * do, one button straight to the Requests tab. Best-effort — the caller
+ * treats a failure here as non-fatal (the in-app notification from
+ * fan_out_notification() already covers it), matching how post_media
+ * insert failures are handled elsewhere in this API.
+ */
+export async function sendConnectionRequestEmail({
+  to,
+  requesterName,
+  requesterSubtitle,
+}: {
+  to: string;
+  requesterName: string;
+  requesterSubtitle: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const from =
+    process.env.RESEND_INVITE_FROM_EMAIL ||
+    process.env.RESEND_FROM_EMAIL ||
+    "GulfJobCopilot <invites@mail.gulfjobcopilot.com>";
+  const unsubscribeMailto = `mailto:${from.match(/<(.+)>/)?.[1] ?? from}?subject=unsubscribe`;
+
+  const { html, text } = renderConnectionNotificationEmail({
+    headline: `${requesterName} wants to connect with you`,
+    bodyLine: `${requesterName} sent you an invitation to connect on GulfJobCopilot. Accept to grow your professional network and start messaging.`,
+    personName: requesterName,
+    personSubtitle: requesterSubtitle,
+    ctaLabel: "View invitation",
+    ctaUrl: "https://gulfjobcopilot.com/en/dashboard/connections",
+    unsubscribeMailto,
+  });
+
+  return sendResendEmail({
+    to,
+    from,
+    subject: `${requesterName} wants to connect with you on GulfJobCopilot`,
+    html,
+    text,
+    unsubscribeMailto,
+  });
+}
+
+/**
+ * "X accepted your invitation" — sent to the original requester once the
+ * other party accepts (see app/api/connections/[id]/accept/route.ts).
+ * LinkedIn's "new connection" equivalent.
+ */
+export async function sendConnectionAcceptedEmail({
+  to,
+  accepterName,
+  accepterSubtitle,
+}: {
+  to: string;
+  accepterName: string;
+  accepterSubtitle: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const from =
+    process.env.RESEND_INVITE_FROM_EMAIL ||
+    process.env.RESEND_FROM_EMAIL ||
+    "GulfJobCopilot <invites@mail.gulfjobcopilot.com>";
+  const unsubscribeMailto = `mailto:${from.match(/<(.+)>/)?.[1] ?? from}?subject=unsubscribe`;
+
+  const { html, text } = renderConnectionNotificationEmail({
+    headline: `You're now connected with ${accepterName}`,
+    bodyLine: `${accepterName} accepted your invitation to connect on GulfJobCopilot. You can now message each other directly.`,
+    personName: accepterName,
+    personSubtitle: accepterSubtitle,
+    ctaLabel: "View connection",
+    ctaUrl: "https://gulfjobcopilot.com/en/dashboard/connections",
+    unsubscribeMailto,
+  });
+
+  return sendResendEmail({
+    to,
+    from,
+    subject: `${accepterName} accepted your invitation to connect`,
+    html,
+    text,
+    unsubscribeMailto,
+  });
+}
+
+/**
+ * Shared low-level Resend send, factored out of sendInviteEmail so the two
+ * new connection-notification senders above don't repeat the same
+ * fetch/error-handling block a third and fourth time. sendInviteEmail keeps
+ * its own inline call (it predates this helper and has one extra header
+ * already inline) rather than being refactored here, to keep this change
+ * additive rather than touching already-verified code.
+ */
+async function sendResendEmail({
+  to,
+  from,
+  subject,
+  html,
+  text,
+  unsubscribeMailto,
+}: {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text: string;
+  unsubscribeMailto: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.log(`[email] RESEND_API_KEY not set — would have sent "${subject}" to ${to}`);
+    return { ok: false, error: "Email is not configured yet" };
+  }
+
+  try {
+    const res = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html,
+        text,
+        headers: { "List-Unsubscribe": `<${unsubscribeMailto}>` },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error("[email] Resend error:", res.status, body);
+      return { ok: false, error: "Failed to send email" };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("[email] failed to send:", err);
+    return { ok: false, error: "Failed to send email" };
+  }
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

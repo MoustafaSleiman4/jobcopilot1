@@ -56,7 +56,7 @@ export async function GET() {
 
   let query = supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone, created_at")
+    .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone, created_at")
     .neq("id", user.id)
     .eq("hidden_from_discovery", false)
     .order("created_at", { ascending: false })
@@ -82,6 +82,7 @@ export async function GET() {
         avatarUrl: profile.avatar_url,
         jobTitle: profile.job_title,
         currentCompany: profile.current_company,
+        country: profile.country,
         email: contact.email,
         phone: contact.phone,
       };

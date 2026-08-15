@@ -8,10 +8,11 @@ export const runtime = "nodejs";
 const DEFAULT_LIMIT = 20;
 
 /**
- * Pending connection requests addressed to the caller. Same "fetch rows,
- * then batch-fetch profiles" approach as GET /api/connections — see that
- * route's comment for why (no FK from connections to profiles for
- * PostgREST to embed through).
+ * The outbound counterpart to GET /api/connections/requests (which lists
+ * requests addressed TO the caller): pending requests the caller SENT that
+ * are still awaiting a response. Same "fetch rows, then batch-fetch
+ * profiles" shape as every other connections route (no FK from connections
+ * to profiles for PostgREST to embed through).
  */
 export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -28,9 +29,9 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("connections")
-    .select("id, requester_id, created_at")
+    .select("id, addressee_id, created_at")
     .eq("status", "pending")
-    .eq("addressee_id", user.id)
+    .eq("requester_id", user.id)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit);
@@ -46,10 +47,10 @@ export async function GET(request: Request) {
 
   const { data: rows, error } = await query;
   if (error) {
-    return NextResponse.json({ error: "Could not load connection requests" }, { status: 500 });
+    return NextResponse.json({ error: "Could not load sent requests" }, { status: 500 });
   }
 
-  const requesterIds = Array.from(new Set((rows ?? []).map((row) => row.requester_id as string)));
+  const addresseeIds = Array.from(new Set((rows ?? []).map((row) => row.addressee_id as string)));
   const profilesById = new Map<
     string,
     {
@@ -65,11 +66,11 @@ export async function GET(request: Request) {
       show_phone: boolean | null;
     }
   >();
-  if (requesterIds.length > 0) {
+  if (addresseeIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone")
-      .in("id", requesterIds);
+      .in("id", addresseeIds);
     for (const profile of profiles ?? []) {
       profilesById.set(profile.id as string, profile as {
         id: string;
@@ -87,12 +88,12 @@ export async function GET(request: Request) {
   }
 
   const items = (rows ?? []).map((row) => {
-    const profile = profilesById.get(row.requester_id as string);
+    const profile = profilesById.get(row.addressee_id as string);
     const contact = profile ? visibleContact(profile, user.id) : { email: null, phone: null };
     return {
       connectionId: row.id,
       person: {
-        id: row.requester_id,
+        id: row.addressee_id,
         fullName: deriveDisplayName(profile?.full_name ?? null, profile?.email ?? null),
         avatarUrl: profile?.avatar_url ?? null,
         jobTitle: profile?.job_title ?? null,

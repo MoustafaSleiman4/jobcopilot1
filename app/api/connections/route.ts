@@ -70,6 +70,7 @@ export async function GET(request: Request) {
       avatar_url: string | null;
       job_title: string | null;
       current_company: string | null;
+      country: string | null;
       email: string | null;
       phone: string | null;
       show_email: boolean | null;
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
   if (uniqueOtherIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone, last_seen_at")
+      .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone, last_seen_at")
       .in("id", uniqueOtherIds);
     for (const profile of profiles ?? []) {
       profilesById.set(profile.id as string, profile as {
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
         avatar_url: string | null;
         job_title: string | null;
         current_company: string | null;
+        country: string | null;
         email: string | null;
         phone: string | null;
         show_email: boolean | null;
@@ -112,6 +114,7 @@ export async function GET(request: Request) {
         avatarUrl: profile?.avatar_url ?? null,
         jobTitle: profile?.job_title ?? null,
         currentCompany: profile?.current_company ?? null,
+        country: profile?.country ?? null,
         email: contact.email,
         phone: contact.phone,
         isOnline: lastSeenAt ? now - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,

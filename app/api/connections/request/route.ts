@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { sendConnectionRequestEmail } from "@/lib/email";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -77,6 +79,39 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ error: "Could not send connection request" }, { status: 500 });
+  }
+
+  // Best-effort — the in-app notification (fan_out_notification() on this
+  // same insert) already covers the "you have a request" case, so an email
+  // failure here shouldn't fail the request itself. Fetch both profiles in
+  // one query rather than two: requester for the "from" name/subtitle,
+  // addressee for the send-to address (email is the system's own record of
+  // it, not gated by that person's show_email peer-display preference —
+  // this is a transactional notice, not a profile being shown to a peer).
+  const { data: pair } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, job_title, current_company")
+    .in("id", [user.id, addresseeId]);
+  const requesterProfile = pair?.find((p) => p.id === user.id);
+  const addresseeProfile = pair?.find((p) => p.id === addresseeId);
+  if (addresseeProfile?.email) {
+    const requesterName = deriveDisplayName(
+      requesterProfile?.full_name as string | null,
+      (requesterProfile?.email as string | null) ?? user.email ?? null
+    );
+    const requesterSubtitle = [requesterProfile?.job_title, requesterProfile?.current_company]
+      .filter(Boolean)
+      .join(" @ ") || null;
+    // Awaited (not fire-and-forget) — a serverless function's execution
+    // context can be torn down as soon as the response is sent, which
+    // would silently kill an un-awaited send. The .catch keeps a failure
+    // here from turning into a 500 for what is otherwise a successful
+    // connection request.
+    await sendConnectionRequestEmail({
+      to: addresseeProfile.email as string,
+      requesterName,
+      requesterSubtitle,
+    }).catch((err) => console.error("[connections] request email failed:", err));
   }
 
   return NextResponse.json({ connectionId: inserted.id, status: inserted.status });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Newspaper, Loader2 } from "lucide-react";
 import PostComposer from "@/components/PostComposer";
@@ -9,12 +10,18 @@ import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
 import type { PostItem } from "@/lib/social-types";
 
-export default function PostsPage() {
+function PostsPageContent() {
   const t = useTranslations("posts");
+  const searchParams = useSearchParams();
+  const targetPostId = searchParams.get("postId");
+
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Only ever act on the ?postId= deep link once — a poll/refresh landing
+  // after the viewer has already scrolled away shouldn't yank them back.
+  const appliedTargetRef = useRef(false);
 
   async function load(cursorParam?: string | null) {
     const params = new URLSearchParams();
@@ -32,6 +39,41 @@ export default function PostsPage() {
       setLoading(false);
     });
   }, []);
+
+  // Notification deep-link: a reaction/comment notification links here as
+  // ?postId=X. If that post already loaded as part of the normal feed
+  // page, great — just scroll to it. If it's older than the first feed
+  // page (likely, since notifications can be old), fetch it individually
+  // via GET /api/posts/[id] and prepend it so it's visible regardless of
+  // where it'd normally sort in the cursor-paginated feed.
+  useEffect(() => {
+    if (!targetPostId || loading || appliedTargetRef.current) return;
+    appliedTargetRef.current = true;
+
+    async function ensureLoaded() {
+      if (!posts.some((p) => p.id === targetPostId)) {
+        try {
+          const res = await fetch(`/api/posts/${targetPostId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.post) setPosts((prev) => [data.post as PostItem, ...prev]);
+          }
+          // A 404 here just means the post was deleted or the viewer's
+          // network changed since the notification fired — nothing to
+          // show, so we silently leave the feed as-is rather than erroring.
+        } catch {
+          // Best effort — same reasoning as above.
+        }
+      }
+      // Scroll after the DOM has the card, whether it was already in the
+      // feed or just prepended.
+      requestAnimationFrame(() => {
+        document.getElementById(`post-${targetPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+
+    ensureLoaded();
+  }, [targetPostId, loading, posts]);
 
   async function loadMore() {
     if (!cursor || loadingMore) return;
@@ -80,7 +122,14 @@ export default function PostsPage() {
         ) : (
           <>
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} onDeleted={handleDeleted} onUpdated={handleUpdated} />
+              <PostCard
+                key={post.id}
+                post={post}
+                onDeleted={handleDeleted}
+                onUpdated={handleUpdated}
+                highlighted={post.id === targetPostId}
+                defaultCommentsOpen={post.id === targetPostId}
+              />
             ))}
             {cursor && (
               <div className="pt-2 text-center">
@@ -93,5 +142,19 @@ export default function PostsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PostsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-foreground/40" />
+        </div>
+      }
+    >
+      <PostsPageContent />
+    </Suspense>
   );
 }

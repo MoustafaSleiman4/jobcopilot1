@@ -101,6 +101,12 @@ export default function ResumeBuilderPage() {
   const [aboutPhone, setAboutPhone] = useState("");
   const [aboutJobTitle, setAboutJobTitle] = useState("");
   const [aboutCurrentCompany, setAboutCurrentCompany] = useState("");
+  const [aboutCountry, setAboutCountry] = useState("");
+  // Whether aboutCountry's current value came from the CV auto-fill below
+  // rather than something the person actually saved — used only to decide
+  // whether a freshly-loaded resume is allowed to overwrite it (never
+  // clobber a value they already saved intentionally).
+  const countryFromProfileRef = useRef(false);
   // Whether OTHER users can see this account's email/mobile number
   // anywhere in the social features (search results, connections,
   // messages) — default false (private) until the account owner opts in.
@@ -179,6 +185,22 @@ export default function ResumeBuilderPage() {
         }
         if (typeof content.original === "string") setOriginalText(content.original);
         setEnhanceCount(content.aiEnhanceCount ?? 0);
+
+        // Fill "About you"'s Country field from the CV when the person
+        // hasn't already saved one themselves — same heuristic as the
+        // one-time DB backfill (supabase/backfill-profile-country.sql):
+        // the resume's free-text location line, taking the segment after
+        // the last comma as the country when there's a comma, else the
+        // whole string. Only a prefill of local state, not an auto-save —
+        // the person still reviews and hits Save themselves.
+        if (!countryFromProfileRef.current) {
+          const location = content.structured?.location?.trim();
+          if (location) {
+            const parts = location.split(",");
+            const guess = parts[parts.length - 1]?.trim();
+            if (guess) setAboutCountry(guess);
+          }
+        }
       } catch (err) {
         console.error("[resume] failed to load saved resume:", err);
         if (!cancelled) setLoadErrorMsg(t("loadError"));
@@ -198,7 +220,7 @@ export default function ResumeBuilderPage() {
 
           const { data: profile } = await supabase
             .from("profiles")
-            .select("plan, avatar_url, full_name, phone, job_title, current_company, show_email, show_phone")
+            .select("plan, avatar_url, full_name, phone, job_title, current_company, country, show_email, show_phone")
             .eq("id", uid)
             .single();
           if (!cancelled && profile?.plan === "pro") setPlan("pro");
@@ -208,6 +230,8 @@ export default function ResumeBuilderPage() {
             setAboutPhone(profile?.phone ?? "");
             setAboutJobTitle(profile?.job_title ?? "");
             setAboutCurrentCompany(profile?.current_company ?? "");
+            setAboutCountry(profile?.country ?? "");
+            countryFromProfileRef.current = Boolean(profile?.country);
             setShowEmail(Boolean(profile?.show_email));
             setShowPhone(Boolean(profile?.show_phone));
           }
@@ -387,6 +411,7 @@ export default function ResumeBuilderPage() {
             phone: aboutPhone.trim() || null,
             job_title: aboutJobTitle.trim() || null,
             current_company: aboutCurrentCompany.trim() || null,
+            country: aboutCountry.trim() || null,
             show_email: showEmail,
             show_phone: showPhone,
           },
@@ -766,6 +791,16 @@ export default function ResumeBuilderPage() {
                 placeholder={t("aboutCurrentCompany")}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutCountry")}</label>
+              <input
+                value={aboutCountry}
+                onChange={(e) => setAboutCountry(e.target.value)}
+                placeholder={t("aboutCountry")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+              <p className="mt-1 text-[11px] text-foreground/40">{t("aboutCountryHint")}</p>
             </div>
           </div>
 
