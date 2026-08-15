@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("notifications")
-    .select("id, actor_id, type, post_id, connection_id, comment_id, read_at, created_at")
+    .select("id, actor_id, type, post_id, connection_id, comment_id, message_id, read_at, created_at")
     .eq("recipient_id", user.id)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
@@ -70,11 +70,15 @@ export async function GET(request: Request) {
       postId: row.post_id,
       connectionId: row.connection_id,
       commentId: row.comment_id,
+      messageId: row.message_id,
       readAt: row.read_at,
       createdAt: row.created_at,
-      actor: row.actor_id
-        ? { id: row.actor_id, fullName: actor?.full_name ?? null, avatarUrl: actor?.avatar_url ?? null }
-        : null,
+      // Always an object (never null) to match NotificationItem — actor_id
+      // is nullable in the DB (set null if that account is later deleted),
+      // so this falls back to empty fields rather than null, since
+      // NotificationBell/the notifications page read `n.actor.fullName`
+      // directly without a null-guard on `actor` itself.
+      actor: { fullName: actor?.full_name ?? null, avatarUrl: actor?.avatar_url ?? null },
     };
   });
 

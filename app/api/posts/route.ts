@@ -120,7 +120,42 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ post }, { status: 201 });
+  // The client feeds this response straight into the feed's PostCard list
+  // (see PostComposer's onPosted callback) without a page reload, so it
+  // must be a fully-shaped PostItem — the same shape GET /api/posts
+  // returns — not the bare inserted row. Returning just the DB columns
+  // here previously crashed PostCard on `post.author.id` (undefined),
+  // which from the user's side looked exactly like "posting doesn't work"
+  // even though the row had actually saved.
+  const { data: authorProfile } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, job_title, current_company")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const postItem = {
+    id: post.id,
+    body: post.body,
+    createdAt: post.created_at,
+    editedAt: post.edited_at,
+    author: {
+      id: user.id,
+      fullName: authorProfile?.full_name ?? null,
+      avatarUrl: authorProfile?.avatar_url ?? null,
+      jobTitle: authorProfile?.job_title ?? null,
+      currentCompany: authorProfile?.current_company ?? null,
+      // Contact info is never surfaced on post authors, regardless of
+      // show_email/show_phone — the feed isn't a context that calls for it.
+      email: null,
+      phone: null,
+    },
+    media: media.map((m) => ({ mediaType: m.mediaType, storagePath: m.storagePath, orderIndex: m.orderIndex })),
+    reactionCount: 0,
+    viewerHasReacted: false,
+    commentCount: 0,
+  };
+
+  return NextResponse.json({ post: postItem }, { status: 201 });
 }
 
 /**
@@ -234,10 +269,17 @@ export async function GET(request: Request) {
         avatarUrl: author?.avatar_url ?? null,
         jobTitle: author?.job_title ?? null,
         currentCompany: author?.current_company ?? null,
+        email: null,
+        phone: null,
       },
       media,
       reactionCount: reactionCountByPost.get(post.id as string) ?? 0,
-      hasReacted: myReactedPosts.has(post.id as string),
+      // Field name must match lib/social-types.ts's PostItem.viewerHasReacted
+      // and what PostCard.tsx actually reads — this was previously named
+      // `hasReacted` here, a silent mismatch that made every post's like
+      // button reset to "not liked" on every feed load regardless of the
+      // viewer's real reaction.
+      viewerHasReacted: myReactedPosts.has(post.id as string),
       commentCount: commentCountByPost.get(post.id as string) ?? 0,
     };
   });

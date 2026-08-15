@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { visibleContact } from "@/lib/contactVisibility";
 
 export const runtime = "nodejs";
 
 const DEFAULT_LIMIT = 20;
+// A user is considered "online" if their presence heartbeat landed within
+// this window (see app/api/presence/heartbeat/route.ts) — a simple
+// threshold on a persisted timestamp rather than a live socket/presence
+// channel, so it's resilient to a tab closing without a clean disconnect
+// (a dropped socket would otherwise leave someone stuck "online" forever)
+// and it gives "last seen" for free from the same column.
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 
 /**
  * `connections.requester_id`/`addressee_id` reference `auth.users`, not
@@ -55,12 +63,23 @@ export async function GET(request: Request) {
 
   const profilesById = new Map<
     string,
-    { id: string; full_name: string | null; avatar_url: string | null; job_title: string | null; current_company: string | null }
+    {
+      id: string;
+      full_name: string | null;
+      avatar_url: string | null;
+      job_title: string | null;
+      current_company: string | null;
+      email: string | null;
+      phone: string | null;
+      show_email: boolean | null;
+      show_phone: boolean | null;
+      last_seen_at: string | null;
+    }
   >();
   if (uniqueOtherIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url, job_title, current_company")
+      .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone, last_seen_at")
       .in("id", uniqueOtherIds);
     for (const profile of profiles ?? []) {
       profilesById.set(profile.id as string, profile as {
@@ -69,13 +88,21 @@ export async function GET(request: Request) {
         avatar_url: string | null;
         job_title: string | null;
         current_company: string | null;
+        email: string | null;
+        phone: string | null;
+        show_email: boolean | null;
+        show_phone: boolean | null;
+        last_seen_at: string | null;
       });
     }
   }
 
+  const now = Date.now();
   const items = (rows ?? []).map((row) => {
     const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id;
     const profile = profilesById.get(otherId);
+    const contact = profile ? visibleContact(profile, user.id) : { email: null, phone: null };
+    const lastSeenAt = profile?.last_seen_at ?? null;
     return {
       connectionId: row.id,
       person: {
@@ -84,6 +111,10 @@ export async function GET(request: Request) {
         avatarUrl: profile?.avatar_url ?? null,
         jobTitle: profile?.job_title ?? null,
         currentCompany: profile?.current_company ?? null,
+        email: contact.email,
+        phone: contact.phone,
+        isOnline: lastSeenAt ? now - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,
+        lastSeenAt,
       },
     };
   });

@@ -101,6 +101,12 @@ export default function ResumeBuilderPage() {
   const [aboutPhone, setAboutPhone] = useState("");
   const [aboutJobTitle, setAboutJobTitle] = useState("");
   const [aboutCurrentCompany, setAboutCurrentCompany] = useState("");
+  // Whether OTHER users can see this account's email/mobile number
+  // anywhere in the social features (search results, connections,
+  // messages) — default false (private) until the account owner opts in.
+  // See lib/contactVisibility.ts for where this is actually enforced.
+  const [showEmail, setShowEmail] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
   const [aboutSaving, setAboutSaving] = useState(false);
   const [aboutSaveState, setAboutSaveState] = useState<"idle" | "success" | "error">("idle");
   const [aboutErrorMsg, setAboutErrorMsg] = useState<string | null>(null);
@@ -192,7 +198,7 @@ export default function ResumeBuilderPage() {
 
           const { data: profile } = await supabase
             .from("profiles")
-            .select("plan, avatar_url, full_name, phone, job_title, current_company")
+            .select("plan, avatar_url, full_name, phone, job_title, current_company, show_email, show_phone")
             .eq("id", uid)
             .single();
           if (!cancelled && profile?.plan === "pro") setPlan("pro");
@@ -202,6 +208,8 @@ export default function ResumeBuilderPage() {
             setAboutPhone(profile?.phone ?? "");
             setAboutJobTitle(profile?.job_title ?? "");
             setAboutCurrentCompany(profile?.current_company ?? "");
+            setShowEmail(Boolean(profile?.show_email));
+            setShowPhone(Boolean(profile?.show_phone));
           }
 
           await loadExistingResume(supabase, uid);
@@ -379,6 +387,8 @@ export default function ResumeBuilderPage() {
             phone: aboutPhone.trim() || null,
             job_title: aboutJobTitle.trim() || null,
             current_company: aboutCurrentCompany.trim() || null,
+            show_email: showEmail,
+            show_phone: showPhone,
           },
           { onConflict: "id" }
         );
@@ -652,69 +662,63 @@ export default function ResumeBuilderPage() {
         </div>
       )}
 
-      {/* Profile photo — set once here, account-level (public.profiles.
-          avatar_url), before someone has necessarily created any resume at
-          all. Shown first, above "My resumes", precisely so it's available
-          to set before creating a resume, and every version created after
-          (or already existing) picks it up automatically since
-          ResumeBuilderForm.tsx and the preview/PDF below all read this same
-          profile field rather than anything saved per resume. */}
-      {userId && (
-        <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-surface p-5">
-          <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
-            {avatarUrl ? (
-              // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <User className="text-foreground/30" size={24} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">{t("photoSection")}</p>
-            <p className="mt-0.5 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
-            <p className="mt-0.5 text-[11px] text-foreground/40">{t("photoHint")}</p>
-            {photoErrorMsg && <p className="mt-1 text-xs text-red-600">{photoErrorMsg}</p>}
-          </div>
-          <div className="flex flex-none items-center gap-2">
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={photoUploading}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300 disabled:opacity-60"
-            >
-              {photoUploading ? <Loader2 className="animate-spin" size={13} /> : <ImagePlus size={13} />}
-              {photoUploading ? t("photoUploading") : avatarUrl ? t("photoChange") : t("photoUpload")}
-            </button>
-            {avatarUrl && (
-              <button
-                type="button"
-                onClick={removePhoto}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-red-600 hover:border-red-300"
-              >
-                <Trash2 size={13} />
-                {t("photoRemove")}
-              </button>
-            )}
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
-        </div>
-      )}
-
-      {/* "About you" — a small contact-info block backed by public.profiles,
-          shown directly under the photo. Also feeds Connections' PersonCard
-          (job title @ current company) once that feature ships, so it's
-          worth filling in even before any resume exists. */}
+      {/* "About you" — profile photo + contact-info block backed by
+          public.profiles, shown before "My resumes" so it's available to
+          fill in before creating a resume. The photo lives inside this same
+          card (rather than as its own separate box above it) since it's
+          conceptually part of the same "who you are" profile info — every
+          resume version and Connections' PersonCard (job title @ current
+          company, avatar) all read these same account-level fields. */}
       {userId && (
         <Card className="mt-6">
           <SectionHeading>{t("aboutSection")}</SectionHeading>
           <p className="mt-1 text-xs text-foreground/50">{t("aboutSectionHelp")}</p>
+
+          <div className="mt-4 flex items-center gap-4 rounded-xl border border-border bg-background p-4">
+            <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
+              {avatarUrl ? (
+                // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <User className="text-foreground/30" size={24} />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">{t("photoSection")}</p>
+              <p className="mt-0.5 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
+              <p className="mt-0.5 text-[11px] text-foreground/40">{t("photoHint")}</p>
+              {photoErrorMsg && <p className="mt-1 text-xs text-red-600">{photoErrorMsg}</p>}
+            </div>
+            <div className="flex flex-none items-center gap-2">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-foreground/80 hover:border-emerald-300 disabled:opacity-60"
+              >
+                {photoUploading ? <Loader2 className="animate-spin" size={13} /> : <ImagePlus size={13} />}
+                {photoUploading ? t("photoUploading") : avatarUrl ? t("photoChange") : t("photoUpload")}
+              </button>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-red-600 hover:border-red-300"
+                >
+                  <Trash2 size={13} />
+                  {t("photoRemove")}
+                </button>
+              )}
+            </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+          </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
@@ -763,6 +767,34 @@ export default function ResumeBuilderPage() {
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
+          </div>
+
+          {/* Contact-visibility toggles — off by default (private) until
+              explicitly opted in. This is the only thing that controls
+              whether email/mobile ever leave the server for another user's
+              view (search results, connections, messages) — see
+              lib/contactVisibility.ts, which every route that hands out
+              profile data to other users runs through. */}
+          <div className="mt-4 space-y-2 rounded-xl border border-border bg-background p-4">
+            <p className="text-xs font-semibold text-foreground/70">{t("aboutVisibilityTitle")}</p>
+            <label className="flex items-center gap-2.5 text-sm text-foreground/80">
+              <input
+                type="checkbox"
+                checked={showEmail}
+                onChange={(e) => setShowEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500/30"
+              />
+              {t("aboutShowEmail")}
+            </label>
+            <label className="flex items-center gap-2.5 text-sm text-foreground/80">
+              <input
+                type="checkbox"
+                checked={showPhone}
+                onChange={(e) => setShowPhone(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500/30"
+              />
+              {t("aboutShowPhone")}
+            </label>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">

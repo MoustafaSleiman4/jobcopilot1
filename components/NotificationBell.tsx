@@ -15,6 +15,7 @@ const TYPE_KEY: Record<NotificationType, string> = {
   post_reaction: "typePostReaction",
   post_comment: "typePostComment",
   comment_reply: "typeCommentReply",
+  message: "typeMessage",
 };
 
 /**

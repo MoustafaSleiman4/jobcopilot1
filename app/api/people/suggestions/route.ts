@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { visibleContact } from "@/lib/contactVisibility";
 
 export const runtime = "nodejs";
 
@@ -54,7 +55,7 @@ export async function GET() {
 
   let query = supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, job_title, current_company, created_at")
+    .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone, created_at")
     .neq("id", user.id)
     .eq("hidden_from_discovery", false)
     .order("created_at", { ascending: false })
@@ -72,13 +73,18 @@ export async function GET() {
   const items = (profiles ?? [])
     .filter((profile) => !excludeIds.has(profile.id as string))
     .slice(0, LIMIT)
-    .map((profile) => ({
-      id: profile.id,
-      fullName: profile.full_name,
-      avatarUrl: profile.avatar_url,
-      jobTitle: profile.job_title,
-      currentCompany: profile.current_company,
-    }));
+    .map((profile) => {
+      const contact = visibleContact(profile as { id: string; email: string | null; phone: string | null; show_email: boolean | null; show_phone: boolean | null }, user.id);
+      return {
+        id: profile.id,
+        fullName: profile.full_name,
+        avatarUrl: profile.avatar_url,
+        jobTitle: profile.job_title,
+        currentCompany: profile.current_company,
+        email: contact.email,
+        phone: contact.phone,
+      };
+    });
 
   return NextResponse.json({ items });
 }
