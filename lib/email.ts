@@ -84,16 +84,16 @@ export async function sendInviteEmail({
 
   const displayName = showName && inviterName ? inviterName.trim() : null;
   const subject = displayName
-    ? `${displayName} invited you to GulfJobCopilot`
-    : "You've been invited to GulfJobCopilot";
+    ? `${displayName} is already on GulfJobCopilot — join their network`
+    : "You're invited to the Gulf & MEA's professional network + AI job copilot";
 
   const introLine = displayName
-    ? `<strong>${escapeHtml(displayName)}</strong> thinks you'd be a great fit for GulfJobCopilot and wanted to personally invite you to join.`
-    : `A member of the GulfJobCopilot community thought you'd love it here and wanted to personally invite you to join.`;
+    ? `<strong>${escapeHtml(displayName)}</strong> is already building their professional network on GulfJobCopilot and wanted you in it.`
+    : `Someone in your network is already on GulfJobCopilot and wanted you in it.`;
 
   const introLineText = displayName
-    ? `${displayName} thinks you'd be a great fit for GulfJobCopilot and wanted to personally invite you to join.`
-    : `A member of the GulfJobCopilot community thought you'd love it here and wanted to personally invite you to join.`;
+    ? `${displayName} is already building their professional network on GulfJobCopilot and wanted you in it.`
+    : `Someone in your network is already on GulfJobCopilot and wanted you in it.`;
 
   const signupUrl = `https://gulfjobcopilot.com/en/signup?ref=${encodeURIComponent(refUserId)}`;
   const unsubscribeMailto = `mailto:${(from.match(/<(.+)>/)?.[1] ?? from)}?subject=unsubscribe`;
@@ -118,11 +118,11 @@ export async function sendInviteEmail({
 <tr><td align="center" style="padding-bottom:16px;">
 <span style="display:inline-block; border:1px solid rgba(255,255,255,0.5); border-radius:999px; padding:6px 16px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:1px; color:#d1fae5;">GULFJOBCOPILOT</span>
 </td></tr>
-<tr><td align="center" style="font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.3; font-weight:bold; color:#ffffff; padding-bottom:14px;">
-You're personally invited<br>to GulfJobCopilot
+<tr><td align="center" style="font-family:Arial, Helvetica, sans-serif; font-size:28px; line-height:1.3; font-weight:bold; color:#ffffff; padding-bottom:14px;">
+Your career.<br>Your network.<br>One platform.
 </td></tr>
 <tr><td align="center" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.5; color:#d1fae5; max-width:440px;">
-The AI copilot for landing your next job across the Gulf, Lebanon &amp; MEA.
+The professional network + AI job copilot built for the Gulf, Lebanon &amp; MEA — connect, post, and get hired, all in one place.
 </td></tr>
 </table>
 </td>
@@ -132,16 +132,36 @@ The AI copilot for landing your next job across the Gulf, Lebanon &amp; MEA.
 <td style="padding:32px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color:#27272a;">
 Hi,
 <br><br>
-${introLine}
+${introLine} Think of it as LinkedIn's professional network, paired with an AI copilot that actually applies for jobs on your behalf.
 </td>
 </tr>
 
 <tr>
-<td style="padding:8px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.7; color:#27272a;">
+<td style="padding:16px 32px 4px 32px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:1px; color:#a97a1e;">
+BUILD YOUR PROFESSIONAL NETWORK
+</td>
+</tr>
+<tr>
+<td style="padding:4px 32px 12px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.7; color:#27272a;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Connect</strong> with colleagues, recruiters and peers across the region</td></tr>
+<tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Share updates</strong> — post articles, photos and videos to your professional feed</td></tr>
+<tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Stay in the loop</strong> with real-time notifications on who's engaging with you</td></tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td style="padding:12px 32px 4px 32px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:1px; color:#a97a1e; border-top:1px solid #e4e4e7; padding-top:20px;">
+YOUR AI JOB COPILOT
+</td>
+</tr>
+<tr>
+<td style="padding:4px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.7; color:#27272a;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>AI-optimized resumes</strong> — tailored per application, not generic</td></tr>
 <tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Smart job matching</strong> — real openings across the Gulf, Lebanon &amp; MEA</td></tr>
-<tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>One-click apply</strong> and an AI cover letter generator</td></tr>
+<tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Auto Apply</strong> — one-click apply and an AI cover letter generator</td></tr>
 <tr><td style="padding:6px 0; vertical-align:top; width:22px; color:#059669; font-weight:bold;">&#10003;</td><td style="padding:6px 0;"><strong>Free to start</strong> — no card required</td></tr>
 </table>
 </td>
@@ -176,15 +196,22 @@ You received this because someone using GulfJobCopilot invited you directly. If 
 </body>
 </html>`;
 
-  const text = `You're personally invited to GulfJobCopilot
+  const text = `Your career. Your network. One platform.
+The professional network + AI job copilot built for the Gulf, Lebanon & MEA — connect, post, and get hired, all in one place.
 
 Hi,
 
-${introLineText}
+${introLineText} Think of it as LinkedIn's professional network, paired with an AI copilot that actually applies for jobs on your behalf.
 
+BUILD YOUR PROFESSIONAL NETWORK
+- Connect with colleagues, recruiters and peers across the region
+- Share updates — post articles, photos and videos to your professional feed
+- Stay in the loop with real-time notifications on who's engaging with you
+
+YOUR AI JOB COPILOT
 - AI-optimized resumes — tailored per application, not generic
 - Smart job matching — real openings across the Gulf, Lebanon & MEA
-- One-click apply and an AI cover letter generator
+- Auto Apply — one-click apply and an AI cover letter generator
 - Free to start — no card required
 
 Join free: ${signupUrl}

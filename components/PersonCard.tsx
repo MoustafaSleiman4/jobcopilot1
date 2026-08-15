@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, X, UserMinus } from "lucide-react";
+import { Check, X, UserMinus, MessageCircle, Mail, Phone } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import Avatar from "@/components/ui/Avatar";
 import type { PersonResult } from "@/lib/social-types";
 
 /**
@@ -52,20 +54,37 @@ export default function PersonCard({
   }
 
   const subtitle = [person.jobTitle, person.currentCompany].filter(Boolean).join(" @ ");
+  // email/phone arrive here already gated server-side by visibleContact()
+  // (lib/contactVisibility.ts) — non-null only when the profile owner has
+  // opted show_email/show_phone on, or the viewer IS that profile. Safe to
+  // render unconditionally whenever present: this is the actual point of
+  // that toggle — surfacing contact info to connections, not just storing
+  // it unused in the API response.
+  const hasContact = Boolean(person.email || person.phone);
 
   return (
     <Card className="flex items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        {person.avatarUrl ? (
-          <img src={person.avatarUrl} alt="" className="h-12 w-12 flex-none rounded-full object-cover" />
-        ) : (
-          <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-emerald-100 text-base font-bold text-emerald-700">
-            {(person.fullName || "?").charAt(0).toUpperCase()}
-          </span>
-        )}
+        <Avatar avatarUrl={person.avatarUrl} name={person.fullName} size="lg" isOnline={person.isOnline} />
         <div className="min-w-0 text-start">
           <p className="truncate text-sm font-semibold text-foreground">{person.fullName}</p>
           {subtitle && <p className="truncate text-xs text-foreground/50">{subtitle}</p>}
+          {hasContact && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+              {person.email && (
+                <span className="flex min-w-0 items-center gap-1 truncate text-[11px] text-foreground/50">
+                  <Mail size={11} className="flex-none" />
+                  <span className="truncate">{person.email}</span>
+                </span>
+              )}
+              {person.phone && (
+                <span className="flex items-center gap-1 text-[11px] text-foreground/50">
+                  <Phone size={11} className="flex-none" />
+                  {person.phone}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -109,6 +128,15 @@ export default function PersonCard({
         {person.connectionStatus === "connected" && (
           <>
             <Badge tone="emerald">{t("connected")}</Badge>
+            {connectionId && (
+              <Link
+                href={{ pathname: "/dashboard/messages", query: { connectionId } }}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:border-emerald-300"
+              >
+                <MessageCircle size={14} />
+                {t("message")}
+              </Link>
+            )}
             {connectionId && onRemove && (
               <Button
                 variant="ghost"

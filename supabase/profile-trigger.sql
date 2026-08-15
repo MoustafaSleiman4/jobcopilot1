@@ -3,16 +3,30 @@
 -- a user's plan ("free" vs "pro") from. Run this once in the SQL Editor,
 -- after schema.sql.
 
+-- Kept in sync with the live definition (see
+-- supabase/profiles_readable_and_email_column and
+-- supabase/backfill_profile_full_name migrations, applied via Supabase
+-- MCP): also captures `email` at signup, and self-heals `email`/`full_name`
+-- on a pre-existing profile row if either was left null (e.g. a profile
+-- row that predates one of these columns).
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, locale)
+  insert into public.profiles (id, full_name, locale, email)
   values (
     new.id,
     new.raw_user_meta_data->>'full_name',
-    coalesce(new.raw_user_meta_data->>'locale', 'en')
+    coalesce(new.raw_user_meta_data->>'locale', 'en'),
+    new.email
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update set
+    email = excluded.email where public.profiles.email is null;
+  update public.profiles
+  set full_name = excluded_full_name
+  from (select new.raw_user_meta_data->>'full_name' as excluded_full_name) as x
+  where public.profiles.id = new.id
+    and public.profiles.full_name is null
+    and coalesce(x.excluded_full_name, '') <> '';
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;

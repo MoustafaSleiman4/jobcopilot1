@@ -334,7 +334,7 @@
       "autoApply": "التقديم التلقائي",
       "employerDashboard": "لوحة صاحب العمل",
       "invite": "دعوة الأصدقاء",
-      "connections": "التواصل",
+      "connections": "شبكتي",
       "posts": "المنشورات"
     },
     "overview": {
@@ -420,7 +420,10 @@
       "aboutCurrentCompany": "الشركة الحالية",
       "aboutSave": "حفظ",
       "aboutSaved": "تم الحفظ",
-      "aboutSaveError": "تعذّر حفظ بياناتك، يرجى المحاولة مرة أخرى."
+      "aboutSaveError": "تعذّر حفظ بياناتك، يرجى المحاولة مرة أخرى.",
+      "aboutVisibilityTitle": "ظهور بيانات التواصل",
+      "aboutShowEmail": "إظهار بريدي الإلكتروني للمستخدمين الآخرين",
+      "aboutShowPhone": "إظهار رقم جوالي للمستخدمين الآخرين"
     },
     "resumeBuilder": {
       "title": "منشئ السيرة الذاتية",
@@ -1371,7 +1374,10 @@
     "suggestionsTitle": "أشخاص قد تعرفهم",
     "noResults": "لم يتم العثور على أشخاص",
     "noResultsHint": "جرّب اسمًا مختلفًا.",
-    "noSuggestions": "لا توجد اقتراحات حاليًا"
+    "noSuggestions": "لا توجد اقتراحات حاليًا",
+    "message": "مراسلة",
+    "inviteFriends": "دعوة أصدقاء",
+    "inviteFriendsHint": "لا تجد من تبحث عنه؟ ادعُه للانضمام إلى شبكتك."
   },
   "posts": {
     "title": "المنشورات",
@@ -1417,6 +1423,21 @@
     "typeConnectionAccepted": "قبل {name} طلب التواصل الخاص بك",
     "typePostReaction": "أعجب {name} بمنشورك",
     "typePostComment": "علّق {name} على منشورك",
-    "typeCommentReply": "ردّ {name} على تعليقك"
+    "typeCommentReply": "ردّ {name} على تعليقك",
+    "typeMessage": "أرسل لك {name} رسالة"
+  },
+  "messages": {
+    "title": "الرسائل",
+    "loading": "جارٍ التحميل...",
+    "noConversations": "لا توجد محادثات بعد",
+    "noConversationsHint": "بمجرد التواصل مع أحدهم، يمكنك مراسلته هنا.",
+    "goToConnections": "ابحث عن أشخاص للتواصل معهم",
+    "selectConversation": "اختر محادثة لبدء الدردشة",
+    "sayHi": "قل مرحباً 👋",
+    "online": "متصل الآن",
+    "lastSeen": "آخر ظهور {time}",
+    "back": "رجوع",
+    "composerPlaceholder": "اكتب رسالة...",
+    "send": "إرسال"
   }
 }

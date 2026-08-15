@@ -334,7 +334,7 @@
       "autoApply": "Auto Apply",
       "employerDashboard": "Employer dashboard",
       "invite": "Invite Friends",
-      "connections": "Connections",
+      "connections": "My Network",
       "posts": "Posts"
     },
     "overview": {
@@ -420,7 +420,10 @@
       "aboutCurrentCompany": "Current company",
       "aboutSave": "Save",
       "aboutSaved": "Saved",
-      "aboutSaveError": "Couldn't save your details — please try again."
+      "aboutSaveError": "Couldn't save your details — please try again.",
+      "aboutVisibilityTitle": "Contact visibility",
+      "aboutShowEmail": "Show my email address to other users",
+      "aboutShowPhone": "Show my mobile number to other users"
     },
     "resumeBuilder": {
       "title": "CV builder",
@@ -1371,7 +1374,10 @@
     "suggestionsTitle": "People you may know",
     "noResults": "No people found",
     "noResultsHint": "Try a different name.",
-    "noSuggestions": "No suggestions right now"
+    "noSuggestions": "No suggestions right now",
+    "message": "Message",
+    "inviteFriends": "Invite friends",
+    "inviteFriendsHint": "Don't see who you're looking for? Invite them to join your network."
   },
   "posts": {
     "title": "Posts",
@@ -1417,6 +1423,21 @@
     "typeConnectionAccepted": "{name} accepted your connection request",
     "typePostReaction": "{name} liked your post",
     "typePostComment": "{name} commented on your post",
-    "typeCommentReply": "{name} replied to your comment"
+    "typeCommentReply": "{name} replied to your comment",
+    "typeMessage": "{name} sent you a message"
+  },
+  "messages": {
+    "title": "Messages",
+    "loading": "Loading...",
+    "noConversations": "No conversations yet",
+    "noConversationsHint": "Once you connect with someone, you can message them here.",
+    "goToConnections": "Find people to connect with",
+    "selectConversation": "Select a conversation to start chatting",
+    "sayHi": "Say hi 👋",
+    "online": "Online",
+    "lastSeen": "Last seen {time}",
+    "back": "Back",
+    "composerPlaceholder": "Write a message...",
+    "send": "Send"
   }
 }

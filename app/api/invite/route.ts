@@ -12,10 +12,10 @@ const MAX_PER_REQUEST = 10;
 // at MAX_PER_REQUEST, but that alone is trivially bypassable by anyone
 // calling the route directly.
 const MAX_PER_DAY = 30;
-// Re-inviting the same address is allowed, just not on every page refresh —
-// keeps a well-meaning "let me nudge them again" from looking like a retry
-// loop to the invitee's mail provider.
-const RESEND_COOLDOWN_DAYS = 7;
+// No resend cooldown: re-inviting an address that was already invited
+// (even minutes ago) is allowed unconditionally, per explicit request —
+// the MAX_PER_REQUEST/MAX_PER_DAY caps above are the anti-spam backstop
+// that stays in place regardless.
 
 /**
  * Lets a signed-in user invite people to GulfJobCopilot by email, sent from
@@ -83,20 +83,10 @@ export async function POST(request: Request) {
   }
   const remainingToday = MAX_PER_DAY - (sentToday ?? 0);
 
-  const cooldownCutoff = new Date(Date.now() - RESEND_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const { data: recentRows } = await supabase
-    .from("referrals")
-    .select("invitee_email, created_at")
-    .eq("inviter_id", user.id)
-    .in("invitee_email", emails);
-  const recentlyInvited = new Set(
-    (recentRows ?? [])
-      .filter((row) => (row.created_at as string) >= cooldownCutoff)
-      .map((row) => row.invitee_email as string)
-  );
-
-  const toSend = emails.filter((email) => !recentlyInvited.has(email)).slice(0, remainingToday);
-  const skipped = emails.filter((email) => recentlyInvited.has(email) || !toSend.includes(email));
+  // Every valid, deduped, non-self email goes out — no "already invited"
+  // exclusion. MAX_PER_REQUEST/MAX_PER_DAY above are still the real caps.
+  const toSend = emails.slice(0, remainingToday);
+  const skipped = emails.filter((email) => !toSend.includes(email));
 
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
   const inviterName = (profile?.full_name as string | null) ?? null;

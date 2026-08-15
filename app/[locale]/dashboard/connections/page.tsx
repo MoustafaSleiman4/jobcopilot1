@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Users, Inbox, Search as SearchIcon, Loader2 } from "lucide-react";
+import { Users, Inbox, Search as SearchIcon, Loader2, UserPlus } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import PersonCard from "@/components/PersonCard";
 import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
@@ -16,14 +17,28 @@ export default function ConnectionsPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-          <Users size={20} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <Users size={20} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+            <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
-        </div>
+        {/* Shortcut into the existing /dashboard/invite flow, right on the
+            Connections page itself — someone here is already in a "find
+            people" mindset, and the people they're looking for often
+            aren't on the platform yet, so inviting them shouldn't require
+            hunting for a separate nav item. */}
+        <Link
+          href="/dashboard/invite"
+          className="inline-flex flex-none items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:border-emerald-300 hover:text-foreground"
+        >
+          <UserPlus size={14} />
+          <span className="hidden sm:inline">{t("inviteFriends")}</span>
+        </Link>
       </div>
 
       <div className="mt-6 flex gap-1 border-b border-border">
@@ -256,6 +271,17 @@ function FindPeopleTab() {
             icon={SearchIcon}
             title={showingSearch ? t("noResults") : t("noSuggestions")}
             description={showingSearch ? t("noResultsHint") : undefined}
+            action={
+              showingSearch ? (
+                <Link
+                  href="/dashboard/invite"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  <UserPlus size={14} />
+                  {t("inviteFriends")}
+                </Link>
+              ) : undefined
+            }
           />
         ) : (
           list.map((person) => <PersonCard key={person.id} person={person} onConnect={handleConnect} />)

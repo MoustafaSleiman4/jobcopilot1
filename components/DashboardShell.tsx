@@ -15,6 +15,7 @@ import {
   Search,
   KanbanSquare,
   MessageCircleMore,
+  MessageSquare,
   LogOut,
   ChevronDown,
   Mail,
@@ -24,12 +25,25 @@ import {
   HelpCircle,
   Building2,
   UserPlus,
-  Users,
+  Network,
   Newspaper,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
   { key: "overview", href: "/dashboard", icon: LayoutDashboard },
+  // Connections ("My Network")/Posts/Messages: promoted to right after
+  // Overview, ahead of the job-search tools — the social layer is meant to
+  // be a headline feature of the app, not a buried afterthought, so it
+  // gets prime placement rather than being sorted after every job-search
+  // page. "My Network" additionally gets a small gold accent (see the
+  // `highlight` flag, rendered in both nav lists below) to draw the eye to
+  // it as the newest, most prominent section — the same gold-as-rare-
+  // highlight convention already used for the Pro plan badge elsewhere in
+  // this header, not a paid/Pro gate (the feature itself stays free).
+  { key: "connections", href: "/dashboard/connections", icon: Network, highlight: true },
+  { key: "posts", href: "/dashboard/posts", icon: Newspaper },
+  { key: "messages", href: "/dashboard/messages", icon: MessageSquare },
   { key: "resume", href: "/dashboard/resume", icon: FileText },
   { key: "jobs", href: "/dashboard/jobs", icon: Search },
   { key: "autoApply", href: "/dashboard/auto-apply", icon: Zap },
@@ -37,11 +51,6 @@ const navItems = [
   { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
   { key: "certifications", href: "/dashboard/certifications", icon: GraduationCap },
   { key: "reports", href: "/dashboard/reports", icon: BarChart3 },
-  // Connections/Posts: the free social layer — placed after the core
-  // job-search tools (people open this app to find a job first) but before
-  // the occasional Invite action, matching how often each is likely used.
-  { key: "connections", href: "/dashboard/connections", icon: Users },
-  { key: "posts", href: "/dashboard/posts", icon: Newspaper },
   // Kept last in the sidebar (and last in the mobile tab bar) — it's a
   // secondary, occasional action rather than something used every visit,
   // so it shouldn't compete with the core job-search tools above it for
@@ -79,6 +88,23 @@ export default function DashboardShell({
     });
   }, []);
 
+  // Presence heartbeat: this shell stays mounted for the entire dashboard
+  // session, so it's the one place that can reliably keep
+  // profiles.last_seen_at fresh for as long as the user is actually here.
+  // Fired once immediately (so "online" flips true the moment they land,
+  // not up to a minute later) and then on an interval — see
+  // app/api/presence/heartbeat/route.ts for the write side and
+  // ONLINE_WINDOW_MS in app/api/connections/route.ts for how "online" is
+  // derived from it (updated within the last 2 minutes). Interval is
+  // shorter than that window so a normal browsing session never flickers
+  // to "offline" between heartbeats.
+  useEffect(() => {
+    const beat = () => fetch("/api/presence/heartbeat", { method: "POST" }).catch(() => {});
+    beat();
+    const handle = setInterval(beat, 60000);
+    return () => clearInterval(handle);
+  }, []);
+
   async function handleSignOut() {
     setMenuOpen(false);
     try {
@@ -98,8 +124,9 @@ export default function DashboardShell({
           <Logo />
         </Link>
         <nav className="mt-10 space-y-1">
-          {navItems.map(({ key, href, icon: Icon }) => {
+          {navItems.map(({ key, href, icon: Icon, ...rest }) => {
             const active = pathname === href;
+            const highlight = "highlight" in rest && rest.highlight;
             return (
               <Link
                 key={key}
@@ -112,6 +139,7 @@ export default function DashboardShell({
               >
                 <Icon className="h-4.5 w-4.5" size={18} />
                 {t(key)}
+                {highlight && <Sparkles className="ms-auto text-gold-500" size={13} />}
               </Link>
             );
           })}
@@ -238,17 +266,19 @@ export default function DashboardShell({
         className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-border bg-surface/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {navItems.map(({ key, href, icon: Icon }) => {
+        {navItems.map(({ key, href, icon: Icon, ...rest }) => {
           const active = pathname === href;
+          const highlight = "highlight" in rest && rest.highlight;
           return (
             <Link
               key={key}
               href={href}
-              className={`flex w-16 flex-none flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
+              className={`relative flex w-16 flex-none flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
                 active ? "text-emerald-700" : "text-foreground/50"
               }`}
             >
               <Icon className="h-5 w-5" size={20} />
+              {highlight && <Sparkles className="absolute end-2.5 top-1.5 text-gold-500" size={9} />}
               <span className="truncate">{t(key)}</span>
             </Link>
           );
