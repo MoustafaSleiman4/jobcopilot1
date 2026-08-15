@@ -185,6 +185,14 @@ export default function PricingCards() {
               <p className="mt-3 text-center text-xs text-foreground/50">{t("pro.currentPlanNote")}</p>
             )}
             {checkoutError && <p className="mt-3 text-center text-xs text-red-600">{checkoutError}</p>}
+            {!isAlreadyPro && (
+              <Link
+                href={user ? `/dashboard/pay-with-whish?plan=${planId}` : `/signup?plan=${planId}&whish=1`}
+                className="mt-3 block text-center text-xs font-medium text-foreground/50 underline decoration-dotted underline-offset-2 hover:text-emerald-700"
+              >
+                {t("pro.whishCta")}
+              </Link>
+            )}
           </div>
         </div>
       </div>

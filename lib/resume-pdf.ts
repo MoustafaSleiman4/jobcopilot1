@@ -132,11 +132,14 @@ export async function downloadResumePdf(
   doc.text(structured.fullName || "Resume", marginX, y);
   y += FS(22);
 
-  if (structured.title) {
+  // Job title + current company on one line, mirroring ResumePreview.tsx's
+  // header treatment (joined with " · ", company omitted entirely if empty).
+  const titleLine = [structured.title, structured.currentCompany].filter((v): v is string => Boolean(v && v.trim())).join(" · ");
+  if (titleLine) {
     doc.setFont(fontName, "normal");
     doc.setFontSize(FS(12));
     doc.setTextColor(80);
-    doc.text(structured.title, marginX, y);
+    doc.text(titleLine, marginX, y);
     doc.setTextColor(0);
     y += FS(18);
   }

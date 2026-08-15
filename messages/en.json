@@ -212,7 +212,8 @@
       ],
       "cta": "Upgrade to Pro",
       "currentPlan": "You're on Pro",
-      "currentPlanNote": "You already have an active Pro subscription."
+      "currentPlanNote": "You already have an active Pro subscription.",
+      "whishCta": "Paying from Lebanon? Pay with Whish instead"
     },
     "monthly": "Monthly",
     "yearly": "Yearly",
@@ -230,6 +231,22 @@
       "subtitle": "Post jobs for free and reach candidates across the Gulf & Middle East.",
       "cta": "Post a job for free"
     }
+  },
+  "whish": {
+    "title": "Pay with Whish",
+    "planMonthly": "Pro — Monthly",
+    "planYearly": "Pro — Yearly",
+    "backToPricing": "Back to pricing",
+    "notConfigured": "Whish payment isn't set up yet — please check back soon, or contact support and we'll help you subscribe another way.",
+    "step1": "Tap \"Open Whish\" below to pay through the Whish app.",
+    "step2": "Complete the payment for the amount shown in Whish.",
+    "step3": "Come back here and tap \"I've paid\" so we know to activate your account.",
+    "openWhish": "Open Whish to pay",
+    "noteLabel": "Anything that helps us match your payment (optional)",
+    "notePlaceholder": "e.g. the name or number you paid from",
+    "iPaidCta": "I've paid — notify us",
+    "claimSubmitted": "Thanks! We've been notified and will activate your Pro access once we confirm the payment in Whish — usually within a few hours.",
+    "claimError": "Couldn't submit — please try again in a moment."
   },
   "auth": {
     "login": {
@@ -316,7 +333,9 @@
       "reports": "Reports",
       "autoApply": "Auto Apply",
       "employerDashboard": "Employer dashboard",
-      "invite": "Invite Friends"
+      "invite": "Invite Friends",
+      "connections": "Connections",
+      "posts": "Posts"
     },
     "overview": {
       "title": "Welcome back",
@@ -380,7 +399,28 @@
       "delete": "Delete",
       "confirmDelete": "Delete this resume version? This can't be undone.",
       "copyOf": "Copy of {title}",
-      "editManually": "Edit manually"
+      "editManually": "Edit manually",
+      "photoSection": "Personal photo",
+      "photoSectionHelp": "Optional. Add a photo to your resume — shown in the preview and included in the downloaded PDF.",
+      "photoUpload": "Upload photo",
+      "photoChange": "Change photo",
+      "photoRemove": "Remove",
+      "photoUploading": "Uploading...",
+      "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
+      "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
+      "photoTooBig": "That photo is too large (5MB max).",
+      "photoUploadError": "Couldn't upload that photo. Please try again.",
+      "aboutSection": "About you",
+      "aboutSectionHelp": "Shown to people you connect with, and used to prefill your resume header.",
+      "aboutFullName": "Full name",
+      "aboutPhone": "Mobile number",
+      "aboutEmail": "Email address",
+      "aboutEmailHint": "This is your account's sign-in email and can't be changed here.",
+      "aboutJobTitle": "Job title",
+      "aboutCurrentCompany": "Current company",
+      "aboutSave": "Save",
+      "aboutSaved": "Saved",
+      "aboutSaveError": "Couldn't save your details — please try again."
     },
     "resumeBuilder": {
       "title": "CV builder",
@@ -523,7 +563,8 @@
       "photoHint": "JPG, PNG, or WEBP. Up to 5MB.",
       "photoInvalidType": "Please choose a JPG, PNG, or WEBP image.",
       "photoTooBig": "That photo is too large (5MB max).",
-      "photoUploadError": "Couldn't upload that photo. Please try again."
+      "photoUploadError": "Couldn't upload that photo. Please try again.",
+      "currentCompany": "Current company"
     },
     "jobs": {
       "title": "Smart Job Search & Copilot",
@@ -1305,5 +1346,77 @@
         ]
       }
     ]
+  },
+  "connections": {
+    "title": "Connections",
+    "subtitle": "Grow your professional network.",
+    "tabs": {
+      "myConnections": "My Connections",
+      "requests": "Requests",
+      "findPeople": "Find People"
+    },
+    "connect": "Connect",
+    "pending": "Pending",
+    "accept": "Accept",
+    "decline": "Decline",
+    "connected": "Connected",
+    "remove": "Remove connection",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "noConnections": "No connections yet",
+    "noConnectionsHint": "Search for people you know and send a connection request.",
+    "noRequests": "No pending requests",
+    "noRequestsHint": "When someone sends you a connection request, it will show up here.",
+    "searchPlaceholder": "Search people by name…",
+    "suggestionsTitle": "People you may know",
+    "noResults": "No people found",
+    "noResultsHint": "Try a different name.",
+    "noSuggestions": "No suggestions right now"
+  },
+  "posts": {
+    "title": "Posts",
+    "composerPlaceholder": "Share an update with your network…",
+    "addPhoto": "Photo",
+    "addVideo": "Video",
+    "postButton": "Post",
+    "postError": "Couldn't post right now. Please try again.",
+    "imageInvalid": "Images must be JPEG, PNG, WEBP or GIF and under 10MB.",
+    "videoInvalid": "Video must be MP4, WEBM or MOV and under 100MB.",
+    "tooManyImages": "You can attach up to 6 images per post.",
+    "removeAttachment": "Remove attachment",
+    "edited": "edited",
+    "moreActions": "More actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this post? This can't be undone.",
+    "report": "Report",
+    "reported": "Reported",
+    "cancel": "Cancel",
+    "save": "Save",
+    "like": "Like",
+    "comment": "Comment",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "noPosts": "No posts yet",
+    "noPostsHint": "Be the first to share an update.",
+    "loadingComments": "Loading comments…",
+    "noComments": "No comments yet",
+    "reply": "Reply",
+    "replyPlaceholder": "Write a reply…",
+    "commentPlaceholder": "Write a comment…",
+    "commentError": "Couldn't post your comment. Please try again."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "empty": "No notifications yet",
+    "viewAll": "View all",
+    "typeConnectionRequest": "{name} sent you a connection request",
+    "typeConnectionAccepted": "{name} accepted your connection request",
+    "typePostReaction": "{name} liked your post",
+    "typePostComment": "{name} commented on your post",
+    "typeCommentReply": "{name} replied to your comment"
   }
 }

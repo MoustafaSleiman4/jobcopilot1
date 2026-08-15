@@ -212,7 +212,8 @@
       ],
       "cta": "الترقية إلى الاحترافي",
       "currentPlan": "أنت مشترك في Pro",
-      "currentPlanNote": "لديك بالفعل اشتراك Pro نشط."
+      "currentPlanNote": "لديك بالفعل اشتراك Pro نشط.",
+      "whishCta": "تدفع من لبنان؟ ادفع عبر Whish بدلاً من ذلك"
     },
     "monthly": "شهري",
     "yearly": "سنوي",
@@ -230,6 +231,22 @@
       "subtitle": "انشر الوظائف مجانًا وتواصل مع مرشحين في الخليج والشرق الأوسط.",
       "cta": "انشر وظيفة مجانًا"
     }
+  },
+  "whish": {
+    "title": "الدفع عبر Whish",
+    "planMonthly": "Pro — شهري",
+    "planYearly": "Pro — سنوي",
+    "backToPricing": "العودة إلى الأسعار",
+    "notConfigured": "الدفع عبر Whish غير متاح بعد — يرجى المحاولة لاحقًا، أو التواصل مع الدعم لمساعدتك على الاشتراك بطريقة أخرى.",
+    "step1": "اضغط \"فتح Whish\" أدناه للدفع عبر تطبيق Whish.",
+    "step2": "أكمل الدفع بالمبلغ الظاهر في Whish.",
+    "step3": "عد إلى هنا واضغط \"لقد دفعت\" لنعلم أنه يجب تفعيل حسابك.",
+    "openWhish": "فتح Whish للدفع",
+    "noteLabel": "أي معلومة تساعدنا على مطابقة دفعتك (اختياري)",
+    "notePlaceholder": "مثال: الاسم أو الرقم الذي دفعت منه",
+    "iPaidCta": "لقد دفعت — إشعارنا",
+    "claimSubmitted": "شكرًا لك! تم إشعارنا وسنفعّل اشتراك Pro بعد تأكيد الدفعة عبر Whish — عادةً خلال بضع ساعات.",
+    "claimError": "تعذّر الإرسال — حاول مرة أخرى بعد قليل."
   },
   "auth": {
     "login": {
@@ -316,7 +333,9 @@
       "reports": "التقارير",
       "autoApply": "التقديم التلقائي",
       "employerDashboard": "لوحة صاحب العمل",
-      "invite": "دعوة الأصدقاء"
+      "invite": "دعوة الأصدقاء",
+      "connections": "التواصل",
+      "posts": "المنشورات"
     },
     "overview": {
       "title": "مرحبًا بعودتك",
@@ -380,7 +399,28 @@
       "delete": "حذف",
       "confirmDelete": "حذف نسخة السيرة الذاتية هذه؟ لا يمكن التراجع عن هذا الإجراء.",
       "copyOf": "نسخة من {title}",
-      "editManually": "تعديل يدوي"
+      "editManually": "تعديل يدوي",
+      "photoSection": "الصورة الشخصية",
+      "photoSectionHelp": "اختياري. أضف صورة إلى سيرتك الذاتية — تظهر في المعاينة وتُضاف إلى ملف PDF عند التحميل.",
+      "photoUpload": "رفع صورة",
+      "photoChange": "تغيير الصورة",
+      "photoRemove": "إزالة",
+      "photoUploading": "جارٍ الرفع...",
+      "photoHint": "JPG أو PNG أو WEBP، بحد أقصى 5 ميغابايت.",
+      "photoInvalidType": "الرجاء اختيار صورة بصيغة JPG أو PNG أو WEBP.",
+      "photoTooBig": "حجم الصورة كبير جدًا (الحد الأقصى 5 ميغابايت).",
+      "photoUploadError": "تعذّر رفع الصورة. حاول مرة أخرى.",
+      "aboutSection": "نبذة عنك",
+      "aboutSectionHelp": "تظهر لمن تتواصل معهم، وتُستخدم لتعبئة رأس سيرتك الذاتية تلقائيًا.",
+      "aboutFullName": "الاسم الكامل",
+      "aboutPhone": "رقم الجوال",
+      "aboutEmail": "البريد الإلكتروني",
+      "aboutEmailHint": "هذا هو البريد الإلكتروني المستخدم لتسجيل الدخول إلى حسابك، ولا يمكن تغييره من هنا.",
+      "aboutJobTitle": "المسمى الوظيفي",
+      "aboutCurrentCompany": "الشركة الحالية",
+      "aboutSave": "حفظ",
+      "aboutSaved": "تم الحفظ",
+      "aboutSaveError": "تعذّر حفظ بياناتك، يرجى المحاولة مرة أخرى."
     },
     "resumeBuilder": {
       "title": "منشئ السيرة الذاتية",
@@ -523,7 +563,8 @@
       "photoHint": "JPG أو PNG أو WEBP، بحد أقصى 5 ميغابايت.",
       "photoInvalidType": "الرجاء اختيار صورة بصيغة JPG أو PNG أو WEBP.",
       "photoTooBig": "حجم الصورة كبير جدًا (الحد الأقصى 5 ميغابايت).",
-      "photoUploadError": "تعذّر رفع الصورة. حاول مرة أخرى."
+      "photoUploadError": "تعذّر رفع الصورة. حاول مرة أخرى.",
+      "currentCompany": "الشركة الحالية"
     },
     "jobs": {
       "title": "البحث الذكي عن الوظائف والمساعد الذكي",
@@ -1305,5 +1346,77 @@
         ]
       }
     ]
+  },
+  "connections": {
+    "title": "التواصل",
+    "subtitle": "وسّع شبكتك المهنية.",
+    "tabs": {
+      "myConnections": "تواصلاتي",
+      "requests": "الطلبات",
+      "findPeople": "ابحث عن أشخاص"
+    },
+    "connect": "تواصل",
+    "pending": "قيد الانتظار",
+    "accept": "قبول",
+    "decline": "رفض",
+    "connected": "متصل",
+    "remove": "إزالة التواصل",
+    "loading": "جارٍ التحميل…",
+    "loadMore": "تحميل المزيد",
+    "noConnections": "لا يوجد تواصلات بعد",
+    "noConnectionsHint": "ابحث عن أشخاص تعرفهم وأرسل طلب تواصل.",
+    "noRequests": "لا توجد طلبات معلّقة",
+    "noRequestsHint": "عندما يرسل لك أحد طلب تواصل، سيظهر هنا.",
+    "searchPlaceholder": "ابحث عن أشخاص بالاسم…",
+    "suggestionsTitle": "أشخاص قد تعرفهم",
+    "noResults": "لم يتم العثور على أشخاص",
+    "noResultsHint": "جرّب اسمًا مختلفًا.",
+    "noSuggestions": "لا توجد اقتراحات حاليًا"
+  },
+  "posts": {
+    "title": "المنشورات",
+    "composerPlaceholder": "شارك تحديثًا مع شبكتك…",
+    "addPhoto": "صورة",
+    "addVideo": "فيديو",
+    "postButton": "نشر",
+    "postError": "تعذّر النشر حاليًا. حاول مرة أخرى.",
+    "imageInvalid": "يجب أن تكون الصور بصيغة JPEG أو PNG أو WEBP أو GIF وبحجم أقل من 10 ميغابايت.",
+    "videoInvalid": "يجب أن يكون الفيديو بصيغة MP4 أو WEBM أو MOV وبحجم أقل من 100 ميغابايت.",
+    "tooManyImages": "يمكنك إرفاق حتى 6 صور لكل منشور.",
+    "removeAttachment": "إزالة المرفق",
+    "edited": "تم التعديل",
+    "moreActions": "المزيد من الإجراءات",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "deleteConfirm": "هل تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.",
+    "report": "إبلاغ",
+    "reported": "تم الإبلاغ",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "like": "إعجاب",
+    "comment": "تعليق",
+    "loading": "جارٍ التحميل…",
+    "loadMore": "تحميل المزيد",
+    "noPosts": "لا توجد منشورات بعد",
+    "noPostsHint": "كن أول من يشارك تحديثًا.",
+    "loadingComments": "جارٍ تحميل التعليقات…",
+    "noComments": "لا توجد تعليقات بعد",
+    "reply": "رد",
+    "replyPlaceholder": "اكتب ردًا…",
+    "commentPlaceholder": "اكتب تعليقًا…",
+    "commentError": "تعذّر نشر تعليقك. حاول مرة أخرى."
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markAllRead": "تعليم الكل كمقروء",
+    "loading": "جارٍ التحميل…",
+    "loadMore": "تحميل المزيد",
+    "empty": "لا توجد إشعارات بعد",
+    "viewAll": "عرض الكل",
+    "typeConnectionRequest": "أرسل لك {name} طلب تواصل",
+    "typeConnectionAccepted": "قبل {name} طلب التواصل الخاص بك",
+    "typePostReaction": "أعجب {name} بمنشورك",
+    "typePostComment": "علّق {name} على منشورك",
+    "typeCommentReply": "ردّ {name} على تعليقك"
   }
 }

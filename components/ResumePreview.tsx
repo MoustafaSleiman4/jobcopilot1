@@ -265,7 +265,11 @@ export default function ResumePreview({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h3 className={`text-[1.43em] font-bold ${plain ? "text-foreground" : ""}`}>{resume.fullName || "—"}</h3>
-            {resume.title && <p className={`mt-1 text-[1em] ${plain ? "text-foreground/70" : "text-white/90"}`}>{resume.title}</p>}
+            {(resume.title || resume.currentCompany) && (
+              <p className={`mt-1 text-[1em] ${plain ? "text-foreground/70" : "text-white/90"}`}>
+                {[resume.title, resume.currentCompany].filter(Boolean).join(" · ")}
+              </p>
+            )}
             {hasContact && (
               <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.86em] ${plain ? "text-foreground/60" : "text-white/80"}`}>
                 {resume.email && (

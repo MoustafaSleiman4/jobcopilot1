@@ -44,6 +44,12 @@ export async function GET() {
       MONTYPAY_PASSWORD: Boolean(process.env.MONTYPAY_PASSWORD),
       MONTYPAY_MONTHLY_PRODUCT_ID: Boolean(process.env.MONTYPAY_MONTHLY_PRODUCT_ID),
       MONTYPAY_YEARLY_PRODUCT_ID: Boolean(process.env.MONTYPAY_YEARLY_PRODUCT_ID),
+      // Manual Whish flow (see lib/billing/whish-links.ts) — not part of
+      // getBillingProvider()'s switch, so it's not "activeBillingProvider"
+      // above, but it depends on its own env vars just the same.
+      WHISH_MONTHLY_LINK: Boolean(process.env.WHISH_MONTHLY_LINK),
+      WHISH_YEARLY_LINK: Boolean(process.env.WHISH_YEARLY_LINK),
+      ADMIN_SECRET: Boolean(process.env.ADMIN_SECRET),
       RESEND_API_KEY: Boolean(process.env.RESEND_API_KEY),
     },
     note: "true/false only — this never exposes actual secret values. If any billing-related field above is false, that's why payments aren't upgrading accounts: fix it in Vercel → Settings → Environment Variables (Production), then redeploy.",

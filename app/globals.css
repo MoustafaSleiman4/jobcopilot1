@@ -57,6 +57,28 @@ html[lang="ar"] {
   --font-sans: var(--font-arabic);
 }
 
+/* Dashboard scope — the authenticated /dashboard app reads as a structured
+   business tool, not the warm/decorative marketing site. This overrides the
+   same background/surface/border/foreground tokens every dashboard page
+   already builds on (bg-background, bg-surface, border-border), so applying
+   this one class to DashboardShell's root re-skins every existing page's
+   `rounded-2xl border border-border bg-surface p-5` card markup without
+   touching each page file — no logic changes, no per-page edits needed for
+   the base palette shift. Emerald stays the one functional accent (links,
+   primary actions); gold is reserved for the rare highlight it already had
+   (the Pro plan badge) rather than page backgrounds/patterns, which is why
+   --gold-* isn't overridden here — those values already read as "an accent
+   used sparingly" once the busier decorative use of them elsewhere is gone.
+   The marketing site's own tokens (outside .dashboard-scope) are untouched. */
+.dashboard-scope {
+  --background: #f4f6f8;
+  --foreground: #161a20;
+  --surface: #ffffff;
+  --border: #e2e6eb;
+  --sand-100: #eef1f4;
+  --sand-200: #e2e6eb;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

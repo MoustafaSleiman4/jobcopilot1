@@ -27,6 +27,9 @@ import ResumePreview from "@/components/ResumePreview";
 import type { StructuredResume } from "@/lib/resume-types";
 import { emptyStructuredResume } from "@/lib/resume-types";
 import { downloadResumePdf } from "@/lib/resume-pdf";
+import Card from "@/components/ui/Card";
+import SectionHeading from "@/components/ui/SectionHeading";
+import Button from "@/components/ui/Button";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — matches the resume-photos bucket's file_size_limit
@@ -86,6 +89,21 @@ export default function ResumeBuilderPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoErrorMsg, setPhotoErrorMsg] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // "About you" — a small profiles-backed contact block shown directly under
+  // the photo. fullName/phone/jobTitle/currentCompany are editable and saved
+  // via the same upsert pattern as avatar_url above; email is read-only,
+  // sourced from the authenticated user's login email (auth.users.email via
+  // supabase.auth.getUser()) rather than from `profiles`, since changing a
+  // login email needs Supabase's verified-email-change flow, not this form.
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [aboutFullName, setAboutFullName] = useState("");
+  const [aboutPhone, setAboutPhone] = useState("");
+  const [aboutJobTitle, setAboutJobTitle] = useState("");
+  const [aboutCurrentCompany, setAboutCurrentCompany] = useState("");
+  const [aboutSaving, setAboutSaving] = useState(false);
+  const [aboutSaveState, setAboutSaveState] = useState<"idle" | "success" | "error">("idle");
+  const [aboutErrorMsg, setAboutErrorMsg] = useState<string | null>(null);
 
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
@@ -169,15 +187,22 @@ export default function ResumeBuilderPage() {
           if (cancelled) return;
           const uid = data.user?.id ?? null;
           setUserId(uid);
+          if (!cancelled) setAccountEmail(data.user?.email ?? null);
           if (!uid) return;
 
           const { data: profile } = await supabase
             .from("profiles")
-            .select("plan, avatar_url")
+            .select("plan, avatar_url, full_name, phone, job_title, current_company")
             .eq("id", uid)
             .single();
           if (!cancelled && profile?.plan === "pro") setPlan("pro");
           if (!cancelled) setAvatarUrl(profile?.avatar_url ?? null);
+          if (!cancelled) {
+            setAboutFullName(profile?.full_name ?? "");
+            setAboutPhone(profile?.phone ?? "");
+            setAboutJobTitle(profile?.job_title ?? "");
+            setAboutCurrentCompany(profile?.current_company ?? "");
+          }
 
           await loadExistingResume(supabase, uid);
           if (!cancelled) await loadVersions(supabase, uid);
@@ -330,6 +355,41 @@ export default function ResumeBuilderPage() {
       console.error("[resume] failed to remove photo:", err);
       setAvatarUrl(previousAvatarUrl);
       setPhotoErrorMsg(t("photoUploadError"));
+    }
+  }
+
+  // --- About you (name/phone/job title/current company) ---
+  // Same upsert-onto-profiles pattern as the photo save above, including its
+  // error-handling style (console.error + a user-facing error message
+  // state), so an accidentally-missing profiles row can never look like a
+  // silent success here either.
+  async function handleSaveAbout() {
+    if (!userId) return;
+    setAboutSaving(true);
+    setAboutSaveState("idle");
+    setAboutErrorMsg(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            full_name: aboutFullName.trim() || null,
+            phone: aboutPhone.trim() || null,
+            job_title: aboutJobTitle.trim() || null,
+            current_company: aboutCurrentCompany.trim() || null,
+          },
+          { onConflict: "id" }
+        );
+      if (error) throw error;
+      setAboutSaveState("success");
+    } catch (err) {
+      console.error("[resume] failed to save about-you fields:", err);
+      setAboutSaveState("error");
+      setAboutErrorMsg(t("aboutSaveError"));
+    } finally {
+      setAboutSaving(false);
     }
   }
 
@@ -645,6 +705,79 @@ export default function ResumeBuilderPage() {
             className="hidden"
           />
         </div>
+      )}
+
+      {/* "About you" — a small contact-info block backed by public.profiles,
+          shown directly under the photo. Also feeds Connections' PersonCard
+          (job title @ current company) once that feature ships, so it's
+          worth filling in even before any resume exists. */}
+      {userId && (
+        <Card className="mt-6">
+          <SectionHeading>{t("aboutSection")}</SectionHeading>
+          <p className="mt-1 text-xs text-foreground/50">{t("aboutSectionHelp")}</p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutFullName")}</label>
+              <input
+                value={aboutFullName}
+                onChange={(e) => setAboutFullName(e.target.value)}
+                placeholder={t("aboutFullName")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutPhone")}</label>
+              <input
+                value={aboutPhone}
+                onChange={(e) => setAboutPhone(e.target.value)}
+                placeholder={t("aboutPhone")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutEmail")}</label>
+              <input
+                value={accountEmail ?? ""}
+                disabled
+                readOnly
+                className="mt-1 w-full rounded-lg border border-border bg-sand-100 px-3 py-2 text-sm text-foreground/50"
+              />
+              <p className="mt-1 text-[11px] text-foreground/40">{t("aboutEmailHint")}</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutJobTitle")}</label>
+              <input
+                value={aboutJobTitle}
+                onChange={(e) => setAboutJobTitle(e.target.value)}
+                placeholder={t("aboutJobTitle")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground/70">{t("aboutCurrentCompany")}</label>
+              <input
+                value={aboutCurrentCompany}
+                onChange={(e) => setAboutCurrentCompany(e.target.value)}
+                placeholder={t("aboutCurrentCompany")}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="primary" loading={aboutSaving} onClick={handleSaveAbout}>
+              <Save size={15} />
+              {t("aboutSave")}
+            </Button>
+            {aboutSaveState === "success" && (
+              <span className="text-sm font-medium text-emerald-600">{t("aboutSaved")}</span>
+            )}
+            {aboutSaveState === "error" && (
+              <span className="text-sm font-medium text-red-600">{aboutErrorMsg}</span>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* My resumes — every saved version, with the powerful manual builder

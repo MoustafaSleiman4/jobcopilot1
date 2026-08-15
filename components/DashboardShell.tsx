@@ -6,6 +6,7 @@ import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 import ChatWidget from "./ChatWidget";
+import NotificationBell from "./NotificationBell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import {
@@ -23,6 +24,8 @@ import {
   HelpCircle,
   Building2,
   UserPlus,
+  Users,
+  Newspaper,
 } from "lucide-react";
 
 const navItems = [
@@ -34,6 +37,11 @@ const navItems = [
   { key: "coverLetter", href: "/dashboard/cover-letter", icon: Mail },
   { key: "certifications", href: "/dashboard/certifications", icon: GraduationCap },
   { key: "reports", href: "/dashboard/reports", icon: BarChart3 },
+  // Connections/Posts: the free social layer — placed after the core
+  // job-search tools (people open this app to find a job first) but before
+  // the occasional Invite action, matching how often each is likely used.
+  { key: "connections", href: "/dashboard/connections", icon: Users },
+  { key: "posts", href: "/dashboard/posts", icon: Newspaper },
   // Kept last in the sidebar (and last in the mobile tab bar) — it's a
   // secondary, occasional action rather than something used every visit,
   // so it shouldn't compete with the core job-search tools above it for
@@ -84,7 +92,7 @@ export default function DashboardShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-sand-100">
+    <div className="dashboard-scope flex min-h-screen bg-sand-100">
       <aside className="hidden w-64 flex-none border-e border-border bg-surface p-6 md:block">
         <Link href="/">
           <Logo />
@@ -133,6 +141,7 @@ export default function DashboardShell({
               <HelpCircle size={16} />
               <span className="hidden sm:inline">{t("help")}</span>
             </Link>
+            <NotificationBell />
             <LocaleSwitcher />
 
             {/* Account menu: this is the one place in the whole dashboard
@@ -146,15 +155,9 @@ export default function DashboardShell({
                   onClick={() => setMenuOpen((v) => !v)}
                   className="flex items-center gap-2 rounded-full border border-border bg-background py-1 ps-1 pe-2.5 text-sm font-medium text-foreground/80 hover:border-emerald-300"
                 >
-                  {user.avatarUrl ? (
-                    // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.avatarUrl} alt="" className="h-7 w-7 flex-none rounded-full object-cover" />
-                  ) : (
-                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                      {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
-                    </span>
-                  )}
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                    {(user.fullName || user.email || "?").charAt(0).toUpperCase()}
+                  </span>
                   <span className="hidden max-w-[9rem] truncate sm:inline">
                     {user.fullName || user.email}
                   </span>
@@ -224,8 +227,15 @@ export default function DashboardShell({
         <main className="flex-1 p-6 pb-44 md:p-10 md:pb-10">{children}</main>
       </div>
 
+      {/* Horizontally scrollable rather than flex-1-per-item: with 11 nav
+          entries now (up from 9, after adding Connections/Posts), squeezing
+          every item into one non-scrolling row would make each tab too
+          narrow to tap or read on a phone. A fixed per-item width plus
+          overflow-x-auto keeps every tab a comfortable, consistent size and
+          simply lets someone swipe to reach the rest, which also scales
+          cleanly if more sections are added later. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-border bg-surface/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {navItems.map(({ key, href, icon: Icon }) => {
@@ -234,12 +244,12 @@ export default function DashboardShell({
             <Link
               key={key}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
+              className={`flex w-16 flex-none flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
                 active ? "text-emerald-700" : "text-foreground/50"
               }`}
             >
               <Icon className="h-5 w-5" size={20} />
-              {t(key)}
+              <span className="truncate">{t(key)}</span>
             </Link>
           );
         })}

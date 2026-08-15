@@ -798,6 +798,12 @@ export default function ResumeBuilderForm() {
             placeholder={t("links")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
           />
+          <input
+            value={structured.currentCompany ?? ""}
+            onChange={(e) => update("currentCompany", e.target.value)}
+            placeholder={t("currentCompany")}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          />
         </div>
       </section>
 
