@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { visibleContact } from "@/lib/contactVisibility";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -16,12 +17,14 @@ const LIMIT = 20;
  * and is easy to swap for a `.rpc("search_people", { q })` pg_trgm version
  * later without changing this route's response shape.
  *
- * Also matches on email — but ONLY for profiles with show_email = true.
- * Letting a search match someone's email while that same email stays
- * invisible everywhere else would make the "hide my email" toggle
- * pointless (anyone who already knows the address could still use it to
- * find the profile). So one flag governs both: found-by-email and
- * shown-in-results are the same permission.
+ * Also matches on email, regardless of that profile's show_email setting —
+ * "findable by an address you already know" and "shown in search results"
+ * are kept as two separate permissions on purpose: you can still locate
+ * someone by typing (part of) an email you have, exactly like searching a
+ * contact by phone number in a messaging app, but the response below still
+ * runs every row through visibleContact(), so the matched profile's actual
+ * email only appears in the result if that person has opted show_email on
+ * — matching stays possible, disclosure stays gated.
  */
 export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -47,7 +50,7 @@ export async function GET(request: Request) {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, full_name, avatar_url, job_title, current_company, email, phone, show_email, show_phone")
-    .or(`full_name.ilike.%${q}%,and(show_email.eq.true,email.ilike.%${q}%)`)
+    .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
     .neq("id", user.id)
     .eq("hidden_from_discovery", false)
     .limit(LIMIT);
@@ -84,7 +87,7 @@ export async function GET(request: Request) {
     const contact = visibleContact(profile as { id: string; email: string | null; phone: string | null; show_email: boolean | null; show_phone: boolean | null }, user.id);
     return {
       id: profile.id,
-      fullName: profile.full_name,
+      fullName: deriveDisplayName(profile.full_name as string | null, profile.email as string | null),
       avatarUrl: profile.avatar_url,
       jobTitle: profile.job_title,
       currentCompany: profile.current_company,

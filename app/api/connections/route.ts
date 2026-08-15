@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { visibleContact } from "@/lib/contactVisibility";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
       connectionId: row.id,
       person: {
         id: otherId,
-        fullName: profile?.full_name ?? null,
+        fullName: deriveDisplayName(profile?.full_name ?? null, profile?.email ?? null),
         avatarUrl: profile?.avatar_url ?? null,
         jobTitle: profile?.job_title ?? null,
         currentCompany: profile?.current_company ?? null,

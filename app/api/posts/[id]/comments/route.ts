@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -38,16 +39,17 @@ export async function GET(
   }
 
   const authorIds = Array.from(new Set((comments ?? []).map((c) => c.author_id as string)));
-  const profilesById = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+  const profilesById = new Map<string, { full_name: string | null; avatar_url: string | null; email: string | null }>();
   if (authorIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url")
+      .select("id, full_name, avatar_url, email")
       .in("id", authorIds);
     for (const profile of profiles ?? []) {
       profilesById.set(profile.id as string, {
         full_name: profile.full_name as string | null,
         avatar_url: profile.avatar_url as string | null,
+        email: profile.email as string | null,
       });
     }
   }
@@ -62,7 +64,7 @@ export async function GET(
       createdAt: comment.created_at,
       author: {
         id: comment.author_id,
-        fullName: author?.full_name ?? null,
+        fullName: deriveDisplayName(author?.full_name ?? null, author?.email ?? null),
         avatarUrl: author?.avatar_url ?? null,
       },
     };
@@ -171,5 +173,31 @@ export async function POST(
     return NextResponse.json({ error: "Could not add comment" }, { status: 500 });
   }
 
-  return NextResponse.json({ comment }, { status: 201 });
+  // CommentThread.tsx feeds this response straight into its comment list
+  // without a refetch and reads `comment.author.fullName` unconditionally —
+  // the same shape contract as POST /api/posts, and the same bug that
+  // route had (returning the bare inserted row instead of a full
+  // CommentItem) previously made posting silently crash right after a
+  // successful insert. Constructing the full author shape here avoids
+  // repeating that.
+  const { data: authorProfile } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, email")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const commentItem = {
+    id: comment.id,
+    postId: comment.post_id,
+    parentCommentId: comment.parent_comment_id,
+    body: comment.body,
+    createdAt: comment.created_at,
+    author: {
+      id: user.id,
+      fullName: deriveDisplayName(authorProfile?.full_name ?? null, authorProfile?.email ?? user.email ?? null),
+      avatarUrl: authorProfile?.avatar_url ?? null,
+    },
+  };
+
+  return NextResponse.json({ comment: commentItem }, { status: 201 });
 }

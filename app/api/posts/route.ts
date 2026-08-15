@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
   // even though the row had actually saved.
   const { data: authorProfile } = await supabase
     .from("profiles")
-    .select("full_name, avatar_url, job_title, current_company")
+    .select("full_name, avatar_url, job_title, current_company, email")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
     editedAt: post.edited_at,
     author: {
       id: user.id,
-      fullName: authorProfile?.full_name ?? null,
+      fullName: deriveDisplayName(authorProfile?.full_name ?? null, authorProfile?.email ?? user.email ?? null),
       avatarUrl: authorProfile?.avatar_url ?? null,
       jobTitle: authorProfile?.job_title ?? null,
       currentCompany: authorProfile?.current_company ?? null,
@@ -207,7 +208,7 @@ export async function GET(request: Request) {
 
   const [profilesRes, mediaRes, reactionsRes, myReactionsRes, commentsRes] = await Promise.all([
     authorIds.length > 0
-      ? supabase.from("profiles").select("id, full_name, avatar_url, job_title, current_company").in("id", authorIds)
+      ? supabase.from("profiles").select("id, full_name, avatar_url, job_title, current_company, email").in("id", authorIds)
       : Promise.resolve({ data: [] as never[] }),
     postIds.length > 0
       ? supabase.from("post_media").select("id, post_id, media_type, storage_path, order_index").in("post_id", postIds).order("order_index", { ascending: true })
@@ -265,7 +266,7 @@ export async function GET(request: Request) {
       editedAt: post.edited_at,
       author: {
         id: post.author_id,
-        fullName: author?.full_name ?? null,
+        fullName: deriveDisplayName(author?.full_name as string | null, author?.email as string | null),
         avatarUrl: author?.avatar_url ?? null,
         jobTitle: author?.job_title ?? null,
         currentCompany: author?.current_company ?? null,

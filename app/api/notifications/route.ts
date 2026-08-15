@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { deriveDisplayName } from "@/lib/displayName";
 
 export const runtime = "nodejs";
 
@@ -48,16 +49,17 @@ export async function GET(request: Request) {
   }
 
   const actorIds = Array.from(new Set((rows ?? []).map((row) => row.actor_id as string).filter(Boolean)));
-  const profilesById = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+  const profilesById = new Map<string, { full_name: string | null; avatar_url: string | null; email: string | null }>();
   if (actorIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url")
+      .select("id, full_name, avatar_url, email")
       .in("id", actorIds);
     for (const profile of profiles ?? []) {
       profilesById.set(profile.id as string, {
         full_name: profile.full_name as string | null,
         avatar_url: profile.avatar_url as string | null,
+        email: profile.email as string | null,
       });
     }
   }
@@ -78,7 +80,7 @@ export async function GET(request: Request) {
       // so this falls back to empty fields rather than null, since
       // NotificationBell/the notifications page read `n.actor.fullName`
       // directly without a null-guard on `actor` itself.
-      actor: { fullName: actor?.full_name ?? null, avatarUrl: actor?.avatar_url ?? null },
+      actor: { fullName: deriveDisplayName(actor?.full_name ?? null, actor?.email ?? null), avatarUrl: actor?.avatar_url ?? null },
     };
   });
 
