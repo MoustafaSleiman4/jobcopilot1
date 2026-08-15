@@ -171,7 +171,17 @@ export default function PersonCard({
               <Button
                 variant="ghost"
                 loading={submitting === "remove"}
-                onClick={() => run("remove", () => onRemove?.(connectionId))}
+                onClick={() => {
+                  // Removing a connection is destructive (they'd need to
+                  // send/receive a brand new request to reconnect), so it
+                  // gets the same window.confirm() guard already used
+                  // elsewhere in the app for destructive actions (see
+                  // ResumeBuilderForm.tsx's delete-resume confirm and
+                  // PostCard.tsx's delete-post confirm) rather than firing
+                  // on a single accidental click.
+                  if (!window.confirm(t("removeConfirm", { name: person.fullName }))) return;
+                  run("remove", () => onRemove?.(connectionId));
+                }}
                 aria-label={t("remove")}
                 title={t("remove")}
               >

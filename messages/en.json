@@ -1368,6 +1368,7 @@
     "decline": "Decline",
     "connected": "Connected",
     "remove": "Remove connection",
+    "removeConfirm": "Remove {name} from your connections? You'll need to send a new request to reconnect.",
     "loading": "Loading…",
     "loadMore": "Load more",
     "noConnections": "No connections yet",
