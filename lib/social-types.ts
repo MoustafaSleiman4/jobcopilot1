@@ -35,6 +35,25 @@ export type Person = {
 /** Item shape returned by GET /api/people/search and GET /api/people/suggestions. */
 export type PersonResult = Person & { connectionStatus: ConnectionStatus };
 
+/** Minimal shape used for avatar-stack previews (mutual connections, etc.). */
+export type PersonPreview = { id: string; fullName: string; avatarUrl: string | null };
+
+/**
+ * Item shape returned by GET /api/people/[id] — the "click a person to see
+ * their profile" detail view (PersonDetailModal). Superset of PersonResult:
+ * adds the connectionId needed to accept/decline/cancel/remove from within
+ * the modal itself, plus the two LinkedIn-style headline stats.
+ */
+export type PersonDetail = Person & {
+  connectionStatus: ConnectionStatus;
+  connectionId: string | null;
+  connectionsCount: number;
+  mutualConnectionsCount: number;
+  // Capped preview list (see MUTUAL_PREVIEW_LIMIT in the route) — use
+  // mutualConnectionsCount for the true total, this array for "show them."
+  mutualConnections: PersonPreview[];
+};
+
 /** Item shape returned by GET /api/connections and GET /api/connections/requests. */
 export type ConnectionListItem = {
   connectionId: string;

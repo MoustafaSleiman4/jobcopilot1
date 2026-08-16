@@ -147,13 +147,18 @@ export default function DashboardShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center gap-2 text-sm text-foreground/60 md:hidden">
-            <Logo />
+        <header className="flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex flex-none items-center gap-2 text-sm text-foreground/60 md:hidden">
+            {/* Icon-only on mobile (see Logo's `compact` prop) — the full
+                "GulfJobCopilot" wordmark plus the notification bell, locale
+                switcher, and account menu on the end simply don't fit
+                together on a phone-width screen; this was the cause of the
+                mobile header's text overlapping (e.g. on iPhone 13). */}
+            <Logo compact />
           </div>
-          <div className="ms-auto flex items-center gap-3">
+          <div className="ms-auto flex min-w-0 flex-none items-center gap-1.5 sm:gap-3">
             {demoMode && (
-              <span className="rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600">
+              <span className="hidden rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600 md:inline">
                 Demo mode — connect Supabase to go live
               </span>
             )}
@@ -164,7 +169,7 @@ export default function DashboardShell({
                 not one extra click away. */}
             <Link
               href="/help"
-              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground/70 hover:border-emerald-300 hover:text-foreground"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground/70 hover:border-emerald-300 hover:text-foreground sm:px-3"
             >
               <HelpCircle size={16} />
               <span className="hidden sm:inline">{t("help")}</span>

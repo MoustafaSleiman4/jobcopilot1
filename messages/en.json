@@ -1358,8 +1358,8 @@
     "subtitle": "Grow your professional network.",
     "tabs": {
       "myConnections": "My Connections",
-      "sentRequests": "Pending",
-      "receivedRequests": "Requests",
+      "sentRequests": "Sent Requests",
+      "receivedRequests": "Received Requests",
       "findPeople": "Find People"
     },
     "connect": "Connect",
@@ -1387,7 +1387,17 @@
     "noSentRequests": "No pending requests",
     "noSentRequestsHint": "Requests you send will appear here until the person responds.",
     "suggestionsHint": "Showing up to 10 suggestions",
-    "country": "Country"
+    "country": "Country",
+    "detail": {
+      "loadingProfile": "Loading profile…",
+      "notFound": "This profile couldn't be loaded.",
+      "close": "Close",
+      "connectionsCount": "{count, plural, =0 {No connections} one {# connection} other {# connections}}",
+      "mutualConnectionsCount": "{count, plural, =0 {No mutual connections} one {# mutual connection} other {# mutual connections}}",
+      "showMutual": "Show",
+      "hideMutual": "Hide",
+      "andMore": "+{count} more"
+    }
   },
   "posts": {
     "title": "Posts",

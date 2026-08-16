@@ -9,12 +9,16 @@ const SIZE_CLASSES = {
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
   lg: "h-12 w-12 text-base",
+  // Used by PersonDetailModal's header — a person's profile photo, not a
+  // list-row avatar, warrants standing out more than any existing size.
+  xl: "h-16 w-16 text-xl",
 } as const;
 
 const DOT_SIZE_CLASSES = {
   sm: "h-2 w-2",
   md: "h-2.5 w-2.5",
   lg: "h-3 w-3",
+  xl: "h-3.5 w-3.5",
 } as const;
 
 export type AvatarSize = keyof typeof SIZE_CLASSES;

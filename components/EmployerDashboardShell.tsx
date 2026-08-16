@@ -70,13 +70,16 @@ export default function EmployerDashboardShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center gap-2 text-sm text-foreground/60 md:hidden">
-            <Logo />
+        <header className="flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex flex-none items-center gap-2 text-sm text-foreground/60 md:hidden">
+            {/* Icon-only on mobile — see the matching fix/comment in
+                DashboardShell.tsx for the job-seeker side; same overflow
+                risk on a phone-width header. */}
+            <Logo compact />
           </div>
-          <div className="ms-auto flex items-center gap-3">
+          <div className="ms-auto flex min-w-0 flex-none items-center gap-1.5 sm:gap-3">
             {demoMode && (
-              <span className="rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600">
+              <span className="hidden rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600 md:inline">
                 Demo mode — connect Supabase to go live
               </span>
             )}

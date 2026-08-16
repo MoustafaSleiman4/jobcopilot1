@@ -42,6 +42,23 @@ function ConnectionsPageContent() {
   const initialTab = searchParams.get("tab");
   const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "myConnections");
 
+  // The useState above only seeds the tab on this component's FIRST mount.
+  // That's enough when a notification link lands here fresh, but if the
+  // person is already sitting on this page (on any tab) — including with
+  // the notification bell open, which renders on every dashboard page —
+  // and clicks a "?tab=receivedRequests" link, Next.js does a client-side
+  // navigation without unmounting/remounting this component, so the seeded
+  // useState value never gets a chance to re-run and the tab silently stays
+  // wherever it was. This effect re-syncs `tab` whenever the URL's `tab`
+  // param actually changes, so the same click works whether it's the first
+  // page load or a same-page navigation.
+  useEffect(() => {
+    const paramTab = searchParams.get("tab");
+    if (isTab(paramTab)) {
+      setTab((current) => (current === paramTab ? current : paramTab));
+    }
+  }, [searchParams]);
+
   return (
     <div className="max-w-3xl">
       <div className="flex items-start justify-between gap-3">
@@ -68,13 +85,18 @@ function ConnectionsPageContent() {
         </Link>
       </div>
 
-      <div className="mt-6 flex gap-1 border-b border-border">
+      {/* Horizontally scrollable, not wrapping/shrinking — with the fuller
+          "Sent Requests" / "Received Requests" labels (see removeConfirm/
+          tabs rename), four tabs no longer fit on a phone-width screen in
+          one non-scrolling row without squeezing each label onto two lines.
+          Same pattern as DashboardShell's mobile bottom tab bar. */}
+      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
         {(["myConnections", "sentRequests", "receivedRequests", "findPeople"] as Tab[]).map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex-none whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               tab === key
                 ? "border-emerald-600 text-emerald-700"
                 : "border-transparent text-foreground/50 hover:text-foreground"
@@ -110,7 +132,12 @@ function MyConnectionsTab() {
     return { items: (data.items ?? []) as ConnectionListItem[], nextCursor: (data.nextCursor ?? null) as string | null };
   }, []);
 
-  useEffect(() => {
+  // Named separately from the mount effect so it can also serve as the
+  // "refresh me" callback handed to PersonCard's onChanged — a remove
+  // triggered from inside the profile detail modal (not this list's own
+  // button) has no way to surgically patch `items` itself, so it just
+  // re-fetches from the top like the initial load does.
+  const refresh = useCallback(() => {
     setLoading(true);
     load().then(({ items: newItems, nextCursor }) => {
       setItems(newItems);
@@ -118,6 +145,10 @@ function MyConnectionsTab() {
       setLoading(false);
     });
   }, [load]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function loadMore() {
     if (!cursor || loadingMore) return;
@@ -147,6 +178,7 @@ function MyConnectionsTab() {
           person={{ ...item.person, connectionStatus: "connected" }}
           connectionId={item.connectionId}
           onRemove={handleRemove}
+          onChanged={refresh}
         />
       ))}
       {cursor && (
@@ -166,20 +198,21 @@ function ReceivedRequestsTab() {
   const [items, setItems] = useState<ConnectionListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/connections/requests")
+  const refresh = useCallback(() => {
+    setLoading(true);
+    return fetch("/api/connections/requests")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setItems(data.items ?? []);
+        setItems(data.items ?? []);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function handleAccept(connectionId: string) {
     const res = await fetch(`/api/connections/${connectionId}/accept`, { method: "POST" });
@@ -206,6 +239,7 @@ function ReceivedRequestsTab() {
           connectionId={item.connectionId}
           onAccept={handleAccept}
           onDecline={handleDecline}
+          onChanged={refresh}
         />
       ))}
     </div>
@@ -223,20 +257,21 @@ function SentRequestsTab() {
   const [items, setItems] = useState<ConnectionListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/connections/requests/sent")
+  const refresh = useCallback(() => {
+    setLoading(true);
+    return fetch("/api/connections/requests/sent")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setItems(data.items ?? []);
+        setItems(data.items ?? []);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function handleCancel(connectionId: string) {
     const res = await fetch(`/api/connections/${connectionId}`, { method: "DELETE" });
@@ -257,6 +292,7 @@ function SentRequestsTab() {
           person={{ ...item.person, connectionStatus: "pending_sent" }}
           connectionId={item.connectionId}
           onCancel={handleCancel}
+          onChanged={refresh}
         />
       ))}
     </div>
@@ -327,6 +363,22 @@ function FindPeopleTab() {
     }
   }
 
+  // PersonDetailModal's actions (connect/cancel) don't know which array a
+  // row came from, so unlike handleConnect above (a targeted status patch)
+  // this just re-fetches both lists — simplest correct way to reflect
+  // whatever changed inside the modal back onto the row behind it.
+  function handleChanged() {
+    fetch("/api/people/suggestions")
+      .then((res) => res.json())
+      .then((data) => setSuggestions(Array.isArray(data?.items) ? data.items : []));
+    const q = query.trim();
+    if (q) {
+      fetch(`/api/people/search?q=${encodeURIComponent(q)}`)
+        .then((res) => res.json())
+        .then((data) => setResults(Array.isArray(data?.items) ? data.items : []));
+    }
+  }
+
   const showingSearch = query.trim().length > 0;
   const list = showingSearch ? results : suggestions;
   const isLoading = showingSearch ? searching : loadingSuggestions;
@@ -378,7 +430,9 @@ function FindPeopleTab() {
             }
           />
         ) : (
-          list.map((person) => <PersonCard key={person.id} person={person} onConnect={handleConnect} />)
+          list.map((person) => (
+            <PersonCard key={person.id} person={person} onConnect={handleConnect} onChanged={handleChanged} />
+          ))
         )}
       </div>
     </div>

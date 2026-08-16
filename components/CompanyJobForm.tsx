@@ -264,7 +264,7 @@ export default function CompanyJobForm({
 
         <div className="mt-4">
           <label className={labelClass}>{t("salaryRange")}</label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <input
               type="number"
               min={0}

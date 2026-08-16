@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, Send, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import PersonDetailModal from "@/components/PersonDetailModal";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { formatRelativeTime } from "@/lib/socialFormat";
 import type { CommentItem } from "@/lib/social-types";
@@ -17,6 +18,27 @@ function CommentAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | 
     <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
       {(name || "?").charAt(0).toUpperCase()}
     </span>
+  );
+}
+
+// Wraps the avatar in a real <button> — clicking either it or the name next
+// to it opens PersonDetailModal for that commenter, same "connect if you're
+// not, chat/view profile if you are" panel used from the connections lists.
+function CommentAvatarButton({
+  authorId,
+  name,
+  avatarUrl,
+  onOpen,
+}: {
+  authorId: string;
+  name: string;
+  avatarUrl: string | null;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onOpen(authorId)} className="flex-none rounded-full">
+      <CommentAvatar name={name} avatarUrl={avatarUrl} />
+    </button>
   );
 }
 
@@ -46,6 +68,7 @@ export default function CommentThread({
   const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
   const [postingReplyFor, setPostingReplyFor] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openProfileId, setOpenProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,10 +184,21 @@ export default function CommentThread({
         return (
           <div key={comment.id} className="space-y-2">
             <div className="flex items-start gap-2.5">
-              <CommentAvatar name={comment.author.fullName} avatarUrl={comment.author.avatarUrl} />
+              <CommentAvatarButton
+                authorId={comment.author.id}
+                name={comment.author.fullName}
+                avatarUrl={comment.author.avatarUrl}
+                onOpen={setOpenProfileId}
+              />
               <div className="min-w-0 flex-1 text-start">
                 <div className="rounded-xl bg-sand-100 px-3 py-2">
-                  <p className="text-xs font-semibold text-foreground">{comment.author.fullName}</p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenProfileId(comment.author.id)}
+                    className="text-xs font-semibold text-foreground hover:underline"
+                  >
+                    {comment.author.fullName}
+                  </button>
                   <p className="whitespace-pre-wrap text-sm text-foreground/90">{comment.body}</p>
                 </div>
                 <div className="mt-1 flex items-center gap-3 ps-1 text-xs text-foreground/40">
@@ -194,10 +228,21 @@ export default function CommentThread({
               <div className="ms-10 space-y-2">
                 {replies.map((reply) => (
                   <div key={reply.id} className="flex items-start gap-2.5">
-                    <CommentAvatar name={reply.author.fullName} avatarUrl={reply.author.avatarUrl} />
+                    <CommentAvatarButton
+                      authorId={reply.author.id}
+                      name={reply.author.fullName}
+                      avatarUrl={reply.author.avatarUrl}
+                      onOpen={setOpenProfileId}
+                    />
                     <div className="min-w-0 flex-1 text-start">
                       <div className="rounded-xl bg-sand-100 px-3 py-2">
-                        <p className="text-xs font-semibold text-foreground">{reply.author.fullName}</p>
+                        <button
+                          type="button"
+                          onClick={() => setOpenProfileId(reply.author.id)}
+                          className="text-xs font-semibold text-foreground hover:underline"
+                        >
+                          {reply.author.fullName}
+                        </button>
                         <p className="whitespace-pre-wrap text-sm text-foreground/90">{reply.body}</p>
                       </div>
                       <div className="mt-1 flex items-center gap-3 ps-1 text-xs text-foreground/40">
@@ -262,6 +307,10 @@ export default function CommentThread({
           <Send size={13} />
         </Button>
       </div>
+
+      {openProfileId && (
+        <PersonDetailModal personId={openProfileId} onClose={() => setOpenProfileId(null)} />
+      )}
     </div>
   );
 }

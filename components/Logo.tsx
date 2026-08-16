@@ -1,8 +1,22 @@
-export default function Logo({ className = "", light = false }: { className?: string; light?: boolean }) {
+export default function Logo({
+  className = "",
+  light = false,
+  compact = false,
+}: {
+  className?: string;
+  light?: boolean;
+  // Icon-mark only, no "GulfJobCopilot" wordmark — for tight spaces like the
+  // dashboard's mobile header, which already has to fit a notification
+  // bell, locale switcher, and account menu next to it on a phone-width
+  // screen. The full wordmark (~130px) was the single biggest contributor
+  // to that header overflowing/overlapping on narrow devices (e.g. iPhone
+  // 13 at 390px), since it doesn't shrink or truncate on its own.
+  compact?: boolean;
+}) {
   return (
     <span className={`inline-flex items-center gap-2 font-extrabold tracking-tight ${className}`}>
       <span
-        className={`flex h-8 w-8 items-center justify-center rounded-lg shadow-sm ${
+        className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg shadow-sm ${
           light ? "bg-white/15 text-gold-200" : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-gold-100"
         }`}
       >
@@ -20,9 +34,11 @@ export default function Logo({ className = "", light = false }: { className?: st
       {/* `light` renders the wordmark for dark backgrounds (e.g. the
           employer auth panel) — the default emerald-600 "JobCopilot" reads
           as near-black on a dark emerald gradient otherwise. */}
-      <span className={`text-lg ${light ? "text-white" : ""}`}>
-        Gulf<span className={light ? "text-gold-200" : "text-emerald-600"}>JobCopilot</span>
-      </span>
+      {!compact && (
+        <span className={`text-lg ${light ? "text-white" : ""}`}>
+          Gulf<span className={light ? "text-gold-200" : "text-emerald-600"}>JobCopilot</span>
+        </span>
+      )}
     </span>
   );
 }

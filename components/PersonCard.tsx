@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Avatar from "@/components/ui/Avatar";
+import PersonDetailModal from "@/components/PersonDetailModal";
 import type { PersonResult } from "@/lib/social-types";
 
 /**
@@ -33,6 +34,7 @@ export default function PersonCard({
   onDecline,
   onRemove,
   onCancel,
+  onChanged,
 }: {
   person: PersonResult;
   connectionId?: string;
@@ -44,9 +46,17 @@ export default function PersonCard({
   // connectionStatus "pending_sent" (the Pending tab), distinct from
   // onDecline (which is the addressee rejecting a request sent TO them).
   onCancel?: (connectionId: string) => void | Promise<void>;
+  // Fired when an action taken from the profile detail modal (opened by
+  // clicking the row) changes this person's connection state — e.g.
+  // accepting from inside the modal, not from this card's own buttons.
+  // Callers pass whatever "refresh this list" function they already have;
+  // this card's own button handlers don't need it, they already update the
+  // parent's state directly via onAccept/onDecline/etc.
+  onChanged?: () => void;
 }) {
   const t = useTranslations("connections");
   const [submitting, setSubmitting] = useState<"connect" | "accept" | "decline" | "remove" | "cancel" | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   async function run(kind: "connect" | "accept" | "decline" | "remove" | "cancel", fn?: () => void | Promise<void>) {
     if (!fn || submitting) return;
@@ -72,8 +82,13 @@ export default function PersonCard({
   const hasMeta = hasContact || Boolean(person.country);
 
   return (
+    <>
     <Card className="flex items-center gap-4">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+      <button
+        type="button"
+        onClick={() => setDetailOpen(true)}
+        className="flex min-w-0 flex-1 items-center gap-3 text-start"
+      >
         <Avatar avatarUrl={person.avatarUrl} name={person.fullName} size="lg" isOnline={person.isOnline} />
         <div className="min-w-0 text-start">
           <p className="truncate text-sm font-semibold text-foreground">{person.fullName}</p>
@@ -101,7 +116,7 @@ export default function PersonCard({
             </div>
           )}
         </div>
-      </div>
+      </button>
 
       <div className="flex flex-none items-center gap-2">
         {person.connectionStatus === "none" && (
@@ -192,5 +207,13 @@ export default function PersonCard({
         )}
       </div>
     </Card>
+    {detailOpen && (
+      <PersonDetailModal
+        personId={person.id}
+        onClose={() => setDetailOpen(false)}
+        onChanged={onChanged}
+      />
+    )}
+    </>
   );
 }

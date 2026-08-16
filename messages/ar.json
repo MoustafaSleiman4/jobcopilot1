@@ -1358,8 +1358,8 @@
     "subtitle": "وسّع شبكتك المهنية.",
     "tabs": {
       "myConnections": "جهات اتصالي",
-      "sentRequests": "قيد الانتظار",
-      "receivedRequests": "الطلبات",
+      "sentRequests": "الطلبات المرسلة",
+      "receivedRequests": "الطلبات الواردة",
       "findPeople": "البحث عن أشخاص"
     },
     "connect": "تواصل",
@@ -1387,7 +1387,17 @@
     "noSentRequests": "لا توجد طلبات قيد الانتظار",
     "noSentRequestsHint": "ستظهر هنا الطلبات التي ترسلها إلى أن يستجيب الشخص.",
     "suggestionsHint": "يتم عرض حتى 10 اقتراحات",
-    "country": "الدولة"
+    "country": "الدولة",
+    "detail": {
+      "loadingProfile": "جارٍ تحميل الملف الشخصي…",
+      "notFound": "تعذّر تحميل هذا الملف الشخصي.",
+      "close": "إغلاق",
+      "connectionsCount": "{count, plural, =0 {لا توجد تواصلات} one {تواصل واحد} two {تواصلان} few {# تواصلات} many {# تواصلاً} other {# تواصل}}",
+      "mutualConnectionsCount": "{count, plural, =0 {لا توجد تواصلات مشتركة} one {تواصل مشترك واحد} two {تواصلان مشتركان} few {# تواصلات مشتركة} many {# تواصلاً مشتركًا} other {# تواصل مشترك}}",
+      "showMutual": "عرض",
+      "hideMutual": "إخفاء",
+      "andMore": "+{count} أخرى"
+    }
   },
   "posts": {
     "title": "المنشورات",
