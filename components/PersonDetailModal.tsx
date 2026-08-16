@@ -69,8 +69,22 @@ export default function PersonDetailModal({
   // doc comment above), but guarding this explicitly means the component
   // stays correct even if a future caller starts reusing one instance
   // across different people.
+  //
+  // IMPORTANT: this must return the SAME array reference when personId
+  // already matches the current root frame. Unconditionally calling
+  // setStack([...]) here — even with logically identical content — hands
+  // React a brand-new object on the very first render, which changes the
+  // `frame` reference used below and re-fires the profile-fetch effect
+  // before the in-flight request from the first pass can resolve. That
+  // effect's cleanup marks the first fetch `cancelled`, while its
+  // once-only `loadedProfiles` guard blocks the second pass from ever
+  // fetching again — net result, the modal was stuck on "Loading
+  // profile…" forever. Returning `prev` unchanged when nothing actually
+  // changed avoids the spurious re-render entirely.
   useEffect(() => {
-    setStack([{ kind: "profile", id: personId }]);
+    setStack((prev) =>
+      prev.length === 1 && prev[0].kind === "profile" && prev[0].id === personId ? prev : [{ kind: "profile", id: personId }]
+    );
     setMutualExpanded(false);
   }, [personId]);
 
@@ -94,10 +108,20 @@ export default function PersonDetailModal({
 
   // Fetch (once per id) whenever navigation brings a `profile` frame to the
   // top of the stack that hasn't been loaded yet.
+  //
+  // `loadedProfiles` only tracks "a fetch for this id is currently in
+  // flight," and is cleared in `.finally()` — not the moment the fetch
+  // starts. That way a stray extra effect run (e.g. from an unrelated
+  // re-render) either no-ops against an already-resolved `detailCache`
+  // entry, or — worst case — fires one harmless duplicate request, instead
+  // of permanently blocking every future fetch for that id the way a
+  // fetch-and-forget guard did (see the note on the personId-reset effect
+  // above for how that combination produced an unrecoverable "Loading
+  // profile…" hang).
   useEffect(() => {
     if (frame.kind !== "profile") return;
     const id = frame.id;
-    if (loadedProfiles.current.has(id)) return;
+    if (detailCache[id] || detailNotFound[id] || loadedProfiles.current.has(id)) return;
     loadedProfiles.current.add(id);
     let cancelled = false;
     fetch(`/api/people/${id}`)
@@ -111,17 +135,20 @@ export default function PersonDetailModal({
       })
       .catch(() => {
         if (!cancelled) setDetailNotFound((p) => ({ ...p, [id]: true }));
+      })
+      .finally(() => {
+        loadedProfiles.current.delete(id);
       });
     return () => {
       cancelled = true;
     };
-  }, [frame]);
+  }, [frame, detailCache, detailNotFound]);
 
   // Same idea for a `connections` frame — GET /api/people/[id]/connections.
   useEffect(() => {
     if (frame.kind !== "connections") return;
     const id = frame.id;
-    if (loadedConnections.current.has(id)) return;
+    if (connectionsCache[id] || loadedConnections.current.has(id)) return;
     loadedConnections.current.add(id);
     let cancelled = false;
     fetch(`/api/people/${id}/connections`)
@@ -134,11 +161,14 @@ export default function PersonDetailModal({
           }));
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        loadedConnections.current.delete(id);
+      });
     return () => {
       cancelled = true;
     };
-  }, [frame]);
+  }, [frame, connectionsCache]);
 
   // Close on Escape — a modal that traps you with only a small "X" to
   // click out of isn't the "advanced/pro" feel this is going for.
