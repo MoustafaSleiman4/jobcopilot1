@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { Newspaper, Loader2 } from "lucide-react";
 import PostComposer from "@/components/PostComposer";
 import PostCard from "@/components/PostCard";
+import PostsProfileSidebar from "@/components/PostsProfileSidebar";
+import PostsSuggestionsSidebar from "@/components/PostsSuggestionsSidebar";
 import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
 import type { PostItem } from "@/lib/social-types";
@@ -97,50 +99,69 @@ function PostsPageContent() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-          <Newspaper size={20} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        </div>
-      </div>
+    // LinkedIn-style 3-column feed instead of a single narrow centered
+    // column: a left "this is you" mini-profile rail and a right "people
+    // you may know" rail flank the feed once there's room for them,
+    // matching the dashboard's actual full width instead of leaving most
+    // of a wide screen empty on either side. Below `lg` (no room for either
+    // rail) it collapses to the original single centered column — the grid
+    // template itself is only set from `lg` up, so a narrower viewport just
+    // falls back to normal block layout with the center column's own
+    // `max-w-2xl mx-auto` taking over.
+    <div className="mx-auto max-w-7xl lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[260px_minmax(0,640px)_300px]">
+      <aside className="hidden lg:sticky lg:top-6 lg:block">
+        <PostsProfileSidebar />
+      </aside>
 
-      <div className="mt-6">
-        <PostComposer onPosted={handlePosted} />
-      </div>
-
-      <div className="mt-6 space-y-4">
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
-            <Loader2 size={16} className="animate-spin" />
-            {t("loading")}
+      <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <Newspaper size={20} />
           </div>
-        ) : posts.length === 0 ? (
-          <EmptyState icon={Newspaper} title={t("noPosts")} description={t("noPostsHint")} />
-        ) : (
-          <>
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onDeleted={handleDeleted}
-                onUpdated={handleUpdated}
-                highlighted={post.id === targetPostId}
-                defaultCommentsOpen={post.id === targetPostId}
-              />
-            ))}
-            {cursor && (
-              <div className="pt-2 text-center">
-                <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
-                  {t("loadMore")}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <PostComposer onPosted={handlePosted} />
+        </div>
+
+        <div className="mt-6 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
+              <Loader2 size={16} className="animate-spin" />
+              {t("loading")}
+            </div>
+          ) : posts.length === 0 ? (
+            <EmptyState icon={Newspaper} title={t("noPosts")} description={t("noPostsHint")} />
+          ) : (
+            <>
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onDeleted={handleDeleted}
+                  onUpdated={handleUpdated}
+                  highlighted={post.id === targetPostId}
+                  defaultCommentsOpen={post.id === targetPostId}
+                />
+              ))}
+              {cursor && (
+                <div className="pt-2 text-center">
+                  <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+                    {t("loadMore")}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      <aside className="hidden xl:sticky xl:top-6 xl:block">
+        <PostsSuggestionsSidebar />
+      </aside>
     </div>
   );
 }

@@ -51,9 +51,22 @@ function CommentAvatarButton({
  */
 export default function CommentThread({
   postId,
+  postAuthorId,
+  postAuthorName,
+  canComment = true,
   onCountChange,
 }: {
   postId: string;
+  // Who to prompt connecting with when commenting is blocked — see
+  // canComment below and the connect_required handling in submitComment.
+  postAuthorId: string;
+  postAuthorName: string;
+  // Proactive gate from GET /api/posts's author.connectionStatus (via
+  // PostCard) — true for the post's own author or a direct connection.
+  // Defaults to true so any other caller of this component that doesn't
+  // pass it (none currently) still gets the pre-existing open behavior
+  // rather than silently losing the ability to comment.
+  canComment?: boolean;
   onCountChange?: (count: number) => void;
 }) {
   const t = useTranslations("posts");
@@ -69,6 +82,11 @@ export default function CommentThread({
   const [postingReplyFor, setPostingReplyFor] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openProfileId, setOpenProfileId] = useState<string | null>(null);
+  // Set when the server rejects a comment with connect_required — a belt-
+  // and-suspenders path for when canComment was stale (e.g. the connection
+  // was removed after this page loaded), not the normal way this shows up
+  // (normally the prompt below just replaces the input box outright).
+  const [connectRequired, setConnectRequired] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +143,10 @@ export default function CommentThread({
         body: JSON.stringify({ body, parentCommentId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t("commentError"));
+      if (!res.ok) {
+        if (data.code === "connect_required") setConnectRequired(true);
+        throw new Error(data.error ?? t("commentError"));
+      }
       const created: CommentItem = data.comment ?? data;
 
       setComments((prev) => {
@@ -203,13 +224,15 @@ export default function CommentThread({
                 </div>
                 <div className="mt-1 flex items-center gap-3 ps-1 text-xs text-foreground/40">
                   <span>{formatRelativeTime(comment.createdAt, locale)}</span>
-                  <button
-                    type="button"
-                    onClick={() => setReplyOpenFor((v) => (v === comment.id ? null : comment.id))}
-                    className="font-medium text-foreground/60 hover:text-foreground"
-                  >
-                    {t("reply")}
-                  </button>
+                  {canComment && (
+                    <button
+                      type="button"
+                      onClick={() => setReplyOpenFor((v) => (v === comment.id ? null : comment.id))}
+                      className="font-medium text-foreground/60 hover:text-foreground"
+                    >
+                      {t("reply")}
+                    </button>
+                  )}
                   {user?.id === comment.author.id && (
                     <button
                       type="button"
@@ -291,24 +314,43 @@ export default function CommentThread({
         );
       })}
 
-      <div className="flex items-center gap-2 border-t border-border pt-3">
-        <input
-          type="text"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder={t("commentPlaceholder")}
-          maxLength={MAX_COMMENT_CHARS}
-          className="flex-1 rounded-full border border-border bg-background px-3.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submitComment();
-          }}
-        />
-        <Button variant="primary" loading={posting} disabled={!newComment.trim()} onClick={() => submitComment()}>
-          <Send size={13} />
-        </Button>
-      </div>
+      {canComment && !connectRequired ? (
+        <div className="flex items-center gap-2 border-t border-border pt-3">
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder={t("commentPlaceholder")}
+            maxLength={MAX_COMMENT_CHARS}
+            className="flex-1 rounded-full border border-border bg-background px-3.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitComment();
+            }}
+          />
+          <Button variant="primary" loading={posting} disabled={!newComment.trim()} onClick={() => submitComment()}>
+            <Send size={13} />
+          </Button>
+        </div>
+      ) : (
+        // Shown either proactively (canComment is false, from GET
+        // /api/posts's author.connectionStatus) or reactively
+        // (connectRequired, set when the server rejected an attempt) —
+        // opens the same PersonDetailModal used everywhere else in the app,
+        // whose own Connect button already handles sending the request.
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5">
+          <p className="text-xs text-foreground/60">{t("connectToComment", { name: postAuthorName })}</p>
+          <Button variant="secondary" onClick={() => setOpenProfileId(postAuthorId)}>
+            {t("connectAction")}
+          </Button>
+        </div>
+      )}
 
       {openProfileId && (
+        // Deliberately no onChanged clearing connectRequired here: sending a
+        // connection request only gets you to "pending" — you still can't
+        // comment until the other side accepts — so the prompt should keep
+        // showing rather than optimistically reopening the input box. It'll
+        // reflect the real state again next time this post's data reloads.
         <PersonDetailModal personId={openProfileId} onClose={() => setOpenProfileId(null)} />
       )}
     </div>

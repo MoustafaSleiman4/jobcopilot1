@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
@@ -8,10 +7,11 @@ import Footer from "@/components/Footer";
 import AuthAwareCta from "@/components/AuthAwareCta";
 import HideIfPro from "@/components/HideIfPro";
 import ScrollReveal from "@/components/ScrollReveal";
-import Hero3DLoader from "@/components/Hero3DLoader";
 import JobsShowcase from "@/components/JobsShowcase";
-import DuneDivider from "@/components/decorative/DuneDivider";
-import SkylineSilhouette from "@/components/decorative/SkylineSilhouette";
+import SocialActivityStrip from "@/components/SocialActivityStrip";
+import { SOCIAL_LINKS } from "@/components/SocialLinks";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
 import {
   FileText,
   Search,
@@ -19,7 +19,6 @@ import {
   KanbanSquare,
   MessageCircleMore,
   Languages,
-  Star,
   Quote,
   Mail,
   Award,
@@ -79,34 +78,6 @@ const AVATAR_COLORS = [
   "bg-sand-200 text-foreground/70",
 ];
 
-// Confetti burst fired from behind the "#1 Trusted" hero badge (see
-// .confetti-piece / @keyframes confetti-burst in globals.css) — a dense
-// 16-piece radial spray at varying distance (85-130px, well past the
-// badge's own edges)/rotation/size, staggered ~40ms apart so the burst
-// reads as one fast, deliberate "pop" wave. Colors cycle through the brand
-// emerald/gold palette, warm white, and a terracotta accent so it reads as
-// genuine celebration confetti rather than a couple of brand-colored dots.
-// Kept as a static table (not Math.random()) so server and client render
-// identically.
-const CONFETTI_PIECES: { tx: number; ty: number; rot: number; color: string; size: number; round: boolean; delay: number }[] = [
-  { tx: 110, ty: 0, rot: 320, color: "#d9ad3f", size: 10, round: true, delay: 0 },
-  { tx: 79, ty: 32, rot: -280, color: "#0f8f66", size: 8, round: false, delay: 0.04 },
-  { tx: 92, ty: 92, rot: 420, color: "#e8734a", size: 11, round: true, delay: 0.08 },
-  { tx: 36, ty: 88, rot: -350, color: "#ffffff", size: 8, round: false, delay: 0.12 },
-  { tx: 0, ty: 120, rot: 300, color: "#c9962b", size: 12, round: true, delay: 0.16 },
-  { tx: -34, ty: 83, rot: -410, color: "#0b7754", size: 9, round: false, delay: 0.2 },
-  { tx: -88, ty: 88, rot: 260, color: "#d9ad3f", size: 10, round: true, delay: 0.24 },
-  { tx: -88, ty: 36, rot: -330, color: "#ffffff", size: 8, round: false, delay: 0.28 },
-  { tx: -110, ty: 0, rot: 380, color: "#0f8f66", size: 11, round: true, delay: 0.32 },
-  { tx: -79, ty: -32, rot: -300, color: "#e8734a", size: 9, round: false, delay: 0.36 },
-  { tx: -92, ty: -92, rot: 340, color: "#c9962b", size: 12, round: true, delay: 0.4 },
-  { tx: -36, ty: -88, rot: -260, color: "#0b7754", size: 8, round: false, delay: 0.44 },
-  { tx: 0, ty: -120, rot: 400, color: "#d9ad3f", size: 10, round: true, delay: 0.48 },
-  { tx: 34, ty: -83, rot: -320, color: "#ffffff", size: 9, round: false, delay: 0.52 },
-  { tx: 88, ty: -88, rot: 270, color: "#0f8f66", size: 11, round: true, delay: 0.56 },
-  { tx: 88, ty: -36, rot: -390, color: "#e8734a", size: 8, round: false, delay: 0.6 },
-];
-
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
 
 // Reads cookies (via the Supabase server client) to check for a session, so
@@ -152,17 +123,6 @@ export default async function HomePage({
   const stepKeys = Object.keys(stepIcons) as (keyof typeof stepIcons)[];
   const regions = t.raw("regions") as string[];
   const testimonials = t.raw("testimonials.items") as { quote: string; role: string; location: string }[];
-
-  // The badge string ("🏆 #1 Trusted...") comes from i18n as one opaque
-  // string — split off the leading trophy emoji so it can get its own
-  // gentle wiggle animation (see .trust-badge-trophy in globals.css)
-  // independent of the text next to it. Falls back to rendering the whole
-  // string plain if a locale ever ships this copy without the emoji.
-  const badgeRaw = t("badge");
-  const badgeTrophyIdx = badgeRaw.indexOf("🏆");
-  const badgeBefore = badgeTrophyIdx === -1 ? badgeRaw : badgeRaw.slice(0, badgeTrophyIdx);
-  const badgeTrophy = badgeTrophyIdx === -1 ? null : "🏆";
-  const badgeAfter = badgeTrophyIdx === -1 ? "" : badgeRaw.slice(badgeTrophyIdx + 2);
 
   // Organization + SoftwareApplication structured data so search engines can
   // show a richer result (name, description, pricing) instead of just a
@@ -211,18 +171,18 @@ export default async function HomePage({
             visually sell the site's actual scale ("thousands of real jobs")
             to a first-time visitor rather than just asserting it in copy.
             Placed as the very first thing on the page — above the hero's
-            trust badge/headline — so it's the first thing a visitor sees,
-            not something that requires scrolling past the hero to find. */}
-        <section className="bg-background py-1 sm:py-1.5">
+            headline — so it's the first thing a visitor sees, not something
+            that requires scrolling past the hero to find. */}
+        <section className="bg-background py-6 sm:py-8">
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
               <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600 sm:text-sm">
                 {t("jobsShowcase.eyebrow")}
               </p>
-              <h2 className="mt-0.5 text-center text-xl font-bold text-foreground sm:text-2xl">
+              <h2 className="mt-1 text-center text-xl font-bold text-foreground sm:text-2xl">
                 {t("jobsShowcase.title")}
               </h2>
-              <p className="mx-auto mt-0.5 max-w-2xl text-center text-xs leading-relaxed text-foreground/60 sm:text-sm">
+              <p className="mx-auto mt-1 max-w-2xl text-center text-xs leading-relaxed text-foreground/60 sm:text-sm">
                 {t("jobsShowcase.subtitle")}
               </p>
             </ScrollReveal>
@@ -232,107 +192,42 @@ export default async function HomePage({
               animation itself doesn't) — the cards should visibly travel
               edge-to-edge, not be boxed into the same reading column as the
               text. */}
-          <ScrollReveal delay={150} className="mt-1">
+          <ScrollReveal delay={150} className="mt-3">
             <JobsShowcase />
           </ScrollReveal>
         </section>
 
-        {/* Hero */}
-        <section className="desert-gradient relative overflow-hidden">
-          <div className="hero-drift pattern-motif pointer-events-none absolute inset-0" />
-          {/* Floating glow orbs — purely decorative, gives the hero visible
-              ambient motion instead of a static gradient behind the copy. */}
-          <div
-            className="orb orb-1 h-72 w-72 bg-emerald-400/20"
-            style={{ top: "4%", left: "6%" }}
-            aria-hidden="true"
-          />
-          <div
-            className="orb orb-2 h-64 w-64 bg-gold-400/25"
-            style={{ top: "10%", right: "8%" }}
-            aria-hidden="true"
-          />
-          <div
-            className="orb orb-3 h-56 w-56 bg-emerald-300/20"
-            style={{ bottom: "18%", left: "18%" }}
-            aria-hidden="true"
-          />
-          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-0 h-20 w-full text-emerald-800 sm:h-28" />
-          {/* 3D "AI copilot" orb (glowing core, orbiting job-icon cards, a
-              drifting ring of light) — kept as a small corner accent rather
-              than a full-width block above the headline. It previously sat
-              in normal document flow above the badge, pushing the badge/
-              headline/CTA down by its own height; now it's absolutely
-              positioned in the top-right corner (matching how the other
-              decorative hero elements — the glow orbs, the skyline — are
-              layered in), so the hero's actual copy starts right at the top
-              of the section instead of below the animation. */}
-          <div
-            className="pointer-events-none absolute right-0 top-0 h-14 w-14 opacity-50 sm:right-6 sm:top-4 sm:h-36 sm:w-36 sm:opacity-90"
-            aria-hidden="true"
-          >
-            <Hero3DLoader />
-          </div>
-          <div className="relative mx-auto max-w-4xl px-6 pb-5 pt-1 text-center sm:pb-6 sm:pt-2">
+        {/* Hero — flat, neutral surface (no gradient/pattern/orbs/confetti/
+            skyline). The product's own substance (real job counts above,
+            the feature list and social stats below) carries the page now,
+            not decorative motion. */}
+        <section className="border-y border-border bg-surface">
+          <div className="mx-auto max-w-4xl px-6 py-14 text-center sm:py-20">
             <ScrollReveal direction="none">
-              <div className="relative mt-1 inline-block">
-                {/* Confetti layer — deliberately OUTSIDE the pill's own
-                    overflow-hidden (that's only there to clip the shine
-                    sweep to the pill's rounded shape) so pieces can fly
-                    past the badge's edges instead of getting clipped. */}
-                <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-                  {CONFETTI_PIECES.map((c, i) => (
-                    <span
-                      key={i}
-                      className="confetti-piece"
-                      style={
-                        {
-                          "--tx": `${c.tx}px`,
-                          "--ty": `${c.ty}px`,
-                          "--rot": `${c.rot}deg`,
-                          backgroundColor: c.color,
-                          width: c.size,
-                          height: c.size,
-                          borderRadius: c.round ? "9999px" : "2px",
-                          animationDelay: `${1 + c.delay}s`,
-                        } as CSSProperties
-                      }
-                    />
-                  ))}
-                </div>
-                <span className="trust-badge trust-badge-shine relative inline-flex items-center overflow-hidden rounded-full border-2 border-gold-400/60 bg-gold-50 px-5 py-1.5 text-sm font-bold text-gold-700 shadow-sm sm:px-7 sm:py-2.5 sm:text-lg">
-                  <span className="relative">
-                    {badgeBefore}
-                    {badgeTrophy && (
-                      <span className="trust-badge-trophy inline-block">{badgeTrophy}</span>
-                    )}
-                    {badgeAfter}
-                  </span>
-                </span>
-              </div>
+              <Badge tone="gold">{t("badge")}</Badge>
             </ScrollReveal>
             <ScrollReveal delay={150}>
-              <h1 className="gradient-text-sweep mt-1 text-2xl font-extrabold tracking-tight sm:text-4xl">
+              <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
                 {t("title")}
               </h1>
             </ScrollReveal>
             <ScrollReveal delay={300}>
-              <p className="mx-auto mt-1 max-w-2xl text-sm leading-relaxed text-foreground/70 sm:text-base">
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-foreground/70 sm:text-base">
                 {t("subtitle")}
               </p>
             </ScrollReveal>
             <ScrollReveal delay={450}>
-              <div className="mt-1.5 flex flex-col items-center justify-center gap-1.5 sm:mt-1.5 sm:flex-row sm:gap-3">
+              <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <AuthAwareCta
                   loggedOutHref="/signup"
                   loggedOutLabel={t("ctaPrimary")}
                   loggedInLabel={t("goToDashboard")}
-                  className="cta-pulse w-full rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-emerald-700 active:translate-y-0 active:scale-95 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
+                  className="w-full rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
                 />
                 <HideIfPro>
                   <Link
                     href="/pricing"
-                    className="w-full rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-sand-100 hover:shadow-md active:translate-y-0 active:scale-95 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
+                    className="w-full rounded-full border border-border bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-emerald-300 hover:bg-emerald-50 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
                   >
                     {t("ctaSecondary")}
                   </Link>
@@ -340,24 +235,20 @@ export default async function HomePage({
               </div>
             </ScrollReveal>
             <ScrollReveal delay={600}>
-              <p className="mt-1.5 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
+              <p className="mt-4 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
             </ScrollReveal>
 
             <ScrollReveal delay={750}>
-              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <span className="text-xs font-medium text-foreground/40">{t("regionsLabel")}</span>
                 {regions.map((region) => (
-                  <span
-                    key={region}
-                    className="rounded-full border border-gold-400/30 bg-surface/70 px-3 py-1 text-xs font-medium text-foreground/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-gold-400/60 hover:bg-gold-50 hover:shadow-sm"
-                  >
+                  <Badge key={region} tone="neutral">
                     {region}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             </ScrollReveal>
           </div>
-          <DuneDivider className="relative" backFill="text-gold-200/60" frontFill="text-surface" />
         </section>
 
         {/* How it works */}
@@ -372,8 +263,8 @@ export default async function HomePage({
               {stepKeys.map((key, i) => {
                 const Icon = stepIcons[key];
                 return (
-                  <ScrollReveal key={key} delay={i * 180} className="group relative text-center">
-                    <div className="icon-ring-pulse mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-6">
+                  <ScrollReveal key={key} delay={i * 120} className="text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
                       <Icon size={24} />
                     </div>
                     <span className="mt-4 block text-xs font-bold uppercase tracking-wide text-gold-600">
@@ -393,39 +284,33 @@ export default async function HomePage({
         </section>
 
         {/* Features */}
-        <section className="bg-surface py-20">
+        <section className="border-t border-border bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
               <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
                 {t("features.title")}
               </h2>
             </ScrollReveal>
-            <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {featureKeys.map((key, i) => {
                 const Icon = featureIcons[key];
                 const isPro = PRO_FEATURE_KEYS.has(key);
                 return (
-                  <ScrollReveal
-                    key={key}
-                    delay={(i % 3) * 150}
-                    className="group rounded-2xl border border-border bg-background p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-600/10"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="icon-ring-pulse flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6">
-                        <Icon className="h-5.5 w-5.5" size={22} />
+                  <ScrollReveal key={key} delay={(i % 3) * 120}>
+                    <Card className="h-full">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                          <Icon size={20} />
+                        </div>
+                        {isPro && <Badge tone="gold">{t("features.proBadge")}</Badge>}
                       </div>
-                      {isPro && (
-                        <span className="rounded-full bg-gold-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gold-700">
-                          {t("features.proBadge")}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold text-foreground">
-                      {t(`features.${key}.title`)}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-foreground/60">
-                      {t(`features.${key}.desc`)}
-                    </p>
+                      <h3 className="mt-4 text-lg font-semibold text-foreground">
+                        {t(`features.${key}.title`)}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-foreground/60">
+                        {t(`features.${key}.desc`)}
+                      </p>
+                    </Card>
                   </ScrollReveal>
                 );
               })}
@@ -449,8 +334,65 @@ export default async function HomePage({
           </div>
         </section>
 
+        {/* Social / community — the same "show real scale, don't just claim
+            it" idea as the jobs showcase above, applied to the built-in
+            professional network (Connections/Posts) instead of job
+            listings. Placed after Features (which already mentions the
+            AI-assistant/bilingual features) and before Testimonials, as
+            another concrete proof point rather than pure marketing copy. */}
+        <section className="border-t border-border bg-background py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <ScrollReveal>
+              <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600">
+                {t("social.eyebrow")}
+              </p>
+              <h2 className="mt-2 text-center text-3xl font-bold text-foreground sm:text-4xl">
+                {t("social.title")}
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-foreground/60">
+                {t("social.subtitle")}
+              </p>
+            </ScrollReveal>
+
+            <ScrollReveal delay={150}>
+              <SocialActivityStrip />
+            </ScrollReveal>
+
+            <ScrollReveal delay={300}>
+              <div className="mx-auto mt-10 max-w-2xl">
+                <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600">
+                  {t("social.followTitle")}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {SOCIAL_LINKS.map(({ key, href, path }) => (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-emerald-300"
+                    >
+                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                        <svg viewBox="0 0 24 24" fill="none" className="h-4.5 w-4.5">
+                          <path d={path} fill="currentColor" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-foreground">
+                          {t(`social.platforms.${key}`)}
+                        </span>
+                        <span className="block text-xs text-foreground/50">{t("social.followCta")}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
+        </section>
+
         {/* Testimonials */}
-        <section className="bg-background py-20">
+        <section className="border-t border-border bg-surface py-20">
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
               <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
@@ -464,51 +406,33 @@ export default async function HomePage({
             </ScrollReveal>
             <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {testimonials.map((item, i) => (
-                <ScrollReveal
-                  key={i}
-                  delay={(i % 3) * 150}
-                  className="group flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-xl"
-                >
-                  <Quote className="text-gold-400 transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-6" size={22} />
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/80">
-                    &ldquo;{item.quote}&rdquo;
-                  </p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div
-                      className={`flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}
-                    >
-                      {item.role.charAt(0)}
+                <ScrollReveal key={i} delay={(i % 3) * 120}>
+                  <Card className="flex h-full flex-col">
+                    <Quote className="text-gold-400" size={22} />
+                    <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/80">
+                      &ldquo;{item.quote}&rdquo;
+                    </p>
+                    <div className="mt-5 flex items-center gap-3">
+                      <div
+                        className={`flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}
+                      >
+                        {item.role.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{item.role}</p>
+                        <p className="truncate text-xs text-foreground/50">{item.location}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{item.role}</p>
-                      <p className="truncate text-xs text-foreground/50">{item.location}</p>
-                    </div>
-                    <div className="ms-auto flex flex-none gap-0.5 text-gold-400">
-                      {Array.from({ length: 5 }).map((_, si) => (
-                        <Star key={si} size={12} fill="currentColor" />
-                      ))}
-                    </div>
-                  </div>
+                  </Card>
                 </ScrollReveal>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 pb-48 pt-20 text-center text-white sm:pb-64">
-          <div
-            className="orb orb-1 h-72 w-72 bg-gold-300/20"
-            style={{ top: "8%", left: "10%" }}
-            aria-hidden="true"
-          />
-          <div
-            className="orb orb-2 h-60 w-60 bg-emerald-300/25"
-            style={{ top: "12%", right: "10%" }}
-            aria-hidden="true"
-          />
-          <SkylineSilhouette className="float-y pointer-events-none absolute inset-x-0 bottom-4 h-36 w-full text-white sm:h-52" />
-          <div className="relative mx-auto max-w-2xl px-6">
+        {/* Final CTA — a flat solid banner, no gradient/orbs/skyline. */}
+        <section className="bg-emerald-600 py-16 text-center text-white sm:py-20">
+          <div className="mx-auto max-w-2xl px-6">
             <ScrollReveal direction="none">
               <h2 className="text-3xl font-bold sm:text-4xl">{t("finalCta.title")}</h2>
             </ScrollReveal>
@@ -520,7 +444,7 @@ export default async function HomePage({
                 loggedOutHref="/signup"
                 loggedOutLabel={t("finalCta.button")}
                 loggedInLabel={t("goToDashboard")}
-                className="cta-pulse-gold mt-8 inline-block rounded-full bg-gold-400 px-8 py-3.5 text-base font-semibold text-emerald-900 transition-all duration-200 hover:-translate-y-1 hover:scale-105 hover:bg-gold-500 active:translate-y-0 active:scale-95"
+                className="mt-8 inline-block rounded-full bg-white px-8 py-3 text-base font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
               />
             </ScrollReveal>
           </div>

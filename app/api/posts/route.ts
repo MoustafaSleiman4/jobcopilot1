@@ -206,6 +206,31 @@ export async function GET(request: Request) {
   const postIds = (posts ?? []).map((p) => p.id as string);
   const authorIds = Array.from(new Set((posts ?? []).map((p) => p.author_id as string)));
 
+  // The feed is visible to everyone now (see
+  // supabase/posts-open-feed-gated-comments.sql), but commenting still
+  // requires a direct (1st-degree, accepted) connection to the post's
+  // author — same computation as GET /api/people/search's
+  // statusByOtherId, scoped here to just this page's authors so
+  // PostCard/CommentThread can show a "connect to comment" prompt
+  // proactively instead of only reactively after a failed POST.
+  const connectionStatusByAuthor = new Map<string, "pending_sent" | "pending_received" | "connected">();
+  if (authorIds.length > 0) {
+    const { data: relevantConnections } = await supabase
+      .from("connections")
+      .select("requester_id, addressee_id, status")
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      .in("status", ["pending", "accepted"]);
+    for (const row of relevantConnections ?? []) {
+      const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id;
+      if (!authorIds.includes(otherId)) continue;
+      if (row.status === "accepted") {
+        connectionStatusByAuthor.set(otherId, "connected");
+      } else if (row.status === "pending") {
+        connectionStatusByAuthor.set(otherId, row.requester_id === user.id ? "pending_sent" : "pending_received");
+      }
+    }
+  }
+
   const [profilesRes, mediaRes, reactionsRes, myReactionsRes, commentsRes] = await Promise.all([
     authorIds.length > 0
       ? supabase.from("profiles").select("id, full_name, avatar_url, job_title, current_company, email").in("id", authorIds)
@@ -272,6 +297,10 @@ export async function GET(request: Request) {
         currentCompany: author?.current_company ?? null,
         email: null,
         phone: null,
+        // "connected" is the only value PostCard actually branches on
+        // (isAuthor already covers the viewer's own posts) — anything else
+        // just means "show the connect-to-comment prompt."
+        connectionStatus: connectionStatusByAuthor.get(post.author_id as string) ?? "none",
       },
       media,
       reactionCount: reactionCountByPost.get(post.id as string) ?? 0,

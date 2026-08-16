@@ -70,6 +70,21 @@
       "statsCompanies": "{count}+ hiring companies",
       "statsIndustries": "{count} industries"
     },
+    "social": {
+      "eyebrow": "Professional network",
+      "title": "A growing community of professionals",
+      "subtitle": "Search for and connect with other job seekers and professionals across the region, share updates, and message your connections directly — right inside GulfJobCopilot.",
+      "statsMembers": "{count}+ professionals",
+      "statsConnections": "{count}+ connections made",
+      "statsPosts": "{count}+ updates shared",
+      "followTitle": "Follow our journey",
+      "followCta": "Follow us",
+      "platforms": {
+        "facebook": "Facebook",
+        "linkedin": "LinkedIn",
+        "tiktok": "TikTok"
+      }
+    },
     "features": {
       "title": "Everything you need to get hired, faster",
       "proBadge": "Pro",
@@ -722,7 +737,8 @@
     },
     "chat": {
       "title": "AI job-search assistant",
-      "subtitle": "Ask about your resume, interviews, or the job market.",
+      "subtitle": "Ask about your resume, interviews, the job market, or your professional network.",
+      "greeting": "Hi! I'm your GulfJobCopilot assistant. Ask me about your resume, interview prep, or the job market — and I can also help you grow your professional network: finding and connecting with people, sharing updates, or messaging your connections.",
       "placeholder": "Ask me anything about your job search...",
       "placeholderLocked": "Upgrade to Pro to keep chatting",
       "send": "Send",
@@ -1405,6 +1421,7 @@
   },
   "posts": {
     "title": "Posts",
+    "sidebarViewNetwork": "View your network",
     "composerPlaceholder": "Share an update with your network…",
     "addPhoto": "Photo",
     "addVideo": "Video",
@@ -1434,7 +1451,9 @@
     "reply": "Reply",
     "replyPlaceholder": "Write a reply…",
     "commentPlaceholder": "Write a comment…",
-    "commentError": "Couldn't post your comment. Please try again."
+    "commentError": "Couldn't post your comment. Please try again.",
+    "connectToComment": "Connect with {name} to join the conversation on their posts.",
+    "connectAction": "Connect"
   },
   "notifications": {
     "title": "Notifications",

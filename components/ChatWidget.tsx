@@ -13,13 +13,14 @@ export default function ChatWidget({ plan = "free" }: { plan?: "free" | "pro" })
   const t = useTranslations("dashboard.chat");
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm your GulfJobCopilot assistant. Ask me about your resume, interview prep, or the job market — I'll use your profile to help.",
-    },
-  ]);
+  // Previously hardcoded to only mention resume/interview/job-market help,
+  // which is exactly why users didn't think to ask it about Connections/
+  // Posts/Messages — the greeting itself was the first thing telling them
+  // this bot didn't know about the social network. Now sourced from i18n
+  // (see messages/en.json & ar.json's dashboard.chat.greeting) so it stays
+  // in sync with the widget's other copy and gets a real Arabic translation
+  // instead of a hardcoded English-only string.
+  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", content: t("greeting") }]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 

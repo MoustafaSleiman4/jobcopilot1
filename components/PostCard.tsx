@@ -34,6 +34,12 @@ export default function PostCard({
   const locale = useLocale();
   const { user } = useAuthUser();
   const isAuthor = Boolean(user && user.id === post.author.id);
+  // The feed is visible to everyone, but commenting is gated to the post's
+  // author or a direct connection of theirs (see
+  // supabase/posts-open-feed-gated-comments.sql) — passed down so
+  // CommentThread can show a "connect to comment" prompt instead of a bare
+  // input box that would just fail on submit.
+  const canComment = isAuthor || post.author.connectionStatus === "connected";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -270,7 +276,13 @@ export default function PostCard({
 
       {commentsOpen && (
         <div className="mt-3 border-t border-border pt-3">
-          <CommentThread postId={post.id} onCountChange={setCommentCount} />
+          <CommentThread
+            postId={post.id}
+            postAuthorId={post.author.id}
+            postAuthorName={post.author.fullName}
+            canComment={canComment}
+            onCountChange={setCommentCount}
+          />
         </div>
       )}
     </Card>

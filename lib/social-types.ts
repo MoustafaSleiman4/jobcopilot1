@@ -30,6 +30,13 @@ export type Person = {
   // message threads); omitted (not just null) elsewhere, e.g. post authors.
   isOnline?: boolean;
   lastSeenAt?: string | null;
+  // The VIEWER's relationship to this person — only populated where a call
+  // site actually needs it. Added for PostItem.author (see GET /api/posts):
+  // the feed is visible to everyone now (posts-open-feed-gated-comments.sql)
+  // but commenting still requires a direct connection to the author, so
+  // PostCard/CommentThread use this to show a "connect to comment" prompt
+  // proactively instead of only reactively after a failed POST.
+  connectionStatus?: ConnectionStatus;
 };
 
 /** Item shape returned by GET /api/people/search and GET /api/people/suggestions. */

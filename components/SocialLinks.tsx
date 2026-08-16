@@ -1,6 +1,10 @@
 import { useTranslations } from "next-intl";
 
-const SOCIAL_LINKS = [
+// Exported (not just used internally) so the homepage's bigger "follow us"
+// cards (see the social/community section in app/[locale]/page.tsx) reuse
+// the exact same handles/icon paths instead of a second copy that could
+// drift out of sync with the footer's.
+export const SOCIAL_LINKS = [
   {
     key: "facebook",
     href: "https://www.facebook.com/people/GulfjobCopilot/61593025056482/",

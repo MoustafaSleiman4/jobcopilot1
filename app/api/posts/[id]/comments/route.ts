@@ -170,6 +170,23 @@ export async function POST(
     .single();
 
   if (error || !comment) {
+    // 42501 = RLS policy violation. The feed itself is open to everyone
+    // (see supabase/posts-open-feed-gated-comments.sql), but commenting is
+    // gated to the post's author or a direct connection of theirs — this is
+    // the one way that gate can actually be hit: the viewer wasn't (or is
+    // no longer) connected. A distinct `code` here, rather than folding it
+    // into the generic message, is what lets CommentThread.tsx show a real
+    // "connect to comment" prompt instead of a bare error toast — GET
+    // /api/posts already tells the client this is likely up front (via
+    // author.connectionStatus), so hitting this path in practice usually
+    // means the connection changed between page load and submit, not that
+    // the UI failed to warn them.
+    if (error?.code === "42501") {
+      return NextResponse.json(
+        { error: "Connect with this person to comment on their posts.", code: "connect_required" },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: "Could not add comment" }, { status: 500 });
   }
 
