@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { Link } from "@/i18n/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -107,12 +109,43 @@ const CONFETTI_PIECES: { tx: number; ty: number; rot: number; color: string; siz
 
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://gulfjobcopilot.com").replace(/\/$/, "");
 
+// Reads cookies (via the Supabase server client) to check for a session, so
+// this page can never be statically prerendered for everyone at once — same
+// reasoning as app/[locale]/dashboard/layout.tsx.
+export const dynamic = "force-dynamic";
+
+async function getSignedInUser() {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    // Supabase not configured (e.g. local dev without env vars) — same
+    // "treat as logged out" fallback the dashboard layouts use.
+    return null;
+  }
+}
+
 export default async function HomePage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+
+  // A signed-in visitor landing here (bookmark, shared link, typing the
+  // bare domain) previously saw the full marketing page with a "Go to
+  // dashboard" button (AuthAwareCta) — one extra click to get where they
+  // actually wanted. Redirect straight to the dashboard instead, same as
+  // /login and /signup already do for a signed-in visitor (see
+  // LoginForm.tsx / SignupForm.tsx).
+  const user = await getSignedInUser();
+  if (user) {
+    redirect(`/${locale}/dashboard`);
+  }
+
   const t = await getTranslations({ locale, namespace: "home" });
 
   const featureKeys = Object.keys(featureIcons) as (keyof typeof featureIcons)[];
