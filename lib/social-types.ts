@@ -39,6 +39,24 @@ export type PersonResult = Person & { connectionStatus: ConnectionStatus };
 export type PersonPreview = { id: string; fullName: string; avatarUrl: string | null };
 
 /**
+ * Item shape returned by GET /api/people/[id]/connections — a row in
+ * someone else's connections list, browsed from PersonDetailModal. No
+ * connectionStatus here (unlike PersonResult): the modal re-fetches
+ * GET /api/people/[id] itself when you drill into one of these rows, which
+ * is the source of truth for that.
+ */
+export type PersonConnectionRow = {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  jobTitle: string | null;
+  currentCompany: string | null;
+  country: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+/**
  * Item shape returned by GET /api/people/[id] — the "click a person to see
  * their profile" detail view (PersonDetailModal). Superset of PersonResult:
  * adds the connectionId needed to accept/decline/cancel/remove from within

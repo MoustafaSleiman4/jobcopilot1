@@ -1396,7 +1396,11 @@
       "mutualConnectionsCount": "{count, plural, =0 {No mutual connections} one {# mutual connection} other {# mutual connections}}",
       "showMutual": "Show",
       "hideMutual": "Hide",
-      "andMore": "+{count} more"
+      "andMore": "+{count} more",
+      "back": "Back",
+      "connectionsOf": "{name}'s connections",
+      "connectionsHidden": "Connect with this person to see who they're connected to.",
+      "noConnections": "No connections yet."
     }
   },
   "posts": {

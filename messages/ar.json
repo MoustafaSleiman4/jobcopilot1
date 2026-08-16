@@ -1396,7 +1396,11 @@
       "mutualConnectionsCount": "{count, plural, =0 {لا توجد تواصلات مشتركة} one {تواصل مشترك واحد} two {تواصلان مشتركان} few {# تواصلات مشتركة} many {# تواصلاً مشتركًا} other {# تواصل مشترك}}",
       "showMutual": "عرض",
       "hideMutual": "إخفاء",
-      "andMore": "+{count} أخرى"
+      "andMore": "+{count} أخرى",
+      "back": "رجوع",
+      "connectionsOf": "تواصلات {name}",
+      "connectionsHidden": "تواصل مع هذا الشخص لترى تواصلاته.",
+      "noConnections": "لا توجد تواصلات بعد."
     }
   },
   "posts": {
