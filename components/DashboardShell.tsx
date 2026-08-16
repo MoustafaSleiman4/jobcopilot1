@@ -278,13 +278,20 @@ export default function DashboardShell({
             <Link
               key={key}
               href={href}
-              className={`relative flex w-16 flex-none flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
+              className={`relative flex w-[4.5rem] flex-none flex-col items-center gap-0.5 px-1 py-2.5 text-[11px] font-medium ${
                 active ? "text-emerald-700" : "text-foreground/50"
               }`}
             >
               <Icon className="h-5 w-5" size={20} />
               {highlight && <Sparkles className="absolute end-2.5 top-1.5 text-gold-500" size={9} />}
-              <span className="truncate">{t(key)}</span>
+              {/* `items-center` on the flex-col parent sizes children to
+                  their own content width, not the parent's — so without an
+                  explicit `w-full` here, `truncate` had nothing to clip
+                  against and long labels ("Certifications", "Applications")
+                  rendered at full width, overlapping the neighboring tabs.
+                  This is the actual cause of the bottom-nav text-overlap
+                  seen on iPhone. */}
+              <span className="w-full truncate text-center">{t(key)}</span>
             </Link>
           );
         })}

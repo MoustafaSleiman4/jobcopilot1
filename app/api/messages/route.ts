@@ -31,13 +31,17 @@ type ProfileRow = {
  * we fetch the connection rows first and batch-fetch the other-party
  * profiles separately.
  *
- * For the last-message/unread-count per connection we run one small pair
- * of queries per connection (in parallel) rather than one big query over
- * every message ever sent — a person's connection count is naturally
- * bounded (same reasoning as the "no pagination" call above), whereas the
- * total message history across all their threads is not, so scoping each
- * lookup to its own connection with LIMIT 1 / a count-only HEAD request
- * keeps this cheap regardless of how chatty any one thread gets.
+ * For the last-message/unread-count per connection, a single call to the
+ * messages_thread_summary() SQL function (supabase/performance-indexes.sql)
+ * fetches all of them at once — this used to be 2 queries PER connection
+ * run via Promise.all, which is correct but means N conversations meant
+ * 2*N round-trips to Supabase on every inbox load. Round-trip count, not
+ * row-scan cost, is what actually drives perceived latency here, so this
+ * collapses it to exactly one call regardless of how many conversations
+ * exist. The function itself still scopes each lookup to its own
+ * connection_id (via a per-row LATERAL join, not one giant history scan),
+ * preserving the original reasoning: a person's connection count is
+ * bounded, but total message history across all threads isn't.
  */
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -77,56 +81,60 @@ export async function GET() {
 
   const now = Date.now();
 
-  const items = await Promise.all(
-    connections.map(async (row) => {
-      const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id;
-      const profile = profilesById.get(otherId);
-      const contact = profile ? visibleContact(profile, user.id) : { email: null, phone: null };
-      const lastSeenAt = profile?.last_seen_at ?? null;
+  const summaryByConnectionId = new Map<
+    string,
+    { last_body: string | null; last_created_at: string | null; last_sender_id: string | null; unread_count: number }
+  >();
+  if (connections.length > 0) {
+    const { data: summaries } = await supabase.rpc("messages_thread_summary", {
+      connection_ids: connections.map((row) => row.id),
+      viewer_id: user.id,
+    });
+    for (const row of (summaries ?? []) as Array<{
+      connection_id: string;
+      last_body: string | null;
+      last_created_at: string | null;
+      last_sender_id: string | null;
+      unread_count: number;
+    }>) {
+      summaryByConnectionId.set(row.connection_id, row);
+    }
+  }
 
-      const [{ data: lastMessageRow }, { count: unreadCount }] = await Promise.all([
-        supabase
-          .from("messages")
-          .select("body, created_at, sender_id")
-          .eq("connection_id", row.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("connection_id", row.id)
-          .neq("sender_id", user.id)
-          .is("read_at", null),
-      ]);
+  const items = connections.map((row) => {
+    const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id;
+    const profile = profilesById.get(otherId);
+    const contact = profile ? visibleContact(profile, user.id) : { email: null, phone: null };
+    const lastSeenAt = profile?.last_seen_at ?? null;
+    const summary = summaryByConnectionId.get(row.id);
 
-      const lastMessage = lastMessageRow
+    const lastMessage =
+      summary?.last_created_at != null
         ? {
-            body: lastMessageRow.body as string,
-            createdAt: lastMessageRow.created_at as string,
-            senderId: lastMessageRow.sender_id as string,
+            body: summary.last_body as string,
+            createdAt: summary.last_created_at,
+            senderId: summary.last_sender_id as string,
           }
         : null;
 
-      return {
-        connectionId: row.id,
-        person: {
-          id: otherId,
-          fullName: deriveDisplayName(profile?.full_name ?? null, profile?.email ?? null),
-          avatarUrl: profile?.avatar_url ?? null,
-          jobTitle: profile?.job_title ?? null,
-          currentCompany: profile?.current_company ?? null,
-          country: profile?.country ?? null,
-          email: contact.email,
-          phone: contact.phone,
-          isOnline: lastSeenAt ? now - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,
-          lastSeenAt,
-        },
-        lastMessage,
-        unreadCount: unreadCount ?? 0,
-      };
-    })
-  );
+    return {
+      connectionId: row.id,
+      person: {
+        id: otherId,
+        fullName: deriveDisplayName(profile?.full_name ?? null, profile?.email ?? null),
+        avatarUrl: profile?.avatar_url ?? null,
+        jobTitle: profile?.job_title ?? null,
+        currentCompany: profile?.current_company ?? null,
+        country: profile?.country ?? null,
+        email: contact.email,
+        phone: contact.phone,
+        isOnline: lastSeenAt ? now - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,
+        lastSeenAt,
+      },
+      lastMessage,
+      unreadCount: summary?.unread_count ?? 0,
+    };
+  });
 
   // Most-recent-activity first: the last message's created_at if there is
   // one, otherwise the connection's own created_at (a freshly-accepted

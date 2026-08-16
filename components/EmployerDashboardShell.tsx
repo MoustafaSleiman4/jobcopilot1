@@ -149,12 +149,15 @@ export default function EmployerDashboardShell({
             <Link
               key={key}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
+              className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[11px] font-medium ${
                 active ? "text-emerald-700" : "text-foreground/50"
               }`}
             >
               <Icon className="h-5 w-5" size={20} />
-              {t(key)}
+              {/* Same defensive `w-full truncate` as the job-seeker shell's
+                  bottom nav — see the comment there for why this is needed
+                  even though this row only has two, short-label tabs. */}
+              <span className="w-full truncate text-center">{t(key)}</span>
             </Link>
           );
         })}

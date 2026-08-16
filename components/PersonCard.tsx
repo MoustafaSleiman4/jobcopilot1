@@ -83,11 +83,18 @@ export default function PersonCard({
 
   return (
     <>
-    <Card className="flex items-center gap-4">
+    {/* Stacked on mobile, side-by-side from sm+. Row layout on a phone-width
+        screen was squeezing the name/subtitle column down to almost
+        nothing — the "Connected" badge + "Message" button + remove icon
+        are flex-none (fixed width) and always won, so the name got
+        whatever few pixels were left over, sometimes just enough for the
+        avatar initial and nothing else. Giving the actions their own full-
+        width row below the name avoids that fight entirely. */}
+    <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="flex min-w-0 flex-1 items-center gap-3 text-start"
+        className="flex min-w-0 items-center gap-3 text-start sm:flex-1"
       >
         <Avatar avatarUrl={person.avatarUrl} name={person.fullName} size="lg" isOnline={person.isOnline} />
         <div className="min-w-0 text-start">
@@ -118,7 +125,7 @@ export default function PersonCard({
         </div>
       </button>
 
-      <div className="flex flex-none items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 sm:flex-none sm:justify-end">
         {person.connectionStatus === "none" && (
           <Button
             variant="primary"
