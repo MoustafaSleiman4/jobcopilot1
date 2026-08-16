@@ -74,9 +74,9 @@
       "eyebrow": "Professional network",
       "title": "A growing community of professionals",
       "subtitle": "Search for and connect with other job seekers and professionals across the region, share updates, and message your connections directly — right inside GulfJobCopilot.",
-      "statsMembers": "{count}+ professionals",
-      "statsConnections": "{count}+ connections made",
-      "statsPosts": "{count}+ updates shared",
+      "growMembers": "New professionals joining every week",
+      "growConnect": "Real connections, right inside the app",
+      "growShare": "Updates and insights from across the region",
       "followTitle": "Follow our journey",
       "followCta": "Follow us",
       "platforms": {
