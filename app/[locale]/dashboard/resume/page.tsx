@@ -699,23 +699,31 @@ export default function ResumeBuilderPage() {
           <SectionHeading>{t("aboutSection")}</SectionHeading>
           <p className="mt-1 text-xs text-foreground/50">{t("aboutSectionHelp")}</p>
 
-          <div className="mt-4 flex items-center gap-4 rounded-xl border border-border bg-background p-4">
-            <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
-              {avatarUrl ? (
-                // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <User className="text-foreground/30" size={24} />
-              )}
+          {/* flex-col on mobile so the avatar+text row gets the card's
+              full width (previously all three items — avatar, text, and two
+              buttons — stayed in one row even on narrow screens, squeezing
+              the text column down to only a few px and wrapping every word
+              onto its own line). Buttons drop to their own row below on
+              mobile, and the layout returns to a single row from `sm` up. */}
+          <div className="mt-4 flex flex-col gap-4 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-sand-100">
+                {avatarUrl ? (
+                  // Remote, user-uploaded photo — not a good fit for next/image's fixed domain allowlist.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <User className="text-foreground/30" size={24} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">{t("photoSection")}</p>
+                <p className="mt-0.5 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
+                <p className="mt-0.5 text-[11px] text-foreground/40">{t("photoHint")}</p>
+                {photoErrorMsg && <p className="mt-1 text-xs text-red-600">{photoErrorMsg}</p>}
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">{t("photoSection")}</p>
-              <p className="mt-0.5 text-xs text-foreground/50">{t("photoSectionHelp")}</p>
-              <p className="mt-0.5 text-[11px] text-foreground/40">{t("photoHint")}</p>
-              {photoErrorMsg && <p className="mt-1 text-xs text-red-600">{photoErrorMsg}</p>}
-            </div>
-            <div className="flex flex-none items-center gap-2">
+            <div className="flex flex-none items-center gap-2 sm:ml-auto">
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
