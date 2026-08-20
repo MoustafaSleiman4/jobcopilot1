@@ -684,7 +684,9 @@ export default function ResumeBuilderForm() {
           )}
           <input
             type="file"
-            accept=".pdf,.doc,.docx"
+            // See the matching input in dashboard/resume/page.tsx for why
+            // MIME types are listed alongside extensions here.
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             className="hidden"
             disabled={uploadState === "parsing" || uploadState === "enhancing"}
             onChange={handleUploadFile}
