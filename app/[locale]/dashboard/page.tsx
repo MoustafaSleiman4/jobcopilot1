@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { FileText, Send, CalendarCheck, ArrowUpRight } from "lucide-react";
+import { FileText, Send, CalendarCheck, Users, ArrowUpRight } from "lucide-react";
 
 type RecentApplication = {
   id: string;
@@ -20,26 +20,46 @@ async function loadDashboardData() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      return { configured: true as const, plan: "free" as const, resumes: 0, applications: 0, interviews: 0, recent: [] as RecentApplication[] };
+      return {
+        configured: true as const,
+        plan: "free" as const,
+        resumes: 0,
+        applications: 0,
+        interviews: 0,
+        connections: 0,
+        recent: [] as RecentApplication[],
+      };
     }
 
-    const [{ data: profile }, { count: resumeCount }, { count: applicationCount }, { count: interviewCount }, { data: recentRows }] =
-      await Promise.all([
-        supabase.from("profiles").select("plan, full_name").eq("id", user.id).single(),
-        supabase.from("resumes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase
-          .from("applications")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("status", "interview"),
-        supabase
-          .from("applications")
-          .select("id, title, company, status")
-          .eq("user_id", user.id)
-          .order("updated_at", { ascending: false })
-          .limit(4),
-      ]);
+    const [
+      { data: profile },
+      { count: resumeCount },
+      { count: applicationCount },
+      { count: interviewCount },
+      { data: connectionsCount },
+      { data: recentRows },
+    ] = await Promise.all([
+      supabase.from("profiles").select("plan, full_name").eq("id", user.id).single(),
+      supabase.from("resumes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("applications").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "interview"),
+      // Same security-definer RPC PersonDetailModal/PostsProfileSidebar use
+      // for a person's connection count (accepted connections either side
+      // of the pair) — reusing it here keeps this number consistent with
+      // what shows up everywhere else in the app, rather than re-deriving
+      // it with a second, possibly-drifting query against `connections`.
+      supabase.rpc("connection_count", { target_id: user.id }),
+      supabase
+        .from("applications")
+        .select("id, title, company, status")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(4),
+    ]);
 
     return {
       configured: true as const,
@@ -48,11 +68,20 @@ async function loadDashboardData() {
       resumes: resumeCount ?? 0,
       applications: applicationCount ?? 0,
       interviews: interviewCount ?? 0,
+      connections: (connectionsCount as number | null) ?? 0,
       recent: (recentRows ?? []) as RecentApplication[],
     };
   } catch {
     // Supabase isn't configured in this environment — demo mode.
-    return { configured: false as const, plan: "free" as const, resumes: 0, applications: 0, interviews: 0, recent: [] as RecentApplication[] };
+    return {
+      configured: false as const,
+      plan: "free" as const,
+      resumes: 0,
+      applications: 0,
+      interviews: 0,
+      connections: 0,
+      recent: [] as RecentApplication[],
+    };
   }
 }
 
@@ -70,6 +99,7 @@ export default async function DashboardOverviewPage({
     { key: "statResumes", value: data.resumes, icon: FileText },
     { key: "statApplications", value: data.applications, icon: Send },
     { key: "statInterviews", value: data.interviews, icon: CalendarCheck },
+    { key: "statConnections", value: data.connections, icon: Users },
   ] as const;
 
   return (
@@ -106,7 +136,7 @@ export default async function DashboardOverviewPage({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-3">
+      <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-4">
         {stats.map(({ key, value, icon: Icon }) => (
           <div key={key} className="rounded-2xl border border-border bg-surface p-6">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
