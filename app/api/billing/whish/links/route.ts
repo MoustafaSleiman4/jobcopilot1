@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { WHISH_LINKS } from "@/lib/billing/whish-links";
+import { WHISH_TRANSFER } from "@/lib/billing/whish-links";
 
 /**
- * Exposes the two static Whish payment links (or omits a plan's key
- * entirely if unset) so the pay-with-whish page can render them without
- * baking env vars into the client bundle at build time. These are public
- * payment-collection links a user is meant to open, not secrets — same
- * sensitivity level as a Stripe Payment Link URL.
+ * Exposes the Whish transfer destination (phone number + account name) so
+ * the pay-with-whish page can render it without baking env vars into the
+ * client bundle at build time. Not a secret — this is meant to be shown to
+ * every customer paying via Whish, same as a merchant's payment-link URL
+ * would have been.
  */
 export async function GET() {
   return NextResponse.json({
-    monthly: WHISH_LINKS.monthly || undefined,
-    yearly: WHISH_LINKS.yearly || undefined,
+    phone: WHISH_TRANSFER.phone || undefined,
+    accountName: WHISH_TRANSFER.accountName || undefined,
   });
 }
