@@ -4,18 +4,19 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Wallet, CheckCircle2, Loader2, ArrowLeft, ShieldAlert } from "lucide-react";
+import { Wallet, CheckCircle2, Loader2, ArrowLeft, ShieldAlert, Copy, Check } from "lucide-react";
 import { useAuthUser } from "@/lib/useAuthUser";
-import type { PlanId } from "@/lib/billing";
+import { PLAN_PRICES, type PlanId } from "@/lib/billing";
 
 /**
- * Manual "pay Pro via Whish" flow for Lebanese users — see
- * lib/billing/whish-links.ts for why this exists instead of an automated
- * checkout. Reached from the Pro card's "Pay with Whish (Lebanon)" link on
- * /pricing. WHISH_MONTHLY_LINK / WHISH_YEARLY_LINK are read server-side by
- * /api/billing/whish/links so the actual URLs never need to ship to the
- * client bundle unconfigured; if neither is set yet, this page says so
- * plainly instead of showing a dead button.
+ * Manual "pay Pro via Whish-to-Whish transfer" flow for Lebanese users —
+ * see lib/billing/whish-links.ts for why this exists instead of an
+ * automated checkout (or even a Whish payment link — that feature also
+ * needs a business account). Reached from the Pro card's "Pay with Whish
+ * (Lebanon)" link on /pricing. WHISH_TRANSFER_PHONE / WHISH_ACCOUNT_NAME
+ * are read server-side by /api/billing/whish/links so they never need to
+ * ship to the client bundle unconfigured; if the phone number isn't set
+ * yet, this page says so plainly instead of showing blank transfer details.
  */
 function PayWithWhishContent() {
   const t = useTranslations("whish");
@@ -23,29 +24,41 @@ function PayWithWhishContent() {
   const { user, loading: checkingSession } = useAuthUser();
   const planId: PlanId = searchParams.get("plan") === "yearly" ? "yearly" : "monthly";
 
-  const [links, setLinks] = useState<{ monthly?: string; yearly?: string } | null>(null);
+  const [transfer, setTransfer] = useState<{ phone?: string; accountName?: string } | null>(null);
   const [note, setNote] = useState("");
   const [claimed, setClaimed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/billing/whish/links")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setLinks(data);
+        if (!cancelled) setTransfer(data);
       })
       .catch(() => {
-        if (!cancelled) setLinks({});
+        if (!cancelled) setTransfer({});
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const paymentLink = links ? links[planId] : undefined;
-  const configured = Boolean(paymentLink);
+  const configured = Boolean(transfer?.phone);
+
+  async function handleCopyNumber() {
+    if (!transfer?.phone) return;
+    try {
+      await navigator.clipboard.writeText(transfer.phone);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API can fail (permissions, insecure context) — the number
+      // is still shown as plain text right above the button either way.
+    }
+  }
 
   async function handleClaim() {
     if (!user) return;
@@ -69,7 +82,7 @@ function PayWithWhishContent() {
     }
   }
 
-  if (checkingSession || links === null) {
+  if (checkingSession || transfer === null) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-foreground/40" />
@@ -124,15 +137,34 @@ function PayWithWhishContent() {
               </li>
             </ol>
 
-            <a
-              href={paymentLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-            >
-              <Wallet className="h-4 w-4" />
-              {t("openWhish")}
-            </a>
+            <div className="mt-6 rounded-xl border border-border bg-background p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                {t("amountLabel")}
+              </p>
+              <p className="mt-1 text-2xl font-extrabold text-foreground">{PLAN_PRICES[planId].label}</p>
+
+              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                {t("transferToLabel")}
+              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <p className="flex-1 truncate text-lg font-bold tracking-wide text-foreground" dir="ltr">
+                  {transfer?.phone}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopyNumber}
+                  className="flex flex-none items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground/70 transition-colors hover:bg-sand-100"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? t("numberCopied") : t("copyNumber")}
+                </button>
+              </div>
+              {transfer?.accountName && (
+                <p className="mt-2 text-xs text-foreground/50">
+                  {t("accountNameLabel")}: {transfer.accountName}
+                </p>
+              )}
+            </div>
 
             <div className="mt-6 border-t border-border pt-6">
               <label className="block text-sm font-medium text-foreground">{t("noteLabel")}</label>
