@@ -694,7 +694,9 @@
         "resultsSubtitle": "{count, plural, one {# job is ready — all marked Applied on your tracker.} other {# jobs are ready — all marked Applied on your tracker.}} Open each one to finish submitting it on the employer's site.",
         "openApplication": "Open",
         "pending": "Waiting…"
-      }
+      },
+      "reportExpired": "Report expired",
+      "reportExpiredHint": "Let us know this link no longer works — we'll remove it from search for everyone."
     },
     "applications": {
       "title": "Applications",
@@ -934,7 +936,9 @@
         "qaHeading": "Application Q&A — ready to paste",
         "qaHint": "Drafted from your resume and application profile. Review before pasting — especially any AI-drafted answer.",
         "qaEmpty": "Save your application profile above to get ready-to-paste answers for common screening questions here.",
-        "qaCopyAnswer": "Copy answer"
+        "qaCopyAnswer": "Copy answer",
+        "reportExpired": "Report expired",
+        "reportExpiredHint": "Let us know this link no longer works — we'll remove it from matching for everyone."
       },
       "applicantProfile": {
         "heading": "Application profile",

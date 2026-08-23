@@ -21,6 +21,7 @@ import {
   Clock,
   ClipboardList,
   Building2,
+  Flag,
 } from "lucide-react";
 
 // Must match RUN_NOW_COOLDOWN_MS in lib/autoApplyRun.ts — duplicated here
@@ -480,6 +481,27 @@ export default function AutoApplyPage() {
       await supabase.from("auto_apply_queue").update({ status: "dismissed" }).eq("id", item.id);
     } catch {
       // Non-critical — worst case it reappears if the page is reloaded before this lands.
+    }
+  }
+
+  // "This link doesn't work anymore" — same report-and-remove-from-cache
+  // flow as Job Search (see app/api/jobs/report-expired/route.ts). Removes
+  // this queue entry the same way Dismiss does (there's no point leaving a
+  // dead listing queued once it's been confirmed dead) and additionally
+  // strikes it from the shared job cache so it stops being matched into
+  // anyone else's queue, or shown in Job Search, going forward.
+  async function handleReportExpired(item: QueueItem) {
+    setQueue((prev) => prev.filter((q) => q.id !== item.id));
+    try {
+      const supabase = createClient();
+      await supabase.from("auto_apply_queue").update({ status: "dismissed" }).eq("id", item.id);
+      await fetch("/api/jobs/report-expired", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: item.source_job_id }),
+      });
+    } catch {
+      // Already removed from view regardless.
     }
   }
 
@@ -1038,6 +1060,15 @@ export default function AutoApplyPage() {
                     >
                       <X size={14} />
                       {t("queue.dismissCta")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleReportExpired(item)}
+                      title={t("queue.reportExpiredHint")}
+                      className="flex items-center gap-1 rounded-full px-3 py-2 text-xs font-medium text-foreground/40 hover:text-amber-700"
+                    >
+                      <Flag size={13} />
+                      {t("queue.reportExpired")}
                     </button>
                   </div>
                 </div>

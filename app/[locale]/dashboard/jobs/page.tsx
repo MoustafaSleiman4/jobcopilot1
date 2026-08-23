@@ -31,6 +31,7 @@ import {
   Zap,
   ChevronRight,
   Target,
+  Flag,
 } from "lucide-react";
 
 // Bulk apply fans out one AI cover-letter generation call per selected job —
@@ -182,6 +183,9 @@ export default function JobSearchPage() {
   // Client-only, not persisted — search results are already ephemeral
   // per-query, so "dismissed" just needs to survive for this result set.
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  // Tracks in-flight "report as expired" calls so the button can't be
+  // double-clicked into two requests for the same job.
+  const [reportingExpiredIds, setReportingExpiredIds] = useState<Set<string>>(new Set());
 
   // --- Bulk apply ---
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -539,6 +543,34 @@ export default function JobSearchPage() {
       next.delete(job.id);
       return next;
     });
+  }
+
+  // "This link doesn't work anymore" — see
+  // app/api/jobs/report-expired/route.ts. Hides the card immediately either
+  // way (same as Dismiss — no reason to keep showing a listing the user just
+  // told us is dead while waiting on the network), and additionally removes
+  // it from the shared cache server-side so it stops surfacing for every
+  // other visitor too, not just this one.
+  async function handleReportExpired(job: Job) {
+    if (reportingExpiredIds.has(job.id)) return;
+    setReportingExpiredIds((prev) => new Set(prev).add(job.id));
+    handleDismiss(job);
+    try {
+      await fetch("/api/jobs/report-expired", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+    } catch {
+      // Already hidden locally regardless — worst case it reappears on a
+      // future cache refresh if this specific request didn't land.
+    } finally {
+      setReportingExpiredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(job.id);
+        return next;
+      });
+    }
   }
 
   // True one-click: opens the employer's application page immediately
@@ -1035,14 +1067,32 @@ export default function JobSearchPage() {
                     </Link>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDismiss(job)}
-                  className="flex items-center gap-1 text-xs font-medium text-foreground/40 hover:text-red-600"
-                >
-                  <X size={13} />
-                  {t("dismiss")}
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Only meaningful once the real apply link is visible to
+                      click through in the first place — a free/logged-out
+                      visitor never sees job.applyUrl (stripped server-side),
+                      so they'd have no way to actually know it's dead. */}
+                  {resultsArePro && userId && job.applyUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleReportExpired(job)}
+                      disabled={reportingExpiredIds.has(job.id)}
+                      title={t("reportExpiredHint")}
+                      className="flex items-center gap-1 text-xs font-medium text-foreground/40 hover:text-amber-700 disabled:opacity-60"
+                    >
+                      <Flag size={13} />
+                      {t("reportExpired")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDismiss(job)}
+                    className="flex items-center gap-1 text-xs font-medium text-foreground/40 hover:text-red-600"
+                  >
+                    <X size={13} />
+                    {t("dismiss")}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
