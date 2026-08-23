@@ -196,23 +196,44 @@ function MyConnectionsTab() {
 function ReceivedRequestsTab() {
   const t = useTranslations("connections");
   const [items, setItems] = useState<ConnectionListItem[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Same fix as SentRequestsTab below: GET /api/connections/requests was
+  // always paginated (20 per page + nextCursor), this tab just never read
+  // the cursor or offered a way to fetch more — anyone with more than 20
+  // pending received requests would have silently only ever seen the newest
+  // 20 with nothing indicating more existed.
+  const load = useCallback(async (cursorParam?: string | null) => {
+    const params = new URLSearchParams();
+    if (cursorParam) params.set("cursor", cursorParam);
+    const res = await fetch(`/api/connections/requests?${params.toString()}`);
+    const data = await res.json();
+    return { items: (data.items ?? []) as ConnectionListItem[], nextCursor: (data.nextCursor ?? null) as string | null };
+  }, []);
 
   const refresh = useCallback(() => {
     setLoading(true);
-    return fetch("/api/connections/requests")
-      .then((res) => res.json())
-      .then((data) => {
-        setItems(data.items ?? []);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    load().then(({ items: newItems, nextCursor }) => {
+      setItems(newItems);
+      setCursor(nextCursor);
+      setLoading(false);
+    });
+  }, [load]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    const { items: newItems, nextCursor } = await load(cursor);
+    setItems((prev) => [...prev, ...newItems]);
+    setCursor(nextCursor);
+    setLoadingMore(false);
+  }
 
   async function handleAccept(connectionId: string) {
     const res = await fetch(`/api/connections/${connectionId}/accept`, { method: "POST" });
@@ -242,6 +263,13 @@ function ReceivedRequestsTab() {
           onChanged={refresh}
         />
       ))}
+      {cursor && (
+        <div className="pt-2 text-center">
+          <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+            {t("loadMore")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -255,23 +283,48 @@ function ReceivedRequestsTab() {
 function SentRequestsTab() {
   const t = useTranslations("connections");
   const [items, setItems] = useState<ConnectionListItem[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // GET /api/connections/requests/sent has always been paginated
+  // (20 per page, with a nextCursor in its response) — this tab just never
+  // read that cursor or offered a way to fetch more, so anyone with more
+  // than 20 pending sent requests silently only ever saw the newest 20 with
+  // no sign more existed. That's what made "I've sent 20 requests" read as
+  // the true total when the real count (visible directly in the database)
+  // was 28 — the other 8 were real rows, just never rendered. Mirrors
+  // MyConnectionsTab's cursor/loadMore pattern above, which already did
+  // this correctly.
+  const load = useCallback(async (cursorParam?: string | null) => {
+    const params = new URLSearchParams();
+    if (cursorParam) params.set("cursor", cursorParam);
+    const res = await fetch(`/api/connections/requests/sent?${params.toString()}`);
+    const data = await res.json();
+    return { items: (data.items ?? []) as ConnectionListItem[], nextCursor: (data.nextCursor ?? null) as string | null };
+  }, []);
 
   const refresh = useCallback(() => {
     setLoading(true);
-    return fetch("/api/connections/requests/sent")
-      .then((res) => res.json())
-      .then((data) => {
-        setItems(data.items ?? []);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    load().then(({ items: newItems, nextCursor }) => {
+      setItems(newItems);
+      setCursor(nextCursor);
+      setLoading(false);
+    });
+  }, [load]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    const { items: newItems, nextCursor } = await load(cursor);
+    setItems((prev) => [...prev, ...newItems]);
+    setCursor(nextCursor);
+    setLoadingMore(false);
+  }
 
   async function handleCancel(connectionId: string) {
     const res = await fetch(`/api/connections/${connectionId}`, { method: "DELETE" });
@@ -295,6 +348,13 @@ function SentRequestsTab() {
           onChanged={refresh}
         />
       ))}
+      {cursor && (
+        <div className="pt-2 text-center">
+          <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+            {t("loadMore")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
