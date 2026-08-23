@@ -6,16 +6,30 @@ import { deriveDisplayName } from "@/lib/displayName";
 export const runtime = "nodejs";
 
 const LIMIT = 10;
+// How many recent-first candidates to pull before excluding/ranking in JS —
+// generous relative to LIMIT so that even a user with many existing
+// connections (who'll have a lot to exclude) still gets a full page of
+// suggestions rather than running out of candidates. See the empty-results
+// bug this replaced, below.
+const CANDIDATE_POOL_SIZE = 200;
 
 /**
- * v1 "people you may know" heuristic: other visible profiles sharing the
- * caller's country or overlapping any of the caller's target_roles.
- * Expressed as a single `.from("profiles")` query with `.or(...)` (an
- * `ilike`-adjacent overlap filter for the array column, `eq` for country) —
- * no `.rpc()` needed. If the caller has neither a country nor any
- * target_roles set there's nothing to match on, so we fall back to the
- * simplest reasonable v1 list: the most recently created visible profiles,
- * still excluding self/hidden/connected.
+ * "People you may know" — every visible, not-yet-connected profile, ranked
+ * so a country or target_roles match (when the caller has either set)
+ * surfaces first, but never limited to only those matches.
+ *
+ * This used to run country/target_roles as a hard SQL `.or()` filter, so
+ * when NO other visible profile happened to share the caller's country/role
+ * (or every one that did was already connected/pending), the query came
+ * back completely empty — "Find People" showing nothing — even when there
+ * were plenty of other real, unconnected profiles just from different
+ * countries. Confirmed live: a caller in Lebanon with target_roles unset
+ * only matched the 6 other Lebanon-country profiles, and all 6 already had
+ * a connection, so the filtered query returned zero rows while 32 other
+ * eligible profiles sat unseen. Fetching the full eligible pool first and
+ * only using country/role as a ranking signal (scoreOf below) fixes that:
+ * the default view always shows every unconnected account there is, with
+ * more relevant ones simply listed first when a genuine match exists.
  */
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -43,36 +57,34 @@ export async function GET() {
   }
 
   const country = me?.country ?? null;
-  const targetRoles = (me?.target_roles as string[] | null) ?? [];
+  const targetRoles = new Set((me?.target_roles as string[] | null) ?? []);
 
-  const orFilters: string[] = [];
-  if (country) {
-    orFilters.push(`country.eq.${country}`);
-  }
-  if (targetRoles.length > 0) {
-    const list = targetRoles.map((role) => role.replace(/[{}"]/g, "")).join(",");
-    orFilters.push(`target_roles.ov.{${list}}`);
-  }
-
-  let query = supabase
+  const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone, created_at")
+    .select("id, full_name, avatar_url, job_title, current_company, country, target_roles, email, phone, show_email, show_phone, created_at")
     .neq("id", user.id)
     .eq("hidden_from_discovery", false)
     .order("created_at", { ascending: false })
-    .limit(LIMIT + excludeIds.size);
+    .limit(CANDIDATE_POOL_SIZE);
 
-  if (orFilters.length > 0) {
-    query = query.or(orFilters.join(","));
-  }
-
-  const { data: profiles, error } = await query;
   if (error) {
     return NextResponse.json({ error: "Could not load suggestions" }, { status: 500 });
   }
 
+  // Ranking only — a country match, then any overlapping target_roles, then
+  // (implicitly, since the query above is already newest-first and Array
+  // .sort is stable) most recently joined. Never excludes a non-matching
+  // profile; that's the whole fix.
+  function scoreOf(profile: { country: string | null; target_roles: string[] | null }): number {
+    let score = 0;
+    if (country && profile.country === country) score += 2;
+    if (profile.target_roles?.some((role) => targetRoles.has(role))) score += 1;
+    return score;
+  }
+
   const items = (profiles ?? [])
     .filter((profile) => !excludeIds.has(profile.id as string))
+    .sort((a, b) => scoreOf(b as { country: string | null; target_roles: string[] | null }) - scoreOf(a as { country: string | null; target_roles: string[] | null }))
     .slice(0, LIMIT)
     .map((profile) => {
       const contact = visibleContact(profile as { id: string; email: string | null; phone: string | null; show_email: boolean | null; show_phone: boolean | null }, user.id);
