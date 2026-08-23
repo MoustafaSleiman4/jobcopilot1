@@ -1531,7 +1531,8 @@
     "typePostReaction": "أعجب {name} بمنشورك",
     "typePostComment": "علّق {name} على منشورك",
     "typeCommentReply": "ردّ {name} على تعليقك",
-    "typeMessage": "أرسل لك {name} رسالة"
+    "typeMessage": "أرسل لك {name} رسالة",
+    "typeAdminBroadcast": "تحديث جديد من GulfJobCopilot"
   },
   "messages": {
     "title": "الرسائل",

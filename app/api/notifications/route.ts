@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("notifications")
-    .select("id, actor_id, type, post_id, connection_id, comment_id, message_id, read_at, created_at")
+    .select("id, actor_id, type, post_id, connection_id, comment_id, message_id, body, read_at, created_at")
     .eq("recipient_id", user.id)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
@@ -66,6 +66,15 @@ export async function GET(request: Request) {
 
   const items = (rows ?? []).map((row) => {
     const actor = row.actor_id ? profilesById.get(row.actor_id as string) : undefined;
+    // A broadcast has no real actor (actor_id is null by design — see
+    // supabase/notifications-admin-broadcast.sql) — falling through to
+    // deriveDisplayName(null, null) would show "Member", which reads like a
+    // deleted-user placeholder rather than an intentional system sender. Use
+    // a clean branded label instead for that one type.
+    const actorFullName =
+      row.type === "admin_broadcast"
+        ? "GulfJobCopilot"
+        : deriveDisplayName(actor?.full_name ?? null, actor?.email ?? null);
     return {
       id: row.id,
       type: row.type,
@@ -73,14 +82,16 @@ export async function GET(request: Request) {
       connectionId: row.connection_id,
       commentId: row.comment_id,
       messageId: row.message_id,
+      body: row.body ?? null,
       readAt: row.read_at,
       createdAt: row.created_at,
       // Always an object (never null) to match NotificationItem — actor_id
-      // is nullable in the DB (set null if that account is later deleted),
-      // so this falls back to empty fields rather than null, since
-      // NotificationBell/the notifications page read `n.actor.fullName`
-      // directly without a null-guard on `actor` itself.
-      actor: { fullName: deriveDisplayName(actor?.full_name ?? null, actor?.email ?? null), avatarUrl: actor?.avatar_url ?? null },
+      // is nullable in the DB (set null if that account is later deleted,
+      // or for a system broadcast), so this falls back to empty fields
+      // rather than null, since NotificationBell/the notifications page
+      // read `n.actor.fullName` directly without a null-guard on `actor`
+      // itself.
+      actor: { fullName: actorFullName, avatarUrl: actor?.avatar_url ?? null },
     };
   });
 

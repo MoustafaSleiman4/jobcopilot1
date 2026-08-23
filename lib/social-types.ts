@@ -127,7 +127,8 @@ export type NotificationType =
   | "post_reaction"
   | "post_comment"
   | "comment_reply"
-  | "message";
+  | "message"
+  | "admin_broadcast";
 
 /** Item shape returned by GET /api/notifications. */
 export type NotificationItem = {
@@ -140,6 +141,10 @@ export type NotificationItem = {
   connectionId: string | null;
   commentId: string | null;
   messageId: string | null;
+  // Only ever populated for "admin_broadcast" rows — every other type still
+  // derives its label client-side from `type` + the actor's name. When
+  // present, the UI shows this verbatim instead of the templated label.
+  body: string | null;
 };
 
 /** One accepted connection's message thread — GET /api/messages. */

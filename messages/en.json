@@ -1531,7 +1531,8 @@
     "typePostReaction": "{name} liked your post",
     "typePostComment": "{name} commented on your post",
     "typeCommentReply": "{name} replied to your comment",
-    "typeMessage": "{name} sent you a message"
+    "typeMessage": "{name} sent you a message",
+    "typeAdminBroadcast": "New update from GulfJobCopilot"
   },
   "messages": {
     "title": "Messages",

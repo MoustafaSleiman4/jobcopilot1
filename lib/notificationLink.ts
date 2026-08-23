@@ -23,6 +23,11 @@ export function notificationHref(n: NotificationItem): string | null {
       return n.postId ? `/dashboard/posts?postId=${n.postId}` : null;
     case "message":
       return n.connectionId ? `/dashboard/messages?connectionId=${n.connectionId}` : null;
+    case "admin_broadcast":
+      // A broadcast has no post/connection to open — it's an announcement,
+      // so route straight to the Pro upgrade page it's almost always
+      // paired with rather than leaving it non-clickable.
+      return "/pricing";
     default:
       return null;
   }

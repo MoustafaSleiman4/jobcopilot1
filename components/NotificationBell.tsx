@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Bell, Loader2 } from "lucide-react";
+import { Bell, Loader2, Megaphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { formatRelativeTime } from "@/lib/socialFormat";
@@ -17,6 +17,7 @@ const TYPE_KEY: Record<NotificationType, string> = {
   post_comment: "typePostComment",
   comment_reply: "typeCommentReply",
   message: "typeMessage",
+  admin_broadcast: "typeAdminBroadcast",
 };
 
 /**
@@ -185,7 +186,11 @@ export default function NotificationBell() {
                   const href = notificationHref(n);
                   const content = (
                     <>
-                      {n.actor.avatarUrl ? (
+                      {n.type === "admin_broadcast" ? (
+                        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gold-100 text-gold-700">
+                          <Megaphone size={14} />
+                        </span>
+                      ) : n.actor.avatarUrl ? (
                         <img src={n.actor.avatarUrl} alt="" className="h-8 w-8 flex-none rounded-full object-cover" />
                       ) : (
                         <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
@@ -194,7 +199,7 @@ export default function NotificationBell() {
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="block text-foreground/90">
-                          {t(TYPE_KEY[n.type], { name: n.actor.fullName })}
+                          {n.body ?? t(TYPE_KEY[n.type], { name: n.actor.fullName })}
                         </span>
                         <span className="mt-0.5 block text-xs text-foreground/40">
                           {formatRelativeTime(n.createdAt, locale)}
