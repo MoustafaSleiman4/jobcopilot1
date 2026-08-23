@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOCATIONS } from "@/lib/jobSources";
+import { type AtsPlatform, ATS_PLATFORM_LABELS } from "@/lib/atsPlatform";
 import {
   Lock,
   Zap,
@@ -18,6 +19,8 @@ import {
   Info,
   Play,
   Clock,
+  ClipboardList,
+  Building2,
 } from "lucide-react";
 
 // Must match RUN_NOW_COOLDOWN_MS in lib/autoApplyRun.ts — duplicated here
@@ -55,6 +58,8 @@ const DEFAULT_PREFS: Preferences = {
 
 type ResumeOption = { id: string; title: string; is_primary: boolean };
 
+type ScreeningQA = { question: string; answer: string };
+
 type QueueItem = {
   id: string;
   source_job_id: string;
@@ -66,6 +71,47 @@ type QueueItem = {
   cover_letter: string;
   status: "pending" | "sent" | "dismissed";
   created_at: string;
+  ats_platform: AtsPlatform | null;
+  suggested_answers: ScreeningQA[] | null;
+};
+
+// A short heads-up shown only for platforms whose application flow tends to
+// surprise someone expecting a single-page form like Greenhouse/Lever —
+// most platforms don't need a note at all, so this stays a sparse map
+// keyed off dashboard.autoApply.queue.atsTip in messages/{en,ar}.json
+// rather than one entry per AtsPlatform value.
+const ATS_TIP_PLATFORMS: AtsPlatform[] = ["workday", "icims", "taleo", "linkedin", "email"];
+
+type WorkAuthorization = "citizen" | "resident_no_sponsorship" | "requires_sponsorship" | "gcc_national";
+const WORK_AUTHORIZATIONS: WorkAuthorization[] = ["citizen", "resident_no_sponsorship", "requires_sponsorship", "gcc_national"];
+
+type NoticePeriod = "immediate" | "2_weeks" | "1_month" | "2_months" | "3_months_plus";
+const NOTICE_PERIODS: NoticePeriod[] = ["immediate", "2_weeks", "1_month", "2_months", "3_months_plus"];
+
+type ApplicantProfileState = {
+  workAuthorization: WorkAuthorization | "";
+  noticePeriod: NoticePeriod | "";
+  expectedSalary: string;
+  willingToRelocate: boolean;
+  willingToTravel: boolean;
+  linkedinUrl: string;
+  portfolioUrl: string;
+  totalYearsExperience: string;
+  earliestStartDate: string;
+  additionalNotes: string;
+};
+
+const DEFAULT_APPLICANT_PROFILE: ApplicantProfileState = {
+  workAuthorization: "",
+  noticePeriod: "",
+  expectedSalary: "",
+  willingToRelocate: false,
+  willingToTravel: false,
+  linkedinUrl: "",
+  portfolioUrl: "",
+  totalYearsExperience: "",
+  earliestStartDate: "",
+  additionalNotes: "",
 };
 
 export default function AutoApplyPage() {
@@ -89,6 +135,14 @@ export default function AutoApplyPage() {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [popupBlockedId, setPopupBlockedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Composite `${queueItemId}:${answerIndex}` key — a separate copy-feedback
+  // tracker from copiedId above since a single queue item now has several
+  // independently-copyable answers, not just the one cover letter.
+  const [copiedQaKey, setCopiedQaKey] = useState<string | null>(null);
+
+  const [applicantProfile, setApplicantProfile] = useState<ApplicantProfileState>(DEFAULT_APPLICANT_PROFILE);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveState, setProfileSaveState] = useState<"idle" | "saved" | "error">("idle");
 
   // nextRunAt drives both the countdown display and whether "Run now" is
   // clickable. Set directly from whatever the server last told us (initial
@@ -119,7 +173,9 @@ export default function AutoApplyPage() {
     const supabase = createClient();
     const { data: queueRows } = await supabase
       .from("auto_apply_queue")
-      .select("id, source_job_id, title, company, location, apply_url, match_score, cover_letter, status, created_at")
+      .select(
+        "id, source_job_id, title, company, location, apply_url, match_score, cover_letter, status, created_at, ats_platform, suggested_answers"
+      )
       .eq("user_id", uid)
       .eq("status", "pending")
       .order("match_score", { ascending: false })
@@ -192,6 +248,32 @@ export default function AutoApplyPage() {
           }
         }
 
+        const { data: profileRow } = await supabase
+          .from("applicant_profile")
+          .select(
+            "work_authorization, notice_period, expected_salary, willing_to_relocate, willing_to_travel, linkedin_url, portfolio_url, total_years_experience, earliest_start_date, additional_notes"
+          )
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (cancelled) return;
+        if (profileRow) {
+          setApplicantProfile({
+            workAuthorization: (profileRow.work_authorization as WorkAuthorization) ?? "",
+            noticePeriod: (profileRow.notice_period as NoticePeriod) ?? "",
+            expectedSalary: profileRow.expected_salary ?? "",
+            willingToRelocate: Boolean(profileRow.willing_to_relocate),
+            willingToTravel: Boolean(profileRow.willing_to_travel),
+            linkedinUrl: profileRow.linkedin_url ?? "",
+            portfolioUrl: profileRow.portfolio_url ?? "",
+            totalYearsExperience:
+              profileRow.total_years_experience !== null && profileRow.total_years_experience !== undefined
+                ? String(profileRow.total_years_experience)
+                : "",
+            earliestStartDate: profileRow.earliest_start_date ?? "",
+            additionalNotes: profileRow.additional_notes ?? "",
+          });
+        }
+
         await loadQueue(uid);
       } catch {
         // Not logged in / Supabase not configured.
@@ -248,6 +330,52 @@ export default function AutoApplyPage() {
       setSaveState("error");
     } finally {
       setSavingPrefs(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!userId) return;
+    setSavingProfile(true);
+    setProfileSaveState("idle");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("applicant_profile").upsert(
+        {
+          user_id: userId,
+          work_authorization: applicantProfile.workAuthorization || null,
+          notice_period: applicantProfile.noticePeriod || null,
+          expected_salary: applicantProfile.expectedSalary.trim() || null,
+          willing_to_relocate: applicantProfile.willingToRelocate,
+          willing_to_travel: applicantProfile.willingToTravel,
+          linkedin_url: applicantProfile.linkedinUrl.trim() || null,
+          portfolio_url: applicantProfile.portfolioUrl.trim() || null,
+          total_years_experience: applicantProfile.totalYearsExperience.trim()
+            ? Number(applicantProfile.totalYearsExperience)
+            : null,
+          earliest_start_date: applicantProfile.earliestStartDate || null,
+          additional_notes: applicantProfile.additionalNotes.trim() || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+      if (error) throw error;
+      setProfileSaveState("saved");
+      setTimeout(() => setProfileSaveState("idle"), 2500);
+    } catch {
+      setProfileSaveState("error");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handleCopyAnswer(item: QueueItem, index: number, answer: string) {
+    try {
+      await navigator.clipboard.writeText(answer);
+      const key = `${item.id}:${index}`;
+      setCopiedQaKey(key);
+      setTimeout(() => setCopiedQaKey((k) => (k === key ? null : k)), 2000);
+    } catch {
+      // Not critical.
     }
   }
 
@@ -427,7 +555,8 @@ export default function AutoApplyPage() {
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-        {/* Settings */}
+        {/* Settings + Application profile */}
+        <div className="space-y-6">
         <div className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-sm font-bold text-foreground">{t("settings.heading")}</h2>
 
@@ -559,6 +688,168 @@ export default function AutoApplyPage() {
           {saveState === "error" && <p className="mt-2 text-xs text-red-600">{t("settings.saveError")}</p>}
         </div>
 
+        {/* Application profile — screening-question facts a resume alone
+            doesn't carry, saved once and reused by every queued match's
+            "ready to paste" Q&A panel (see lib/screeningAnswers.ts). */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <ClipboardList size={16} className="text-emerald-600" />
+            {t("applicantProfile.heading")}
+          </h2>
+          <p className="mt-1 text-xs text-foreground/50">{t("applicantProfile.hint")}</p>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.workAuthorizationLabel")}</label>
+            <select
+              value={applicantProfile.workAuthorization}
+              onChange={(e) =>
+                setApplicantProfile((p) => ({ ...p, workAuthorization: e.target.value as WorkAuthorization | "" }))
+              }
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">{t("applicantProfile.workAuthorizationPlaceholder")}</option>
+              {WORK_AUTHORIZATIONS.map((wa) => (
+                <option key={wa} value={wa}>
+                  {t(`applicantProfile.workAuthorization.${wa}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.noticePeriodLabel")}</label>
+            <select
+              value={applicantProfile.noticePeriod}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, noticePeriod: e.target.value as NoticePeriod | "" }))}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">{t("applicantProfile.noticePeriodPlaceholder")}</option>
+              {NOTICE_PERIODS.map((np) => (
+                <option key={np} value={np}>
+                  {t(`applicantProfile.noticePeriod.${np}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.expectedSalaryLabel")}</label>
+            <input
+              value={applicantProfile.expectedSalary}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, expectedSalary: e.target.value }))}
+              placeholder={t("applicantProfile.expectedSalaryPlaceholder")}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.experienceLabel")}</label>
+            <input
+              type="number"
+              min={0}
+              max={60}
+              value={applicantProfile.totalYearsExperience}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, totalYearsExperience: e.target.value }))}
+              className="mt-1.5 w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.startDateLabel")}</label>
+            <input
+              type="date"
+              value={applicantProfile.earliestStartDate}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, earliestStartDate: e.target.value }))}
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <label className="mt-4 flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-foreground">{t("applicantProfile.relocateLabel")}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={applicantProfile.willingToRelocate}
+              onClick={() => setApplicantProfile((p) => ({ ...p, willingToRelocate: !p.willingToRelocate }))}
+              className={`relative h-6 w-11 flex-none rounded-full transition-colors ${
+                applicantProfile.willingToRelocate ? "bg-emerald-600" : "bg-sand-200"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  applicantProfile.willingToRelocate ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0.5 rtl:-translate-x-0.5"
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="mt-4 flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-foreground">{t("applicantProfile.travelLabel")}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={applicantProfile.willingToTravel}
+              onClick={() => setApplicantProfile((p) => ({ ...p, willingToTravel: !p.willingToTravel }))}
+              className={`relative h-6 w-11 flex-none rounded-full transition-colors ${
+                applicantProfile.willingToTravel ? "bg-emerald-600" : "bg-sand-200"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  applicantProfile.willingToTravel ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0.5 rtl:-translate-x-0.5"
+                }`}
+              />
+            </button>
+          </label>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.linkedinLabel")}</label>
+            <input
+              value={applicantProfile.linkedinUrl}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, linkedinUrl: e.target.value }))}
+              placeholder="https://linkedin.com/in/…"
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.portfolioLabel")}</label>
+            <input
+              value={applicantProfile.portfolioUrl}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, portfolioUrl: e.target.value }))}
+              placeholder="https://…"
+              className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-foreground">{t("applicantProfile.notesLabel")}</label>
+            <textarea
+              value={applicantProfile.additionalNotes}
+              onChange={(e) => setApplicantProfile((p) => ({ ...p, additionalNotes: e.target.value }))}
+              placeholder={t("applicantProfile.notesPlaceholder")}
+              rows={3}
+              className="mt-1.5 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={savingProfile}
+            className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {savingProfile ? (
+              <Loader2 className="animate-spin" size={15} />
+            ) : profileSaveState === "saved" ? (
+              <Check size={15} />
+            ) : null}
+            {profileSaveState === "saved" ? t("applicantProfile.saved") : t("applicantProfile.saveButton")}
+          </button>
+          {profileSaveState === "error" && <p className="mt-2 text-xs text-red-600">{t("applicantProfile.saveError")}</p>}
+        </div>
+        </div>
+
         {/* Queue */}
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -623,11 +914,28 @@ export default function AutoApplyPage() {
                         {item.location ? ` · ${item.location}` : ""}
                       </p>
                     </div>
-                    <span className="flex flex-none items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                      <Sparkles size={12} />
-                      {t("queue.matchScore", { score: item.match_score })}
-                    </span>
+                    <div className="flex flex-none flex-wrap items-center justify-end gap-1.5">
+                      <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        <Sparkles size={12} />
+                        {t("queue.matchScore", { score: item.match_score })}
+                      </span>
+                      {item.ats_platform && (
+                        <span className="flex items-center gap-1 rounded-full bg-sand-100 px-2.5 py-1 text-xs font-medium text-foreground/60">
+                          <Building2 size={12} />
+                          {t.has(`queue.atsBadge.${item.ats_platform}`)
+                            ? t(`queue.atsBadge.${item.ats_platform}`)
+                            : item.ats_platform}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {item.ats_platform && ATS_TIP_PLATFORMS.includes(item.ats_platform) && (
+                    <p className="mt-3 flex items-start gap-1.5 rounded-lg bg-sand-50 px-3 py-2 text-xs text-foreground/70">
+                      <Info size={13} className="mt-0.5 flex-none" />
+                      {t(`queue.atsTip.${item.ats_platform}`)}
+                    </p>
+                  )}
 
                   {popupBlockedId === item.id && (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
@@ -666,6 +974,47 @@ export default function AutoApplyPage() {
                         {copiedId === item.id ? t("queue.copied") : t("queue.copy")}
                       </button>
                     </details>
+                  )}
+
+                  {/* Application Assist: ready-to-paste draft answers to this
+                      job's screening questions — drafted from the resume +
+                      Application Profile (real, fetched Greenhouse
+                      questions for Greenhouse postings; the common
+                      cross-platform questions otherwise). Never auto-filled
+                      or auto-submitted anywhere — copy-per-answer, paste by
+                      hand, same review-then-send principle as the cover
+                      letter above. */}
+                  {item.suggested_answers && item.suggested_answers.length > 0 ? (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                        {t("queue.qaHeading")}
+                      </summary>
+                      <p className="mt-1.5 text-xs text-foreground/50">{t("queue.qaHint")}</p>
+                      <div className="mt-2 space-y-2.5">
+                        {item.suggested_answers.map((qa, idx) => {
+                          const qaKey = `${item.id}:${idx}`;
+                          return (
+                            <div key={qaKey} className="rounded-lg border border-border bg-background p-2.5">
+                              <p className="text-xs font-semibold text-foreground">{qa.question}</p>
+                              <p className="mt-1 text-xs leading-relaxed text-foreground/70">{qa.answer}</p>
+                              <button
+                                onClick={() => handleCopyAnswer(item, idx, qa.answer)}
+                                className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-foreground/60 hover:text-foreground"
+                              >
+                                {copiedQaKey === qaKey ? (
+                                  <Check size={12} className="text-emerald-600" />
+                                ) : (
+                                  <Copy size={12} />
+                                )}
+                                {copiedQaKey === qaKey ? t("queue.copied") : t("queue.qaCopyAnswer")}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  ) : (
+                    <p className="mt-3 text-xs text-foreground/40">{t("queue.qaEmpty")}</p>
                   )}
 
                   <div className="mt-4 flex items-center gap-2">

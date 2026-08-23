@@ -23,6 +23,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type Job, type WorkType, LOCATIONS, LOCATION_ALIASES, isRegionLocation } from "@/lib/jobSources";
 import { fetchJoobleJobsPage, fetchCareerjetJobs, fetchSerpApiJobs } from "@/lib/paidJobSources";
+import { type AtsPlatform, detectAtsPlatform } from "@/lib/atsPlatform";
 
 // How long a refresh stays "fresh" before the next trigger is allowed to
 // spend real API quota again. This refresh makes AT MOST ONE call per
@@ -140,6 +141,7 @@ type JobRow = {
   industry: string;
   work_type: string;
   created_at: string;
+  ats_platform?: string | null;
 };
 
 function rowToJob(row: JobRow): Job {
@@ -155,6 +157,10 @@ function rowToJob(row: JobRow): Job {
     // When this row was cached — the closest available proxy for "posted"
     // for these sources, used to sort Job Search newest-first.
     postedAt: row.created_at,
+    // Stored value if this row was cached after the ats_platform column
+    // existed; re-derived from apply_url as a fallback for older rows
+    // cached before it did, so nothing needs a backfill migration.
+    atsPlatform: (row.ats_platform as AtsPlatform | null) || detectAtsPlatform(row.apply_url),
   };
 }
 
@@ -199,7 +205,7 @@ export async function getCachedJobs(admin: SupabaseClient, filters: CachedJobFil
     const to = from + CACHE_PAGE_SIZE - 1;
     let query = admin
       .from("retrieved_jobs")
-      .select("id, title, company, location, apply_url, apply_type, industry, work_type, created_at")
+      .select("id, title, company, location, apply_url, apply_type, industry, work_type, created_at, ats_platform")
       .gt("expires_at", new Date().toISOString());
 
     if (filters.industry) query = query.eq("industry", filters.industry);
@@ -377,6 +383,12 @@ async function storeJobs(admin: SupabaseClient, jobs: Job[]): Promise<number> {
       apply_type: j.applyType,
       industry: j.industry,
       work_type: j.workType,
+      // The actual new value this crawl-storage pass now captures — see
+      // lib/atsPlatform.ts. j.atsPlatform is always set by this point (every
+      // caller of storeJobs passes jobs that went through finalize() or
+      // companyJobs.ts's toJob(), both of which set it), but the fallback
+      // keeps this resilient if a future source ever forgets to.
+      ats_platform: j.atsPlatform ?? detectAtsPlatform(j.applyUrl),
     }));
 
   if (rows.length > 0) {

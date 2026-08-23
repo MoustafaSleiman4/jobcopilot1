@@ -2,6 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { LOCATION_ALIASES, type Job } from "@/lib/jobSources";
 import { generateCoverLetter } from "@/lib/coverLetter";
 import type { StructuredResume } from "@/lib/resume-types";
+import {
+  type ApplicantProfileFields,
+  type GreenhouseQuestion,
+  type ScreeningQA,
+  buildStandardScreeningAnswers,
+  fetchGreenhouseApplicationQuestions,
+  generateGreenhouseScreeningAnswers,
+  parseGreenhouseApplyUrl,
+} from "@/lib/screeningAnswers";
 
 // Shared by app/api/cron/auto-apply/route.ts (the scheduled daily run, across
 // every opted-in user) and app/api/auto-apply/run-now/route.ts (a single
@@ -176,6 +185,7 @@ export async function runAutoApplyForUser(
         .limit(1)
         .maybeSingle<ResumeRow>();
   const structured = resumeRow?.content?.structured;
+
   // Deliberately require a real, named resume before matching or writing a
   // cover letter — a resume file existing on its own isn't enough if it was
   // never run through the builder/enhancement step that fills in
@@ -183,6 +193,19 @@ export async function runAutoApplyForUser(
   // applicant's name. Reported back as "no_resume" so the UI can tell the
   // user exactly what to fix instead of a bare "no matches found."
   if (!structured || !structured.fullName) return { queued: 0, reason: "no_resume" };
+
+  // Fetched once per run (not per matched job) — the Application Assist
+  // panel's "ready to paste" screening-question answers (see
+  // lib/screeningAnswers.ts) are built from this. A user who hasn't filled
+  // theirs in yet just gets an empty standard-answers set per match, same as
+  // before this feature existed — nothing here blocks matching or queuing.
+  const { data: applicantProfile } = await admin
+    .from("applicant_profile")
+    .select(
+      "work_authorization, notice_period, expected_salary, willing_to_relocate, willing_to_travel, linkedin_url, portfolio_url, total_years_experience, earliest_start_date, additional_notes"
+    )
+    .eq("user_id", prefs.user_id)
+    .maybeSingle<ApplicantProfileFields>();
 
   const [{ data: appliedRows }, { data: queuedRows }] = await Promise.all([
     admin.from("applications").select("source_job_id").eq("user_id", prefs.user_id).not("source_job_id", "is", null),
@@ -210,6 +233,41 @@ export async function runAutoApplyForUser(
       // entry rather than skipping the match entirely.
     }
 
+    // "Application Assist" data — see lib/screeningAnswers.ts. For a
+    // Greenhouse-hosted posting (any source, not just this app's directly-
+    // crawled boards — parseGreenhouseApplyUrl works off the apply URL
+    // itself), fetch that posting's REAL application questions and draft
+    // answers to them from the resume + application profile. Every other
+    // platform still gets the deterministic, free standard-question answers
+    // built straight from the application profile — no AI call needed for
+    // those, so this never adds real cost for the common case.
+    let applicationQuestions: GreenhouseQuestion[] = [];
+    let suggestedAnswers: ScreeningQA[] = buildStandardScreeningAnswers(applicantProfile ?? null);
+    if (job.atsPlatform === "greenhouse") {
+      const parsed = parseGreenhouseApplyUrl(job.applyUrl);
+      if (parsed) {
+        try {
+          applicationQuestions = await fetchGreenhouseApplicationQuestions(parsed.board, parsed.jobId);
+        } catch {
+          // Fall through with an empty question list — the standard answers
+          // above are still a useful floor even if this specific fetch fails.
+        }
+      }
+      if (applicationQuestions.length > 0) {
+        try {
+          suggestedAnswers = await generateGreenhouseScreeningAnswers({
+            resume: structured,
+            profile: applicantProfile ?? null,
+            questions: applicationQuestions,
+            jobTitle: job.title,
+            company: job.company,
+          });
+        } catch {
+          // Keep the standard-answers fallback already assigned above.
+        }
+      }
+    }
+
     const { error: insertError } = await admin.from("auto_apply_queue").insert({
       user_id: prefs.user_id,
       source_job_id: job.id,
@@ -223,6 +281,9 @@ export async function runAutoApplyForUser(
       match_score: score,
       cover_letter: coverLetter,
       status: "pending",
+      ats_platform: job.atsPlatform ?? null,
+      application_questions: applicationQuestions.length > 0 ? applicationQuestions : null,
+      suggested_answers: suggestedAnswers.length > 0 ? suggestedAnswers : null,
     });
     // 23505 = duplicate (user_id, source_job_id) — another run/tab beat us
     // to it, not a real failure.

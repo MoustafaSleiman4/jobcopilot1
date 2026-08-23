@@ -17,6 +17,8 @@
 // against the always-free sources below (Greenhouse/Lever/Ashby/RemoteOK)
 // plus the curated fallback list.
 
+import { type AtsPlatform, detectAtsPlatform } from "@/lib/atsPlatform";
+
 export type WorkType = "remote" | "hybrid" | "onsite";
 
 export type Job = {
@@ -35,6 +37,14 @@ export type Job = {
   // Job Search sorts by this, newest first, with undated jobs pushed to the
   // end rather than guessed at.
   postedAt?: string;
+  // Which application-tracking system actually hosts the apply page —
+  // derived once at crawl/normalize time (see finalize() below) and carried
+  // through storage (lib/jobCache.ts's retrieved_jobs.ats_platform column)
+  // so it never needs to be recomputed downstream. Drives both the "Applied
+  // via Greenhouse" style badge on a job card and, for Greenhouse postings
+  // specifically, lib/autoApplyRun.ts's fetch of that job's real application
+  // questions — see lib/screeningAnswers.ts.
+  atsPlatform?: AtsPlatform;
 };
 
 export const GREENHOUSE_BOARDS = [
@@ -258,7 +268,19 @@ export function inferWorkType(location: string): WorkType {
 }
 
 export function finalize(job: Omit<Job, "industry" | "workType">): Job {
-  return { ...job, industry: inferIndustry(job.title, job.company), workType: inferWorkType(job.location) };
+  return {
+    ...job,
+    industry: inferIndustry(job.title, job.company),
+    workType: inferWorkType(job.location),
+    // Only fill this in when a caller hasn't already set it explicitly —
+    // fetchGreenhouseJobs/fetchLeverJobs/fetchAshbyJobs know their platform
+    // for certain and could set it directly, but detecting it here from the
+    // real apply URL is just as accurate and means every other source
+    // (RemoteOK, the paid-aggregator cache, employer postings, even the
+    // curated fallback list) gets tagged for free too, with zero special-
+    // casing per source.
+    atsPlatform: job.atsPlatform ?? detectAtsPlatform(job.applyUrl),
+  };
 }
 
 export const FALLBACK_JOBS: Job[] = (

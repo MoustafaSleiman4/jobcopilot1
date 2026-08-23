@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Job, WorkType } from "@/lib/jobSources";
+import { detectAtsPlatform } from "@/lib/atsPlatform";
 
 // Shared vocab reused by the employer job-posting form, the company profile
 // form, and the search/Auto Apply merge below — kept here (not duplicated
@@ -62,20 +63,26 @@ type CompanyJobWithCompanyName = CompanyJob & { companies: { name: string } | nu
  * with zero special-casing downstream.
  */
 function toJob(row: CompanyJobWithCompanyName): Job {
+  const applyUrl =
+    row.apply_method === "email" && row.apply_email
+      ? `mailto:${row.apply_email}?subject=${encodeURIComponent(`Application: ${row.title}`)}`
+      : row.apply_url || "";
   return {
     id: `company-job-${row.id}`,
     title: row.title,
     company: row.companies?.name || "—",
     location: row.location,
-    applyUrl:
-      row.apply_method === "email" && row.apply_email
-        ? `mailto:${row.apply_email}?subject=${encodeURIComponent(`Application: ${row.title}`)}`
-        : row.apply_url || "",
+    applyUrl,
     applyType: "external",
     industry: row.industry || "Other",
     workType: row.work_type,
     // Real posting date — when the employer created this listing.
     postedAt: row.created_at,
+    // Doesn't go through lib/jobSources.ts's finalize() (industry/workType
+    // are already known from the row), so tagged directly here — correctly
+    // resolves to "email" for the mailto: case above, same detector every
+    // other source uses.
+    atsPlatform: detectAtsPlatform(applyUrl),
   };
 }
 
