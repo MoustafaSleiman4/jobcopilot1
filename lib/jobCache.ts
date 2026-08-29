@@ -181,7 +181,11 @@ const CACHE_PAGE_CAP = 50;
 // country itself plus any LOCATION_ALIASES, e.g. "UAE" for "United Arab
 // Emirates") rather than a raw SQL pattern, so callers pass the same values
 // they'd pass to the app's own location dropdown.
-type CachedJobFilters = { location?: string; industry?: string; workType?: WorkType };
+// `workType` accepts more than one value (e.g. ["remote", "onsite"]) so a
+// caller can ask for "Lebanon AND (remote OR onsite)" — a compound search
+// across a location plus any of several work arrangements — rather than
+// being limited to one work type at a time.
+type CachedJobFilters = { location?: string; industry?: string; workType?: WorkType[] };
 
 /**
  * Reads ONLY the local cache — never touches Jooble/Careerjet/SerpApi. This
@@ -209,7 +213,9 @@ export async function getCachedJobs(admin: SupabaseClient, filters: CachedJobFil
       .gt("expires_at", new Date().toISOString());
 
     if (filters.industry) query = query.eq("industry", filters.industry);
-    if (filters.workType) query = query.eq("work_type", filters.workType);
+    // .in() with a single-element array behaves the same as the old .eq()
+    // did for a single work type, and OR-matches across multiple.
+    if (filters.workType && filters.workType.length) query = query.in("work_type", filters.workType);
     if (filters.location) {
       const needles = [filters.location.toLowerCase(), ...(LOCATION_ALIASES[filters.location] ?? [])];
       // PostgREST .or() filter string — safe to build directly since every
