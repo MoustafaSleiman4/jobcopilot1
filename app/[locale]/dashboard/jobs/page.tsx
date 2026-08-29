@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Target,
   Flag,
+  Plus,
 } from "lucide-react";
 
 // Bulk apply fans out one AI cover-letter generation call per selected job —
@@ -42,6 +43,14 @@ import {
 const MAX_BULK_APPLY = 15;
 
 type WorkType = "remote" | "hybrid" | "onsite";
+
+// One row in the location+work-type combo builder — e.g. { location:
+// "Qatar", workTypes: ["onsite"] }. The committed `combos` list is sent to
+// the API as an OR across rows (each row itself is location AND any of its
+// work types), letting a single search express "Qatar Onsite OR Saudi
+// Arabia Remote" — a location-dropdown-plus-work-type-chips filter alone
+// can't express more than one location at a time.
+type LocationCombo = { location: string; workTypes: WorkType[] };
 
 type Job = {
   id: string;
@@ -118,6 +127,13 @@ export default function JobSearchPage() {
   // — instead of being limited to exactly one work type per search.
   const [workType, setWorkType] = useState<WorkType[]>([]);
   const [workTypeDraft, setWorkTypeDraft] = useState<WorkType[]>([]);
+  // The location+work-type combo builder (see LocationCombo above) — only
+  // ever non-empty once the user has clicked "+ Add location" at least
+  // once. Until then, the plain `location`/`workType` single-location
+  // filter above is what's actually used, so a normal single-location
+  // search behaves exactly as it did before this feature existed.
+  const [combosDraft, setCombosDraft] = useState<LocationCombo[]>([]);
+  const [combos, setCombos] = useState<LocationCombo[]>([]);
   // Unchecked by default — see app/api/jobs/search/route.ts's `exactPhrase`
   // param. Default behavior stays "match any of the entered words" (what
   // most people typing a few role titles at once actually want); this opts
@@ -300,9 +316,15 @@ export default function JobSearchPage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (query) params.set("q", query);
-    if (location) params.set("location", location);
+    if (combos.length) {
+      // Combo builder in use — sends the whole OR-of-(location AND any of
+      // its work types) list instead of a single location/workType pair.
+      params.set("combos", JSON.stringify(combos));
+    } else {
+      if (location) params.set("location", location);
+      if (workType.length) params.set("workType", workType.join(","));
+    }
     if (industry) params.set("industry", industry);
-    if (workType.length) params.set("workType", workType.join(","));
     if (exactPhrase) params.set("exact", "1");
     // A new search (or filter change) always starts back at page 1 — no
     // offset param needed, the route defaults to 0.
@@ -325,7 +347,7 @@ export default function JobSearchPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [query, location, industry, workType, exactPhrase, defaultQueryReady]);
+  }, [query, location, industry, workType, combos, exactPhrase, defaultQueryReady]);
 
   // Fetches the next page (current jobs.length as the offset) and appends —
   // a professional "Load more" pattern instead of dumping every result at
@@ -337,9 +359,13 @@ export default function JobSearchPage() {
     try {
       const params = new URLSearchParams();
       if (query) params.set("q", query);
-      if (location) params.set("location", location);
+      if (combos.length) {
+        params.set("combos", JSON.stringify(combos));
+      } else {
+        if (location) params.set("location", location);
+        if (workType.length) params.set("workType", workType.join(","));
+      }
       if (industry) params.set("industry", industry);
-      if (workType.length) params.set("workType", workType.join(","));
       if (exactPhrase) params.set("exact", "1");
       params.set("offset", String(jobs.length));
 
@@ -361,7 +387,7 @@ export default function JobSearchPage() {
     }
   }
 
-  const hasActiveFilters = Boolean(location || industry || workType.length);
+  const hasActiveFilters = Boolean(location || industry || workType.length || combos.length);
   // Array state can't be compared with !==  (two empty/equal arrays are
   // still different references), so work types are compared by content —
   // same set, regardless of the order they were toggled in.
@@ -370,32 +396,76 @@ export default function JobSearchPage() {
     return a.every((w) => b.includes(w));
   }
   // Reflects whatever's currently typed/selected but not yet searched —
-  // used to grey out "Search" when there's nothing new to run.
+  // used to grey out "Search" when there's nothing new to run. Doesn't need
+  // to perfectly model applySearch's "fold the current picker into combos"
+  // step below — being slightly over-eager about enabling Search is
+  // harmless, being under-eager (stuck disabled) isn't.
   const hasUnappliedChanges =
     queryDraft !== query ||
     locationDraft !== location ||
     industryDraft !== industry ||
     !sameWorkTypes(workTypeDraft, workType) ||
+    JSON.stringify(combosDraft) !== JSON.stringify(combos) ||
     exactPhraseDraft !== exactPhrase;
+
+  // Adds the currently-picked location+work-types as one more row in the
+  // combo builder (see LocationCombo above), then clears the picker so the
+  // next row starts fresh. Requires a location — a work-types-only row
+  // would just be the plain workType filter, already covered without
+  // touching the combo builder at all.
+  function addLocationCombo() {
+    if (!locationDraft) return;
+    setCombosDraft((prev) => [...prev, { location: locationDraft, workTypes: [...workTypeDraft] }]);
+    setLocationDraft("");
+    setWorkTypeDraft([]);
+  }
+
+  function removeCombo(index: number) {
+    setCombosDraft((prev) => prev.filter((_, i) => i !== index));
+  }
 
   // Commits the draft query/filters and runs one search — the only thing
   // that actually spends a search from today's quota, along with Clear
   // below (both change the committed state the fetch effect depends on).
   function applySearch() {
     setQuery(queryDraft.trim());
-    setLocation(locationDraft);
     setIndustry(industryDraft);
-    setWorkType(workTypeDraft);
     setExactPhrase(exactPhraseDraft);
+
+    if (combosDraft.length > 0) {
+      // Combo builder is in use — fold in whatever's currently picked (if
+      // anything) as one more row, so the last row doesn't need its own
+      // "+ Add" click before searching. This is the one case where Search
+      // clears the location/work-type pickers (they're represented as a
+      // pill instead) — a plain single-location search (combosDraft empty)
+      // never does this, so nothing changes for that common case.
+      const pending = locationDraft
+        ? [...combosDraft, { location: locationDraft, workTypes: [...workTypeDraft] }]
+        : combosDraft;
+      setCombos(pending);
+      setCombosDraft(pending);
+      setLocation("");
+      setLocationDraft("");
+      setWorkType([]);
+      setWorkTypeDraft([]);
+    } else {
+      // No combo rows added — exactly the original single-location/
+      // work-type behavior, combo builder not involved at all.
+      setCombos([]);
+      setLocation(locationDraft);
+      setWorkType(workTypeDraft);
+    }
   }
 
   function clearFilters() {
     setLocationDraft("");
     setIndustryDraft("");
     setWorkTypeDraft([]);
+    setCombosDraft([]);
     setLocation("");
     setIndustry("");
     setWorkType([]);
+    setCombos([]);
   }
 
   // There is no public LinkedIn API for job search (and no ToS-compliant
@@ -845,6 +915,23 @@ export default function JobSearchPage() {
             })}
           </div>
 
+          {/* Pins the current location+work-types as one more row in the
+              combo builder below — e.g. click Qatar+Onsite here, then pick
+              Saudi Arabia+Remote and hit Search, and the results are
+              "Qatar Onsite" OR "Saudi Arabia Remote". Needs a location
+              picked; a work-types-only row is just the plain filter above,
+              no combo needed. */}
+          <button
+            type="button"
+            title={t("comboHint")}
+            disabled={!locationDraft}
+            onClick={addLocationCombo}
+            className="flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:border-emerald-400 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus size={14} />
+            {t("addLocationCombo")}
+          </button>
+
           <button
             type="submit"
             disabled={loading || !hasUnappliedChanges}
@@ -876,6 +963,38 @@ export default function JobSearchPage() {
             <ExternalLink size={13} className="opacity-80" />
           </a>
         </div>
+
+        {/* Rows added via "+ Add location" — each pill is one location +
+            work-types combo; the search below matches any of them (an OR
+            across pills, each pill itself a location AND-any-of-its-
+            work-types match). Only ever rendered once at least one row has
+            been added. */}
+        {combosDraft.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {combosDraft.map((combo, idx) => (
+              <span
+                key={`${combo.location}-${idx}`}
+                className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800"
+              >
+                {t.has(`locationNames.${combo.location}`) ? t(`locationNames.${combo.location}`) : combo.location}
+                <span className="text-emerald-600">
+                  ·{" "}
+                  {combo.workTypes.length > 0
+                    ? combo.workTypes.map((wt) => t(`workTypes.${wt}`)).join(" / ")
+                    : t("comboAnyWorkType")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeCombo(idx)}
+                  aria-label={t("removeCombo")}
+                  className="ms-0.5 text-emerald-600 hover:text-emerald-900"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </form>
 
       {!loading && (
