@@ -113,8 +113,11 @@ export default function JobSearchPage() {
   const [locationDraft, setLocationDraft] = useState("");
   const [industry, setIndustry] = useState("");
   const [industryDraft, setIndustryDraft] = useState("");
-  const [workType, setWorkType] = useState<WorkType | "">("");
-  const [workTypeDraft, setWorkTypeDraft] = useState<WorkType | "">("");
+  // An array, not a single value, so a search can combine a location with
+  // more than one work type at once — e.g. "Lebanon" + ["remote", "onsite"]
+  // — instead of being limited to exactly one work type per search.
+  const [workType, setWorkType] = useState<WorkType[]>([]);
+  const [workTypeDraft, setWorkTypeDraft] = useState<WorkType[]>([]);
   // Unchecked by default — see app/api/jobs/search/route.ts's `exactPhrase`
   // param. Default behavior stays "match any of the entered words" (what
   // most people typing a few role titles at once actually want); this opts
@@ -299,7 +302,7 @@ export default function JobSearchPage() {
     if (query) params.set("q", query);
     if (location) params.set("location", location);
     if (industry) params.set("industry", industry);
-    if (workType) params.set("workType", workType);
+    if (workType.length) params.set("workType", workType.join(","));
     if (exactPhrase) params.set("exact", "1");
     // A new search (or filter change) always starts back at page 1 — no
     // offset param needed, the route defaults to 0.
@@ -336,7 +339,7 @@ export default function JobSearchPage() {
       if (query) params.set("q", query);
       if (location) params.set("location", location);
       if (industry) params.set("industry", industry);
-      if (workType) params.set("workType", workType);
+      if (workType.length) params.set("workType", workType.join(","));
       if (exactPhrase) params.set("exact", "1");
       params.set("offset", String(jobs.length));
 
@@ -358,14 +361,21 @@ export default function JobSearchPage() {
     }
   }
 
-  const hasActiveFilters = Boolean(location || industry || workType);
+  const hasActiveFilters = Boolean(location || industry || workType.length);
+  // Array state can't be compared with !==  (two empty/equal arrays are
+  // still different references), so work types are compared by content —
+  // same set, regardless of the order they were toggled in.
+  function sameWorkTypes(a: WorkType[], b: WorkType[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((w) => b.includes(w));
+  }
   // Reflects whatever's currently typed/selected but not yet searched —
   // used to grey out "Search" when there's nothing new to run.
   const hasUnappliedChanges =
     queryDraft !== query ||
     locationDraft !== location ||
     industryDraft !== industry ||
-    workTypeDraft !== workType ||
+    !sameWorkTypes(workTypeDraft, workType) ||
     exactPhraseDraft !== exactPhrase;
 
   // Commits the draft query/filters and runs one search — the only thing
@@ -382,10 +392,10 @@ export default function JobSearchPage() {
   function clearFilters() {
     setLocationDraft("");
     setIndustryDraft("");
-    setWorkTypeDraft("");
+    setWorkTypeDraft([]);
     setLocation("");
     setIndustry("");
-    setWorkType("");
+    setWorkType([]);
   }
 
   // There is no public LinkedIn API for job search (and no ToS-compliant
@@ -805,18 +815,35 @@ export default function JobSearchPage() {
             ))}
           </select>
 
-          <select
-            value={workTypeDraft}
-            onChange={(e) => setWorkTypeDraft(e.target.value as WorkType | "")}
-            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="">{t("allWorkTypes")}</option>
-            {WORK_TYPES.map((wt) => (
-              <option key={wt} value={wt}>
-                {t(`workTypes.${wt}`)}
-              </option>
-            ))}
-          </select>
+          {/* Multi-select toggle chips instead of a single dropdown — lets a
+              search combine a location with more than one work type at once
+              (e.g. Lebanon + Remote + Onsite, leaving Hybrid out), rather
+              than being limited to picking exactly one work type. Nothing
+              selected means "any work type", same as the old blank option. */}
+          <div className="flex items-center gap-1.5" role="group" aria-label={t("allWorkTypes")}>
+            {WORK_TYPES.map((wt) => {
+              const active = workTypeDraft.includes(wt);
+              return (
+                <button
+                  key={wt}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setWorkTypeDraft((prev) =>
+                      prev.includes(wt) ? prev.filter((w) => w !== wt) : [...prev, wt]
+                    )
+                  }
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                    active
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "border-border bg-surface text-foreground hover:border-emerald-300"
+                  }`}
+                >
+                  {t(`workTypes.${wt}`)}
+                </button>
+              );
+            })}
+          </div>
 
           <button
             type="submit"
