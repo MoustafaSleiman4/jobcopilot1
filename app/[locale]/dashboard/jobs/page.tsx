@@ -854,147 +854,191 @@ export default function JobSearchPage() {
           {t("exactPhrase")}
         </label>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-foreground/50">
-            <SlidersHorizontal size={15} />
+        <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/40">
+            <SlidersHorizontal size={13} />
+            {t("filtersHeading")}
           </div>
 
-          <select
-            value={locationDraft}
-            onChange={(e) => setLocationDraft(e.target.value)}
-            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="">{t("allLocations")}</option>
-            {locations.map((loc) => (
-              <option key={loc} value={loc}>
-                {t.has(`locationNames.${loc}`) ? t(`locationNames.${loc}`) : loc}
-              </option>
-            ))}
-          </select>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-foreground/50">{t("location")}</span>
+              <select
+                value={locationDraft}
+                onChange={(e) => setLocationDraft(e.target.value)}
+                className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">{t("allLocations")}</option>
+                {locations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {t.has(`locationNames.${loc}`) ? t(`locationNames.${loc}`) : loc}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <select
-            value={industryDraft}
-            onChange={(e) => setIndustryDraft(e.target.value)}
-            className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="">{t("allIndustries")}</option>
-            {industries.map((ind) => (
-              <option key={ind} value={ind}>
-                {t.has(`industryNames.${ind}`) ? t(`industryNames.${ind}`) : ind}
-              </option>
-            ))}
-          </select>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-foreground/50">{t("industry")}</span>
+              <select
+                value={industryDraft}
+                onChange={(e) => setIndustryDraft(e.target.value)}
+                className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">{t("allIndustries")}</option>
+                {industries.map((ind) => (
+                  <option key={ind} value={ind}>
+                    {t.has(`industryNames.${ind}`) ? t(`industryNames.${ind}`) : ind}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Multi-select toggle chips instead of a single dropdown — lets a
-              search combine a location with more than one work type at once
-              (e.g. Lebanon + Remote + Onsite, leaving Hybrid out), rather
-              than being limited to picking exactly one work type. Nothing
-              selected means "any work type", same as the old blank option. */}
-          <div className="flex items-center gap-1.5" role="group" aria-label={t("allWorkTypes")}>
-            {WORK_TYPES.map((wt) => {
-              const active = workTypeDraft.includes(wt);
-              return (
-                <button
-                  key={wt}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    setWorkTypeDraft((prev) =>
-                      prev.includes(wt) ? prev.filter((w) => w !== wt) : [...prev, wt]
-                    )
-                  }
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "border-emerald-600 bg-emerald-600 text-white"
-                      : "border-border bg-surface text-foreground hover:border-emerald-300"
-                  }`}
-                >
-                  {t(`workTypes.${wt}`)}
-                </button>
-              );
-            })}
+            {/* Multi-select toggle chips instead of a single dropdown — lets a
+                search combine a location with more than one work type at once
+                (e.g. Lebanon + Remote + Onsite, leaving Hybrid out), rather
+                than being limited to picking exactly one work type. Nothing
+                selected means "any work type", same as the old blank option. */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-foreground/50">{t("workTypeLabel")}</span>
+              <div className="flex items-center gap-1.5" role="group" aria-label={t("workTypeLabel")}>
+                {WORK_TYPES.map((wt) => {
+                  const active = workTypeDraft.includes(wt);
+                  return (
+                    <button
+                      key={wt}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setWorkTypeDraft((prev) =>
+                          prev.includes(wt) ? prev.filter((w) => w !== wt) : [...prev, wt]
+                        )
+                      }
+                      className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                        active
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : "border-border bg-surface text-foreground hover:border-emerald-300"
+                      }`}
+                    >
+                      {t(`workTypes.${wt}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pins the current location+work-types as one more row in the
+                combo builder below — e.g. click Qatar+Onsite here, then pick
+                Saudi Arabia+Remote and hit Search, and the results are
+                "Qatar Onsite" OR "Saudi Arabia Remote". Needs a location
+                picked; a work-types-only row is just the plain filter above,
+                no combo needed. Sits in its own flex-col (no label) so
+                `items-end` on the row still lines its bottom edge up with the
+                selects next to it. */}
+            <div className="flex flex-col">
+              <button
+                type="button"
+                title={t("comboHint")}
+                disabled={!locationDraft}
+                onClick={addLocationCombo}
+                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                  locationDraft
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
+                    : "cursor-not-allowed border-dashed border-border text-foreground/30"
+                }`}
+              >
+                <Plus size={14} />
+                {t("addLocationCombo")}
+              </button>
+            </div>
           </div>
 
-          {/* Pins the current location+work-types as one more row in the
-              combo builder below — e.g. click Qatar+Onsite here, then pick
-              Saudi Arabia+Remote and hit Search, and the results are
-              "Qatar Onsite" OR "Saudi Arabia Remote". Needs a location
-              picked; a work-types-only row is just the plain filter above,
-              no combo needed. */}
-          <button
-            type="button"
-            title={t("comboHint")}
-            disabled={!locationDraft}
-            onClick={addLocationCombo}
-            className="flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:border-emerald-400 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus size={14} />
-            {t("addLocationCombo")}
-          </button>
+          {/* Always-visible instructions rather than a hover-only tooltip —
+              the whole point of this control is easy to miss on first
+              glance, so the explanation shouldn't depend on someone thinking
+              to hover over it (and hover has no equivalent on touch). */}
+          <p className="mt-2.5 text-xs text-foreground/50">{t("comboHint")}</p>
 
-          <button
-            type="submit"
-            disabled={loading || !hasUnappliedChanges}
-            className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Search size={14} />
-            {t("searchButton")}
-          </button>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/60 hover:text-foreground"
-            >
-              <X size={14} />
-              {t("clearFilters")}
-            </button>
+          {/* Rows added via "+ Add combination" — each pill is one location +
+              work-types combo; the search below matches any of them (an OR
+              across pills, each pill itself a location AND-any-of-its-
+              work-types match). Called out in its own labeled, tinted box —
+              set apart from the picker above it — so it reads as "this is
+              what will actually be searched," with an explicit "OR" between
+              rows so the combining logic isn't left to guesswork. Only ever
+              rendered once at least one row has been added. */}
+          {combosDraft.length > 0 && (
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <p className="text-xs font-semibold text-emerald-800">
+                  {t("combosHeading", { count: combosDraft.length })}
+                </p>
+                <p className="text-[11px] text-emerald-700/70">{t("combosSubheading")}</p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {combosDraft.map((combo, idx) => (
+                  <div key={`${combo.location}-${idx}`} className="flex items-center gap-2">
+                    {idx > 0 && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-500/70">
+                        {t("comboOr")}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm">
+                      <MapPin size={12} className="flex-none text-emerald-500" />
+                      {t.has(`locationNames.${combo.location}`) ? t(`locationNames.${combo.location}`) : combo.location}
+                      <span className="text-emerald-300">·</span>
+                      <span className="text-emerald-700/80">
+                        {combo.workTypes.length > 0
+                          ? combo.workTypes.map((wt) => t(`workTypes.${wt}`)).join(" / ")
+                          : t("comboAnyWorkType")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeCombo(idx)}
+                        aria-label={t("removeCombo")}
+                        className="ms-0.5 flex-none text-emerald-400 hover:text-emerald-800"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          <a
-            href={linkedInSearchUrl()}
-            target="_blank"
-            rel="noreferrer"
-            className="ms-auto flex items-center gap-2 rounded-full bg-[#0A66C2] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0A66C2]/25 transition-all hover:bg-[#004182] hover:shadow-lg hover:shadow-[#0A66C2]/35"
-          >
-            <LinkedInGlyph className="h-4 w-4 shrink-0" />
-            {t("searchOnLinkedIn")}
-            <ExternalLink size={13} className="opacity-80" />
-          </a>
-        </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={loading || !hasUnappliedChanges}
+              className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Search size={14} />
+              {t("searchButton")}
+            </button>
 
-        {/* Rows added via "+ Add location" — each pill is one location +
-            work-types combo; the search below matches any of them (an OR
-            across pills, each pill itself a location AND-any-of-its-
-            work-types match). Only ever rendered once at least one row has
-            been added. */}
-        {combosDraft.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {combosDraft.map((combo, idx) => (
-              <span
-                key={`${combo.location}-${idx}`}
-                className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800"
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-foreground/60 hover:text-foreground"
               >
-                {t.has(`locationNames.${combo.location}`) ? t(`locationNames.${combo.location}`) : combo.location}
-                <span className="text-emerald-600">
-                  ·{" "}
-                  {combo.workTypes.length > 0
-                    ? combo.workTypes.map((wt) => t(`workTypes.${wt}`)).join(" / ")
-                    : t("comboAnyWorkType")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeCombo(idx)}
-                  aria-label={t("removeCombo")}
-                  className="ms-0.5 text-emerald-600 hover:text-emerald-900"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
+                <X size={14} />
+                {t("clearFilters")}
+              </button>
+            )}
+
+            <a
+              href={linkedInSearchUrl()}
+              target="_blank"
+              rel="noreferrer"
+              className="ms-auto flex items-center gap-2 rounded-full bg-[#0A66C2] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0A66C2]/25 transition-all hover:bg-[#004182] hover:shadow-lg hover:shadow-[#0A66C2]/35"
+            >
+              <LinkedInGlyph className="h-4 w-4 shrink-0" />
+              {t("searchOnLinkedIn")}
+              <ExternalLink size={13} className="opacity-80" />
+            </a>
           </div>
-        )}
+        </div>
       </form>
 
       {!loading && (
