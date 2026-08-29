@@ -77,6 +77,46 @@ export async function GET(request: NextRequest) {
         .map((w) => w.trim())
         .filter((w): w is WorkType => w === "remote" || w === "hybrid" || w === "onsite")
     : [];
+
+  // The location+work-type combo builder (see the jobs page's LocationCombo
+  // type) — a JSON-encoded array of { location, workTypes } rows, sent
+  // instead of (never alongside) `location`/`workType` above. Each row is
+  // its own location AND any-of-its-work-types match; the rows themselves
+  // are OR'd together below, which is what lets one search express "Qatar
+  // Onsite OR Saudi Arabia Remote" — the single location + single work-type
+  // filter above can only ever express one location per search.
+  const combosParam = request.nextUrl.searchParams.get("combos") ?? "";
+  let combos: { location?: string; workTypes: WorkType[] }[] = [];
+  if (combosParam) {
+    try {
+      const parsed: unknown = JSON.parse(combosParam);
+      if (Array.isArray(parsed)) {
+        combos = parsed
+          .map((entry) => {
+            const raw = entry as { location?: unknown; workTypes?: unknown };
+            const location =
+              typeof raw.location === "string" && LOCATIONS.includes(raw.location)
+                ? raw.location
+                : undefined;
+            const workTypes = Array.isArray(raw.workTypes)
+              ? raw.workTypes.filter(
+                  (w): w is WorkType => w === "remote" || w === "hybrid" || w === "onsite"
+                )
+              : [];
+            return { location, workTypes };
+          })
+          // Drop rows that ended up with neither a valid location nor any
+          // valid work type — nothing left in them to match on.
+          .filter((c) => c.location || c.workTypes.length);
+      }
+    } catch {
+      // Malformed JSON from a stale/tampered client — ignore combos
+      // entirely rather than 500ing; falls through to the plain
+      // location/workType filters (empty here) same as no filter at all.
+      combos = [];
+    }
+  }
+
   const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? "0");
   const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
 
@@ -174,10 +214,16 @@ export async function GET(request: NextRequest) {
     // relevance across title/company/location together, which isn't a
     // simple column filter), so this only trims what's read for the filters
     // that already ARE plain column matches.
+    // When the combo builder is in use, location/workType aren't pushed
+    // down here at all — each combo row can have its own location and
+    // work types, which a single pair of column filters can't express, so
+    // the (still industry-filtered) pool is pulled instead and the full
+    // OR-of-AND combo logic is applied in JS below, same place the plain
+    // single-filter path already does its filtering.
     const cached = await getCachedJobs(admin, {
-      location: locationFilter || undefined,
+      location: combos.length ? undefined : locationFilter || undefined,
       industry: industryFilter || undefined,
-      workType: workTypeFilters.length ? workTypeFilters : undefined,
+      workType: combos.length ? undefined : workTypeFilters.length ? workTypeFilters : undefined,
     });
     realJobs = realJobs.concat(cached);
   } catch {
@@ -251,25 +297,42 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  if (locationFilter) {
-    // Match against the country name loosely (job.location is usually
-    // "City, Country" or "City, Country (Remote)") rather than requiring an
-    // exact string match against the full location — and also check known
-    // abbreviations (see LOCATION_ALIASES) since real listings frequently
-    // use "UAE" instead of the full country name.
-    const needles = [locationFilter.toLowerCase(), ...(LOCATION_ALIASES[locationFilter] ?? [])];
-    jobs = jobs.filter((j) => {
-      const loc = j.location.toLowerCase();
-      return needles.some((n) => loc.includes(n));
-    });
+  // Match a job's location against a country name loosely (job.location is
+  // usually "City, Country" or "City, Country (Remote)") rather than
+  // requiring an exact string match — and also check known abbreviations
+  // (see LOCATION_ALIASES) since real listings frequently use "UAE" instead
+  // of the full country name. Shared by both the plain single-location
+  // filter and every combo row below.
+  function jobMatchesLocation(job: Job, location: string): boolean {
+    const needles = [location.toLowerCase(), ...(LOCATION_ALIASES[location] ?? [])];
+    const loc = job.location.toLowerCase();
+    return needles.some((n) => loc.includes(n));
+  }
+
+  if (combos.length) {
+    // Each combo row is an AND (location, if set, AND any of its work
+    // types, if any); the rows themselves are OR'd together — e.g. "Qatar
+    // Onsite" OR "Saudi Arabia Remote" — which the plain single-
+    // location/single-workType-set filter below can't express.
+    jobs = jobs.filter((j) =>
+      combos.some((c) => {
+        const locationOk = !c.location || jobMatchesLocation(j, c.location);
+        const workTypeOk = !c.workTypes.length || c.workTypes.includes(j.workType);
+        return locationOk && workTypeOk;
+      })
+    );
+  } else {
+    if (locationFilter) {
+      jobs = jobs.filter((j) => jobMatchesLocation(j, locationFilter));
+    }
+
+    if (workTypeFilters.length) {
+      jobs = jobs.filter((j) => workTypeFilters.includes(j.workType));
+    }
   }
 
   if (industryFilter) {
     jobs = jobs.filter((j) => j.industry === industryFilter);
-  }
-
-  if (workTypeFilters.length) {
-    jobs = jobs.filter((j) => workTypeFilters.includes(j.workType));
   }
 
   // Newest posting first, always — Job Search's one sort order, regardless
