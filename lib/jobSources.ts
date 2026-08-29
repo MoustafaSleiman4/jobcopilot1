@@ -261,17 +261,42 @@ export function inferIndustry(title: string, company?: string): string {
   return "Other";
 }
 
-export function inferWorkType(location: string): WorkType {
-  if (/hybrid/i.test(location)) return "hybrid";
-  if (/remote/i.test(location)) return "remote";
+// Checks `location` PLUS whatever extra free text a source can offer
+// (job title always; a description snippet or an explicit "work from home"
+// flag when the source provides one — see finalize()'s callers). This
+// matters because the paid aggregators (Jooble/Careerjet/SerpApi, see
+// lib/paidJobSources.ts) are queried per-country, so their `location` field
+// on a genuinely remote/hybrid listing is usually just the plain country
+// name ("Saudi Arabia") with no "remote"/"hybrid" word in it at all — a
+// location-only check was silently classifying nearly every paid-source job
+// as onsite regardless of what it actually was, which is what made a
+// "<country> + Remote" combo search come back empty even when remote roles
+// for that country existed in the underlying data.
+//
+// A short negation guard ("not remote", "no hybrid option") disqualifies a
+// nearby match rather than confirming it — freeform text (a snippet/
+// description) is far more likely than a location string to talk *about*
+// remote work while ruling it out. Anything that doesn't clearly say
+// remote/hybrid still defaults to onsite, same as before — this only adds
+// recognition, it never invents a category from silence.
+export function inferWorkType(location: string, extraText?: string): WorkType {
+  const haystack = `${location} ${extraText ?? ""}`;
+  const negated = /\b(no|not|non)[\s-]?(fully[\s-]?)?(remote|hybrid)\b/i;
+  const cleaned = haystack.replace(negated, " ");
+  if (/hybrid/i.test(cleaned)) return "hybrid";
+  if (/remote|work[\s-]?from[\s-]?home|\bwfh\b/i.test(cleaned)) return "remote";
   return "onsite";
 }
 
-export function finalize(job: Omit<Job, "industry" | "workType">): Job {
+export function finalize(job: Omit<Job, "industry" | "workType">, extraText?: string): Job {
   return {
     ...job,
     industry: inferIndustry(job.title, job.company),
-    workType: inferWorkType(job.location),
+    // job.title is checked here too (not just location) — plenty of real
+    // listings say "Remote Customer Support (Qatar)" in the title with a
+    // plain country name in location; extraText layers in whatever richer
+    // per-source signal finalize()'s caller has (see inferWorkType above).
+    workType: inferWorkType(job.location, `${job.title} ${extraText ?? ""}`),
     // Only fill this in when a caller hasn't already set it explicitly —
     // fetchGreenhouseJobs/fetchLeverJobs/fetchAshbyJobs know their platform
     // for certain and could set it directly, but detecting it here from the
@@ -306,7 +331,7 @@ export const FALLBACK_JOBS: Job[] = (
     { id: "demo-19", title: "Relationship Manager", company: "Bank Muscat", location: "Muscat, Oman", applyUrl: "https://www.bankmuscat.com/en/about/humanresources", applyType: "external" },
     { id: "demo-20", title: "Ground Operations Officer", company: "Oman Air", location: "Muscat, Oman", applyUrl: "https://www.omanair.com/en/careers", applyType: "external" },
   ] satisfies Omit<Job, "industry" | "workType">[]
-).map(finalize);
+).map((job) => finalize(job));
 
 export async function fetchGreenhouseJobs(slug: string, host: string, company?: string): Promise<Job[]> {
   try {

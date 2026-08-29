@@ -21,6 +21,12 @@ type JoobleJob = {
   company?: string;
   location?: string;
   link?: string;
+  // Jooble's own brief description snippet — never displayed in this app,
+  // but the free-text description a genuinely remote/hybrid Gulf listing is
+  // far more likely to actually say so in, since Jooble's `location` field
+  // for a country-scoped search is otherwise just the plain country name
+  // (see inferWorkType's comment in lib/jobSources.ts).
+  snippet?: string;
 };
 
 export async function fetchJoobleJobsPage(
@@ -44,14 +50,17 @@ export async function fetchJoobleJobsPage(
     const data = await res.json();
     const jobs: JoobleJob[] = data.jobs ?? [];
     return jobs.map((j, idx) =>
-      finalize({
-        id: `jooble-${location}-p${page}-${j.id ?? idx}`,
-        title: j.title ?? "Untitled role",
-        company: j.company || "—",
-        location: j.location || location,
-        applyUrl: j.link ?? "#",
-        applyType: "external" as const,
-      })
+      finalize(
+        {
+          id: `jooble-${location}-p${page}-${j.id ?? idx}`,
+          title: j.title ?? "Untitled role",
+          company: j.company || "—",
+          location: j.location || location,
+          applyUrl: j.link ?? "#",
+          applyType: "external" as const,
+        },
+        j.snippet
+      )
     );
   } catch {
     return [];
@@ -121,6 +130,17 @@ type SerpApiJobResult = {
   via?: string;
   apply_options?: { title?: string; link?: string }[];
   share_link?: string;
+  // Google Jobs' own remote-work signal — much more reliable than scanning
+  // `location` text, since Google derives it from the actual posting rather
+  // than us guessing from a country-scoped search's location string. Not
+  // present on every result (SerpApi's own extraction of it is imperfect),
+  // so this is a bonus signal layered on top of the title/location check in
+  // inferWorkType, never the only one relied on.
+  detected_extensions?: { work_from_home?: boolean; schedule_type?: string };
+  // Human-readable labels mirroring detected_extensions (e.g. "Work from
+  // home") — checked as free text too, since it can carry a signal even
+  // when detected_extensions.work_from_home itself is missing.
+  extensions?: string[];
 };
 
 export type SerpApiPageResult = { jobs: Job[]; nextPageToken?: string };
@@ -157,14 +177,25 @@ export async function fetchSerpApiJobs(
     const jobs = results.map((j, idx) => {
       const applyUrl = j.apply_options?.[0]?.link ?? j.share_link ?? "#";
       const sourceBoard = j.via?.replace(/^via\s+/i, "").trim();
-      return finalize({
-        id: `serpapi-${location}-${nextPageToken ? "p2-" : ""}${j.job_id ?? idx}`,
-        title: j.title ?? "Untitled role",
-        company: (j.company_name || sourceBoard) || "—",
-        location: j.location || location,
-        applyUrl,
-        applyType: "external" as const,
-      });
+      // Google's own detection beats a keyword scan when it's present —
+      // fold it into plain text alongside the extensions labels so
+      // inferWorkType's single regex pass picks it up the same way it
+      // would pick up "remote" appearing anywhere else.
+      const extraText = [
+        j.detected_extensions?.work_from_home ? "remote work from home" : "",
+        ...(j.extensions ?? []),
+      ].join(" ");
+      return finalize(
+        {
+          id: `serpapi-${location}-${nextPageToken ? "p2-" : ""}${j.job_id ?? idx}`,
+          title: j.title ?? "Untitled role",
+          company: (j.company_name || sourceBoard) || "—",
+          location: j.location || location,
+          applyUrl,
+          applyType: "external" as const,
+        },
+        extraText
+      );
     });
     const token: string | undefined = data.serpapi_pagination?.next_page_token;
     return { jobs, nextPageToken: token };
