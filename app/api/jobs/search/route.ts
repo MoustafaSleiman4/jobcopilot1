@@ -65,11 +65,18 @@ export async function GET(request: NextRequest) {
   const exactPhrase = request.nextUrl.searchParams.get("exact") === "1";
   const locationFilter = request.nextUrl.searchParams.get("location") ?? "";
   const industryFilter = request.nextUrl.searchParams.get("industry") ?? "";
+  // Comma-separated so a search can ask for more than one work type at once
+  // (e.g. "workType=remote,onsite") — combined with `location` as an AND,
+  // while the work types themselves are OR'd together, giving a compound
+  // search like "Lebanon AND (remote OR onsite)" instead of being limited to
+  // exactly one work type per search.
   const workTypeParam = request.nextUrl.searchParams.get("workType") ?? "";
-  const workTypeFilter: WorkType | "" =
-    workTypeParam === "remote" || workTypeParam === "hybrid" || workTypeParam === "onsite"
-      ? workTypeParam
-      : "";
+  const workTypeFilters: WorkType[] = workTypeParam
+    ? workTypeParam
+        .split(",")
+        .map((w) => w.trim())
+        .filter((w): w is WorkType => w === "remote" || w === "hybrid" || w === "onsite")
+    : [];
   const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? "0");
   const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
 
@@ -170,7 +177,7 @@ export async function GET(request: NextRequest) {
     const cached = await getCachedJobs(admin, {
       location: locationFilter || undefined,
       industry: industryFilter || undefined,
-      workType: workTypeFilter || undefined,
+      workType: workTypeFilters.length ? workTypeFilters : undefined,
     });
     realJobs = realJobs.concat(cached);
   } catch {
@@ -261,8 +268,8 @@ export async function GET(request: NextRequest) {
     jobs = jobs.filter((j) => j.industry === industryFilter);
   }
 
-  if (workTypeFilter) {
-    jobs = jobs.filter((j) => j.workType === workTypeFilter);
+  if (workTypeFilters.length) {
+    jobs = jobs.filter((j) => workTypeFilters.includes(j.workType));
   }
 
   // Newest posting first, always — Job Search's one sort order, regardless
