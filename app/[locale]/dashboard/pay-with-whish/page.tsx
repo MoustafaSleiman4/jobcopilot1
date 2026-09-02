@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Wallet, CheckCircle2, Loader2, ArrowLeft, ShieldAlert } from "lucide-react";
+import { Wallet, CheckCircle2, Loader2, ArrowLeft, Copy, Check } from "lucide-react";
 import { useAuthUser } from "@/lib/useAuthUser";
 import type { PlanId } from "@/lib/billing";
 
@@ -12,40 +12,46 @@ import type { PlanId } from "@/lib/billing";
  * Manual "pay Pro via Whish" flow for Lebanese users — see
  * lib/billing/whish-links.ts for why this exists instead of an automated
  * checkout. Reached from the Pro card's "Pay with Whish (Lebanon)" link on
- * /pricing. WHISH_MONTHLY_LINK / WHISH_YEARLY_LINK are read server-side by
- * /api/billing/whish/links so the actual URLs never need to ship to the
- * client bundle unconfigured; if neither is set yet, this page says so
- * plainly instead of showing a dead button.
+ * /pricing.
+ *
+ * There's no Whish merchant/payment-link integration yet (see
+ * lib/billing/whish-links.ts), so this collects payment the low-tech way:
+ * the user sends a fixed amount directly to the owner's personal Whish
+ * number, puts their account email in the transfer description so it can be
+ * matched by hand, then hits "I've paid" to notify the admin, who confirms
+ * receipt in their own Whish wallet and approves the claim at /admin/whish
+ * (app/api/billing/whish/claim + admin/whish confirm — unchanged).
  */
+const WHISH_NUMBER = "03835512";
+const WHISH_AMOUNT: Record<PlanId, string> = {
+  monthly: "$10",
+  yearly: "$100",
+};
+
 function PayWithWhishContent() {
   const t = useTranslations("whish");
   const searchParams = useSearchParams();
   const { user, loading: checkingSession } = useAuthUser();
   const planId: PlanId = searchParams.get("plan") === "yearly" ? "yearly" : "monthly";
+  const amount = WHISH_AMOUNT[planId];
 
-  const [links, setLinks] = useState<{ monthly?: string; yearly?: string } | null>(null);
   const [note, setNote] = useState("");
   const [claimed, setClaimed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/billing/whish/links")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setLinks(data);
-      })
-      .catch(() => {
-        if (!cancelled) setLinks({});
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const paymentLink = links ? links[planId] : undefined;
-  const configured = Boolean(paymentLink);
+  async function handleCopyNumber() {
+    try {
+      await navigator.clipboard.writeText(WHISH_NUMBER);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API can be unavailable (permissions, non-secure context);
+      // the number is also shown as plain selectable text, so this is a
+      // silent no-op rather than an error state.
+    }
+  }
 
   async function handleClaim() {
     if (!user) return;
@@ -69,7 +75,7 @@ function PayWithWhishContent() {
     }
   }
 
-  if (checkingSession || links === null) {
+  if (checkingSession) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-foreground/40" />
@@ -97,26 +103,45 @@ function PayWithWhishContent() {
           </div>
         </div>
 
-        {!configured ? (
-          <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-gold-400/50 bg-gold-50 p-4 text-sm text-foreground/80">
-            <ShieldAlert className="mt-0.5 h-4 w-4 flex-none text-gold-600" />
-            <p>{t("notConfigured")}</p>
-          </div>
-        ) : claimed ? (
+        {claimed ? (
           <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
             <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
             <p>{t("claimSubmitted")}</p>
           </div>
         ) : (
           <>
+            {/* Amount + number, front and center — this is the whole payment
+                method (no hosted checkout to hand off to), so it has to be
+                the thing a user can't miss, not buried inside step 1. */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">{t("amountLabel")}</p>
+                <p className="mt-1 text-2xl font-extrabold text-foreground">{amount}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">{t("numberLabel")}</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="text-2xl font-extrabold text-foreground" dir="ltr">{WHISH_NUMBER}</p>
+                  <button
+                    type="button"
+                    onClick={handleCopyNumber}
+                    className="flex flex-none items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-foreground/60 transition-colors hover:bg-sand-100"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? t("copiedNumber") : t("copyNumber")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <ol className="mt-6 space-y-4 text-sm text-foreground/80">
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">1</span>
-                <span>{t("step1")}</span>
+                <span>{t("step1", { amount, number: WHISH_NUMBER })}</span>
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">2</span>
-                <span>{t("step2")}</span>
+                <span>{t("step2", { email: user?.email ?? "" })}</span>
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">3</span>
@@ -124,15 +149,9 @@ function PayWithWhishContent() {
               </li>
             </ol>
 
-            <a
-              href={paymentLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-            >
-              <Wallet className="h-4 w-4" />
-              {t("openWhish")}
-            </a>
+            <p className="mt-4 rounded-xl border border-gold-400/50 bg-gold-50 p-3 text-xs text-foreground/80">
+              {t("descriptionWarning")}
+            </p>
 
             <div className="mt-6 border-t border-border pt-6">
               <label className="block text-sm font-medium text-foreground">{t("noteLabel")}</label>
@@ -153,7 +172,6 @@ function PayWithWhishContent() {
                 {t("iPaidCta")}
               </button>
               {error && <p className="mt-3 text-center text-xs text-red-600">{error}</p>}
-              <p className="mt-3 text-center text-xs text-foreground/40">{t("verificationNote")}</p>
             </div>
           </>
         )}
