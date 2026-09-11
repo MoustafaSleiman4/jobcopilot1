@@ -108,6 +108,13 @@ export async function POST(request: NextRequest) {
             provider: provider.name,
             plan: event.plan,
             status: "active",
+            // periodEnd (Unix seconds) comes from the provider's own
+            // subscription/invoice data — see lib/billing/provider.ts. When
+            // a provider or event doesn't supply one, explicitly clear
+            // renews_at (rather than leaving a stale date from a previous
+            // upsert in place) so the dashboard never shows an expiry date
+            // we're not actually sure is still correct.
+            renews_at: event.periodEnd ? new Date(event.periodEnd * 1000).toISOString() : null,
           },
           { onConflict: "user_id" }
         );
