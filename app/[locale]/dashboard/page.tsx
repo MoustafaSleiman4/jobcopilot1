@@ -1,6 +1,7 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getPlanStatus, type PlanBillingRow } from "@/lib/planStatus";
 import { FileText, Send, CalendarCheck, Users, ArrowUpRight } from "lucide-react";
 
 type RecentApplication = {
@@ -23,6 +24,7 @@ async function loadDashboardData() {
       return {
         configured: true as const,
         plan: "free" as const,
+        billing: null as PlanBillingRow | null,
         resumes: 0,
         applications: 0,
         interviews: 0,
@@ -38,6 +40,7 @@ async function loadDashboardData() {
       { count: interviewCount },
       { data: connectionsCount },
       { data: recentRows },
+      { data: subscription },
     ] = await Promise.all([
       supabase.from("profiles").select("plan, full_name").eq("id", user.id).single(),
       supabase.from("resumes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
@@ -59,12 +62,19 @@ async function loadDashboardData() {
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
         .limit(4),
+      // Powers the "expires on" / "renews on" line next to the plan pill
+      // below — see lib/planStatus.ts for what turns this raw row into a
+      // user-facing message.
+      supabase.from("subscriptions").select("provider, status, renews_at").eq("user_id", user.id).maybeSingle(),
     ]);
 
     return {
       configured: true as const,
       plan: (profile?.plan === "pro" ? "pro" : "free") as "free" | "pro",
       fullName: profile?.full_name as string | null | undefined,
+      billing: subscription
+        ? ({ provider: subscription.provider, status: subscription.status, renewsAt: subscription.renews_at } as PlanBillingRow)
+        : null,
       resumes: resumeCount ?? 0,
       applications: applicationCount ?? 0,
       interviews: interviewCount ?? 0,
@@ -76,6 +86,7 @@ async function loadDashboardData() {
     return {
       configured: false as const,
       plan: "free" as const,
+      billing: null as PlanBillingRow | null,
       resumes: 0,
       applications: 0,
       interviews: 0,
@@ -94,6 +105,9 @@ export default async function DashboardOverviewPage({
   const tApps = await getTranslations("dashboard.applications");
   const data = await loadDashboardData();
   const { upgraded } = await searchParams;
+  const locale = await getLocale();
+  const dateFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  const planStatus = getPlanStatus(data.plan, data.billing);
 
   const stats = [
     { key: "statResumes", value: data.resumes, icon: FileText },
@@ -121,17 +135,47 @@ export default async function DashboardOverviewPage({
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="mt-1 text-sm text-foreground/60">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2.5">
-          <span className="text-sm font-medium text-foreground/70">
-            {data.plan === "pro" ? t("planPro") : t("planFree")}
-          </span>
-          {data.plan !== "pro" && (
-            <Link
-              href="/pricing"
-              className="rounded-full bg-gold-400 px-4 py-1.5 text-xs font-bold text-emerald-900 hover:bg-gold-500"
+        <div className="rounded-xl border border-border bg-surface px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-foreground/70">
+              {data.plan === "pro" ? t("planPro") : t("planFree")}
+            </span>
+            {data.plan !== "pro" && (
+              <Link
+                href="/pricing"
+                className="rounded-full bg-gold-400 px-4 py-1.5 text-xs font-bold text-emerald-900 hover:bg-gold-500"
+              >
+                {t("upgrade")}
+              </Link>
+            )}
+            {planStatus.kind === "expiring" && (
+              <Link
+                href="/pricing"
+                className="rounded-full bg-gold-400 px-4 py-1.5 text-xs font-bold text-emerald-900 hover:bg-gold-500"
+              >
+                {t("planRenewNow")}
+              </Link>
+            )}
+          </div>
+          {/* Same expiry/renewal detail as the account-menu badge (see
+              components/DashboardShell.tsx) — repeated here because this
+              pill is the one plan indicator every user sees the instant
+              they land on the dashboard, not just after opening the account
+              menu. */}
+          {planStatus.kind !== "free" && (
+            <p
+              className={`mt-1 text-xs ${
+                planStatus.kind === "pastDue" ? "font-semibold text-red-600" : "text-foreground/50"
+              }`}
             >
-              {t("upgrade")}
-            </Link>
+              {planStatus.kind === "autoRenewing" &&
+                t("planRenewsOn", { date: dateFormatter.format(new Date(planStatus.renewsAt!)) })}
+              {planStatus.kind === "autoRenewingUnknownDate" && t("planRenewsAuto")}
+              {planStatus.kind === "pastDue" && t("planPastDue")}
+              {planStatus.kind === "expiring" &&
+                t("planExpiresOn", { date: dateFormatter.format(new Date(planStatus.renewsAt!)) })}
+              {planStatus.kind === "indefinite" && t("planComplimentary")}
+            </p>
           )}
         </div>
       </div>
