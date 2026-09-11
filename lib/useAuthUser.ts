@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { PlanBillingRow } from "@/lib/planStatus";
 
 export type AuthUser = {
   id: string;
@@ -20,6 +21,12 @@ export type AuthUser = {
   // in the job-seeker dashboard's account menu without showing it to every
   // job seeker who has never touched the employer side.
   hasCompany: boolean;
+  // Null for free users, or anyone with no public.subscriptions row (e.g. a
+  // plan flipped by hand with no matching row — see lib/planStatus.ts,
+  // which treats that the same as an indefinite manual grant). Feeds the
+  // "expires on" / "renews on" line in the account menu — see
+  // components/DashboardShell.tsx.
+  billing: PlanBillingRow | null;
 };
 
 /**
@@ -54,9 +61,18 @@ export function useAuthUser() {
         // Run in parallel — the company lookup is a cheap `select id` (RLS
         // allows anyone to read public.companies) and shouldn't add latency
         // on top of the profile fetch every dashboard load already does.
-        const [{ data: profile }, { data: company }] = await Promise.all([
+        // The subscriptions lookup is the same story: it's a single-row,
+        // own-row-only select (RLS: auth.uid() = user_id) and simply comes
+        // back empty for free users, so it's cheap to always fetch here
+        // rather than conditioning it on plan === "pro" first.
+        const [{ data: profile }, { data: company }, { data: subscription }] = await Promise.all([
           supabase.from("profiles").select("full_name, phone, plan, avatar_url").eq("id", authedUser.id).single(),
           supabase.from("companies").select("id").eq("owner_id", authedUser.id).maybeSingle(),
+          supabase
+            .from("subscriptions")
+            .select("provider, status, renews_at")
+            .eq("user_id", authedUser.id)
+            .maybeSingle(),
         ]);
         if (cancelled) return;
 
@@ -68,6 +84,9 @@ export function useAuthUser() {
           plan: profile?.plan === "pro" ? "pro" : "free",
           avatarUrl: profile?.avatar_url ?? null,
           hasCompany: Boolean(company),
+          billing: subscription
+            ? { provider: subscription.provider, status: subscription.status, renewsAt: subscription.renews_at }
+            : null,
         });
       } catch {
         if (!cancelled) setConfigured(false);
