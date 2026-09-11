@@ -82,12 +82,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Whish has no webhook — this manual confirm is the only signal the app
+    // ever gets that payment happened, and there's nothing that will fire
+    // again automatically a month/year from now. So unlike Stripe/Lemon
+    // Squeezy (which report their own real renewal date), this app has to
+    // compute one itself: the user paid for one billing period starting
+    // now, and will need to pay again (a new Whish payment + a new claim)
+    // after it ends to keep Pro. Surfacing that date is exactly what lets
+    // the dashboard warn them before access actually lapses.
+    const renewsAt = new Date();
+    if (claim.plan === "yearly") {
+      renewsAt.setFullYear(renewsAt.getFullYear() + 1);
+    } else {
+      renewsAt.setMonth(renewsAt.getMonth() + 1);
+    }
     await admin.from("subscriptions").upsert(
       {
         user_id: claim.user_id,
         provider: "whish",
         plan: claim.plan,
         status: "active",
+        renews_at: renewsAt.toISOString(),
       },
       { onConflict: "user_id" }
     );
