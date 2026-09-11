@@ -38,9 +38,15 @@ export interface BillingProvider {
 }
 
 export type NormalizedBillingEvent =
-  | { type: "subscription.created"; userId: string; plan: PlanId }
-  | { type: "subscription.renewed"; userId: string; plan: PlanId }
+  | { type: "subscription.created"; userId: string; plan: PlanId; periodEnd?: number }
+  | { type: "subscription.renewed"; userId: string; plan: PlanId; periodEnd?: number }
   | { type: "subscription.cancelled"; userId: string };
+
+// periodEnd (when present) is a Unix timestamp, in seconds, for when this
+// billing period ends / the next automatic charge happens — written into
+// public.subscriptions.renews_at so the dashboard can show users a real
+// expiry/renewal date instead of leaving it blank forever (see
+// app/api/billing/webhook/route.ts).
 
 export const PLAN_PRICES: Record<PlanId, { amount: number; currency: "USD"; label: string }> = {
   monthly: { amount: 9.99, currency: "USD", label: "$9.99 / month" },

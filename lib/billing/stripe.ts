@@ -48,6 +48,29 @@ function verifyStripeSignature(rawBody: string, header: string, secret: string):
 }
 
 /**
+ * Looks up a Stripe Subscription's current_period_end (Unix seconds) —
+ * used right after checkout.session.completed, which doesn't include it on
+ * the Session object itself. Returns undefined on any failure (missing
+ * secret key, missing subscription id, network/API error) so a lookup
+ * failure never blocks the upgrade itself, just leaves renews_at unset
+ * until the next webhook event fills it in.
+ */
+async function fetchStripeSubscriptionPeriodEnd(subscriptionId: string | undefined): Promise<number | undefined> {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey || !subscriptionId) return undefined;
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return typeof data.current_period_end === "number" ? data.current_period_end : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Stripe as a drop-in alternative to Lemon Squeezy (see plan doc §3).
  * Fill in STRIPE_SECRET_KEY and the price IDs in .env.local, then flip
  * getBillingProvider() in ./index.ts to use this instead.
@@ -140,7 +163,15 @@ export const stripeProvider: BillingProvider = {
         console.error("Stripe webhook: checkout.session.completed missing metadata.user_id/plan_id");
         return null;
       }
-      const result: NormalizedBillingEvent = { type: "subscription.created", userId, plan };
+      // The Checkout Session object itself doesn't carry the subscription's
+      // billing period — only the Subscription object does. Fetch it so the
+      // very first webhook already gives the dashboard a real "renews on"
+      // date, instead of leaving renews_at null until the first renewal a
+      // month/year later (that gap is exactly what left every existing
+      // Stripe subscriber's dashboard with no expiry date to show).
+      // Best-effort: a failed lookup here shouldn't block the upgrade itself.
+      const periodEnd = await fetchStripeSubscriptionPeriodEnd(obj.subscription as string | undefined);
+      const result: NormalizedBillingEvent = { type: "subscription.created", userId, plan, periodEnd };
       return result;
     }
 
@@ -162,7 +193,12 @@ export const stripeProvider: BillingProvider = {
         console.error("Stripe webhook: invoice.paid missing subscription metadata.user_id/plan_id");
         return null;
       }
-      const result: NormalizedBillingEvent = { type: "subscription.renewed", userId, plan };
+      // The Invoice object's own period_end is the end of the billing
+      // period this invoice just paid for — i.e. exactly the next renewal
+      // date, no extra API call needed here (unlike checkout.session.completed
+      // above).
+      const periodEnd = typeof obj.period_end === "number" ? obj.period_end : undefined;
+      const result: NormalizedBillingEvent = { type: "subscription.renewed", userId, plan, periodEnd };
       return result;
     }
 

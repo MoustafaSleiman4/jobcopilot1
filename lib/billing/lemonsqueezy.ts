@@ -88,7 +88,7 @@ export const lemonSqueezyProvider: BillingProvider = {
 
     let payload: {
       meta?: { event_name?: string; custom_data?: { user_id?: string } };
-      data?: { attributes?: { variant_id?: number | string } };
+      data?: { attributes?: { variant_id?: number | string; renews_at?: string } };
     };
     try {
       payload = JSON.parse(rawBody);
@@ -105,11 +105,17 @@ export const lemonSqueezyProvider: BillingProvider = {
 
     const variantId = String(payload.data?.attributes?.variant_id ?? "");
     const plan: PlanId = variantId === process.env.LEMONSQUEEZY_YEARLY_VARIANT_ID ? "yearly" : "monthly";
+    // Lemon Squeezy's subscription resource already includes its own next
+    // renewal date on every one of these events — no extra API call needed,
+    // unlike Stripe (see stripe.ts's fetchStripeSubscriptionPeriodEnd).
+    const renewsAtIso = payload.data?.attributes?.renews_at;
+    const renewsAtMs = renewsAtIso ? new Date(renewsAtIso).getTime() : NaN;
+    const periodEnd = Number.isFinite(renewsAtMs) ? Math.floor(renewsAtMs / 1000) : undefined;
 
     const eventMap: Record<string, NormalizedBillingEvent> = {
-      subscription_created: { type: "subscription.created", userId, plan },
-      subscription_payment_success: { type: "subscription.renewed", userId, plan },
-      subscription_resumed: { type: "subscription.renewed", userId, plan },
+      subscription_created: { type: "subscription.created", userId, plan, periodEnd },
+      subscription_payment_success: { type: "subscription.renewed", userId, plan, periodEnd },
+      subscription_resumed: { type: "subscription.renewed", userId, plan, periodEnd },
       subscription_cancelled: { type: "subscription.cancelled", userId },
       subscription_expired: { type: "subscription.cancelled", userId },
     };
