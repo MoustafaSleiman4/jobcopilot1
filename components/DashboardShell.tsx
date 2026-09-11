@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
@@ -9,6 +9,7 @@ import ChatWidget from "./ChatWidget";
 import NotificationBell from "./NotificationBell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { getPlanStatus } from "@/lib/planStatus";
 import {
   LayoutDashboard,
   FileText,
@@ -66,10 +67,13 @@ export default function DashboardShell({
   demoMode: boolean;
 }) {
   const t = useTranslations("dashboard.nav");
+  const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthUser();
   const plan = user?.plan ?? "free";
+  const planStatus = getPlanStatus(plan, user?.billing ?? null);
+  const dateFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Fire-and-forget "check if the shared job cache needs a refresh" ping,
@@ -215,6 +219,34 @@ export default function DashboardShell({
                         >
                           {plan === "pro" ? t("planPro") : t("planFree")}
                         </span>
+                        {/* Expiry/renewal detail — the whole point of
+                            tracking planStatus.kind separately from the
+                            badge above: a Pro badge alone doesn't tell
+                            someone whether it's about to auto-charge their
+                            card, or about to quietly lapse because it was a
+                            manual/gift/Whish grant with no card on file. */}
+                        {planStatus.kind !== "free" && (
+                          <p
+                            className={`mt-1 text-[11px] ${
+                              planStatus.kind === "pastDue" ? "font-semibold text-red-600" : "text-foreground/50"
+                            }`}
+                          >
+                            {planStatus.kind === "autoRenewing" &&
+                              t("planRenewsOn", { date: dateFormatter.format(new Date(planStatus.renewsAt!)) })}
+                            {planStatus.kind === "autoRenewingUnknownDate" && t("planRenewsAuto")}
+                            {planStatus.kind === "pastDue" && t("planPastDue")}
+                            {planStatus.kind === "expiring" && (
+                              <>
+                                {t("planExpiresOn", { date: dateFormatter.format(new Date(planStatus.renewsAt!)) })}
+                                {" · "}
+                                <Link href="/pricing" className="underline hover:text-foreground/70">
+                                  {t("planRenewNow")}
+                                </Link>
+                              </>
+                            )}
+                            {planStatus.kind === "indefinite" && t("planComplimentary")}
+                          </p>
+                        )}
                       </div>
                       {/* Only shown once this account actually owns a
                           company row — otherwise every job seeker would see
