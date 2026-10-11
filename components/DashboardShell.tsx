@@ -29,7 +29,49 @@ import {
   Network,
   Newspaper,
   Sparkles,
+  Sun,
+  Moon,
 } from "lucide-react";
+
+/**
+ * Light/dark toggle for the dashboard header — mirrors components/Navbar.tsx's
+ * ThemeToggle (same data-theme attribute + localStorage key). DashboardShell
+ * is a separate header from the marketing Navbar, so without this there was
+ * no way to switch back to light mode from inside the dashboard.
+ */
+function ThemeToggle() {
+  const t = useTranslations("nav");
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDark(document.documentElement.getAttribute("data-theme") === "dark");
+  }, []);
+
+  function toggle() {
+    const next = isDark ? "light" : "dark";
+    setIsDark(!isDark);
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Private browsing / storage disabled — the toggle still works for
+      // this page view, it just won't be remembered next visit.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isDark ? t("switchToLight") : t("switchToDark")}
+      title={isDark ? t("switchToLight") : t("switchToDark")}
+      className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-background text-foreground/70 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+    >
+      {isDark ? <Sun size={15} /> : <Moon size={15} />}
+    </button>
+  );
+}
 
 const navItems = [
   { key: "overview", href: "/dashboard", icon: LayoutDashboard },
@@ -178,6 +220,7 @@ export default function DashboardShell({
               <HelpCircle size={16} />
               <span className="hidden sm:inline">{t("help")}</span>
             </Link>
+            <ThemeToggle />
             <NotificationBell />
             <LocaleSwitcher />
 
