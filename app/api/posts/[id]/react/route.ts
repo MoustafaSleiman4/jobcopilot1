@@ -3,10 +3,17 @@ import { createClient as createServerSupabaseClient } from "@/lib/supabase/serve
 
 export const runtime = "nodejs";
 
+const REACTION_TYPES = new Set(["like", "celebrate", "support", "love", "insightful", "curious"]);
+
 /**
- * `post_reactions` has PK (post_id, user_id), so reacting twice raises a
- * Postgres 23505 conflict — treated as a no-op success (the caller already
- * reacted, which is the state they wanted) rather than an error.
+ * React to a post with one of six types (see
+ * supabase/network-pro-upgrade.sql's post_reactions_reaction_type_check).
+ * `post_reactions` still has PK (post_id, user_id) — one reaction PER USER
+ * per post — so this is an upsert: reacting again with a different type
+ * changes the existing row's type rather than erroring or adding a second
+ * row. The request body is optional for backward compatibility with any
+ * already-cached client build that still POSTs with no body at all — that
+ * degrades to a plain "like," matching the old boolean-like behavior.
  */
 export async function POST(
   request: Request,
@@ -21,13 +28,25 @@ export async function POST(
 
   const { id } = await params;
 
-  const { error } = await supabase.from("post_reactions").insert({ post_id: id, user_id: user.id });
+  let reactionType = "like";
+  try {
+    const payload = (await request.json()) as { type?: unknown };
+    if (typeof payload.type === "string" && REACTION_TYPES.has(payload.type)) {
+      reactionType = payload.type;
+    }
+  } catch {
+    // No/invalid JSON body — fall back to "like", see the doc comment above.
+  }
 
-  if (error && error.code !== "23505") {
+  const { error } = await supabase
+    .from("post_reactions")
+    .upsert({ post_id: id, user_id: user.id, reaction_type: reactionType }, { onConflict: "post_id,user_id" });
+
+  if (error) {
     return NextResponse.json({ error: "Could not react to post" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, type: reactionType });
 }
 
 /** Remove the caller's own reaction. RLS scopes this to `auth.uid() = user_id`. */

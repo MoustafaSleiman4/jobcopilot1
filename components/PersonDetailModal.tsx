@@ -19,6 +19,8 @@ import { Link } from "@/i18n/navigation";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import DegreeBadge from "@/components/ui/DegreeBadge";
+import OpenToWorkBadge from "@/components/ui/OpenToWorkBadge";
 import { useAuthUser } from "@/lib/useAuthUser";
 import type { PersonDetail, PersonConnectionRow } from "@/lib/social-types";
 
@@ -396,7 +398,15 @@ export default function PersonDetailModal({
                 </div>
 
                 <div className="mt-3 text-start">
-                  <h2 className="text-lg font-bold text-foreground">{detail.fullName}</h2>
+                  <Link
+                    href={`/dashboard/profile/${frame.id}`}
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1.5 hover:underline"
+                  >
+                    <h2 className="text-lg font-bold text-foreground">{detail.fullName}</h2>
+                    <DegreeBadge degree={detail.connectionDegree} />
+                  </Link>
+                  {detail.openToWork && <OpenToWorkBadge className="ms-2 inline-block" />}
                   {subtitle && <p className="mt-0.5 text-sm text-foreground/60">{subtitle}</p>}
                   {detail.country && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-foreground/50">

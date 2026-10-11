@@ -45,7 +45,7 @@ export async function GET(
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone")
+    .select("id, full_name, avatar_url, job_title, current_company, country, email, phone, show_email, show_phone, headline, open_to_work")
     .eq("id", id)
     .maybeSingle();
 
@@ -80,14 +80,15 @@ export async function GET(
     }
   }
 
-  // Both cross-user stats run in parallel — independent reads, no reason to
+  // All cross-user stats run in parallel — independent reads, no reason to
   // serialize them.
-  const [{ data: connectionsCount }, { data: mutualIds }] = await Promise.all([
+  const [{ data: connectionsCount }, { data: mutualIds }, { data: degree }] = await Promise.all([
     supabase.rpc("connection_count", { target_id: id }),
     // "Mutual connections" isn't a meaningful concept against your own
     // profile (it would just be your whole network) — skip the RPC and
     // return an empty list rather than a confusing self-intersection.
     isSelf ? Promise.resolve({ data: [] as { member_id: string }[] }) : supabase.rpc("mutual_connections", { target_id: id }),
+    isSelf ? Promise.resolve({ data: 0 }) : supabase.rpc("connection_degree", { target_id: id }),
   ]);
 
   const mutualAll = (mutualIds ?? []) as { member_id: string }[];
@@ -116,9 +117,12 @@ export async function GET(
     country: profile.country,
     email: contact.email,
     phone: contact.phone,
+    headline: (profile.headline as string | null) ?? null,
+    openToWork: Boolean(profile.open_to_work),
     connectionStatus,
     connectionId,
     connectionsCount: typeof connectionsCount === "number" ? connectionsCount : 0,
+    connectionDegree: isSelf ? 0 : ((degree as 0 | 1 | 2 | 3 | null) ?? 3),
     mutualConnectionsCount,
     mutualConnections,
   });

@@ -20,7 +20,14 @@ export function notificationHref(n: NotificationItem): string | null {
     case "post_reaction":
     case "post_comment":
     case "comment_reply":
+    case "post_mention":
+    case "post_repost":
       return n.postId ? `/dashboard/posts?postId=${n.postId}` : null;
+    case "skill_endorsement":
+      // Endorsements show up right on the profile page's Skills section —
+      // no post/connection to deep-link into, so this just opens the
+      // viewer's own profile (the self-redirect route resolves the id).
+      return "/dashboard/profile";
     case "message":
       return n.connectionId ? `/dashboard/messages?connectionId=${n.connectionId}` : null;
     case "admin_broadcast":

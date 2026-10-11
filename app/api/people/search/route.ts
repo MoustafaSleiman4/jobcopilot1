@@ -83,6 +83,34 @@ export async function GET(request: Request) {
     }
   }
 
+  // Batch degree lookup (1st/2nd/3rd) for the "N-degree connection" badge on
+  // each result row — one round trip for the whole page via
+  // connection_degrees() rather than one per person. Best-effort: a failed
+  // RPC just means every row falls back to no badge, not a broken search.
+  const degreeByOtherId = new Map<string, 0 | 1 | 2 | 3>();
+  if (ids.length > 0) {
+    const { data: degreeRows } = await supabase.rpc("connection_degrees", { target_ids: ids });
+    for (const row of (degreeRows ?? []) as { target_id: string; degree: 0 | 1 | 2 | 3 }[]) {
+      degreeByOtherId.set(row.target_id, row.degree);
+    }
+  }
+
+  // Log a search appearance for every result shown, so each matched
+  // person's own "appeared in N searches" analytics stat (see GET
+  // /api/profile/analytics) reflects real search activity. Fire-and-forget
+  // in the sense that a failure here never fails the search itself, but
+  // still awaited (not detached) since this route runs in a serverless
+  // function that may be frozen the instant the response is sent.
+  if (ids.length > 0) {
+    await supabase
+      .from("search_appearances")
+      .insert(ids.map((searchedUserId) => ({ searched_user_id: searchedUserId, searcher_id: user.id })))
+      .then(
+        () => {},
+        () => {}
+      );
+  }
+
   const items = (profiles ?? []).map((profile) => {
     const contact = visibleContact(profile as { id: string; email: string | null; phone: string | null; show_email: boolean | null; show_phone: boolean | null }, user.id);
     return {
@@ -95,6 +123,7 @@ export async function GET(request: Request) {
       email: contact.email,
       phone: contact.phone,
       connectionStatus: statusByOtherId.get(profile.id as string) ?? "none",
+      connectionDegree: degreeByOtherId.get(profile.id as string) ?? 3,
     };
   });
 

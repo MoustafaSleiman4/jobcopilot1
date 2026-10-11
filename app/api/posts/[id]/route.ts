@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
-import { deriveDisplayName } from "@/lib/displayName";
+import { shapePostRows } from "@/lib/server/postShaping";
 
 export const runtime = "nodejs";
 
@@ -30,7 +30,7 @@ export async function GET(
 
   const { data: post, error } = await supabase
     .from("posts")
-    .select("id, author_id, body, created_at, edited_at, deleted_at")
+    .select("id, author_id, body, created_at, edited_at, deleted_at, repost_of_id")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -39,51 +39,7 @@ export async function GET(
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
-  const [{ data: authorProfile }, { data: media }, { count: reactionCount }, { data: myReaction }, { count: commentCount }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, avatar_url, job_title, current_company, email")
-        .eq("id", post.author_id)
-        .maybeSingle(),
-      supabase
-        .from("post_media")
-        .select("id, media_type, storage_path, order_index")
-        .eq("post_id", post.id)
-        .order("order_index", { ascending: true }),
-      supabase.from("post_reactions").select("post_id", { count: "exact", head: true }).eq("post_id", post.id),
-      supabase.from("post_reactions").select("post_id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle(),
-      supabase
-        .from("post_comments")
-        .select("id", { count: "exact", head: true })
-        .eq("post_id", post.id)
-        .is("deleted_at", null)
-        .is("parent_comment_id", null),
-    ]);
-
-  const postItem = {
-    id: post.id,
-    body: post.body,
-    createdAt: post.created_at,
-    editedAt: post.edited_at,
-    author: {
-      id: post.author_id,
-      fullName: deriveDisplayName(authorProfile?.full_name ?? null, authorProfile?.email ?? null),
-      avatarUrl: authorProfile?.avatar_url ?? null,
-      jobTitle: authorProfile?.job_title ?? null,
-      currentCompany: authorProfile?.current_company ?? null,
-      email: null,
-      phone: null,
-    },
-    media: (media ?? []).map((m) => ({
-      mediaType: m.media_type,
-      storagePath: m.storage_path,
-      orderIndex: m.order_index,
-    })),
-    reactionCount: reactionCount ?? 0,
-    viewerHasReacted: Boolean(myReaction),
-    commentCount: commentCount ?? 0,
-  };
+  const [postItem] = await shapePostRows(supabase, [post], user.id);
 
   return NextResponse.json({ post: postItem });
 }

@@ -8,6 +8,8 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Avatar from "@/components/ui/Avatar";
+import DegreeBadge from "@/components/ui/DegreeBadge";
+import OpenToWorkBadge from "@/components/ui/OpenToWorkBadge";
 import PersonDetailModal from "@/components/PersonDetailModal";
 import type { PersonResult } from "@/lib/social-types";
 
@@ -98,7 +100,11 @@ export default function PersonCard({
       >
         <Avatar avatarUrl={person.avatarUrl} name={person.fullName} size="lg" isOnline={person.isOnline} />
         <div className="min-w-0 text-start">
-          <p className="truncate text-sm font-semibold text-foreground">{person.fullName}</p>
+          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+            <span className="truncate">{person.fullName}</span>
+            <DegreeBadge degree={person.connectionDegree} />
+          </p>
+          {person.openToWork && <OpenToWorkBadge className="mt-0.5 inline-block" />}
           {subtitle && <p className="truncate text-xs text-foreground/50">{subtitle}</p>}
           {hasMeta && (
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">

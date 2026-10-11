@@ -1,19 +1,28 @@
 import { Fragment, type ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
 
-const URL_RE = /(https?:\/\/[^\s]+)/g;
+// Combined into one alternation (rather than four separate passes) so
+// overlapping matches can't double-process the same span — e.g. a URL
+// containing a '#' fragment would otherwise also get matched by the
+// hashtag pattern on a second pass. Group order matches the branches below.
+const COMBINED_RE =
+  /(https?:\/\/[^\s]+)|(@\[[^\]]+\]\([^)]+\))|(#[a-zA-Z][a-zA-Z0-9_]{0,49})/g;
+const MENTION_PART_RE = /^@\[([^\]]+)\]\(([^)]+)\)$/;
 
 /**
- * Turns http(s):// substrings in plain text into real `<a>` tags while
- * leaving everything else as plain text run through React/JSX's normal
- * escaping. Deliberately regex-based with no HTML parsing step and no
- * `dangerouslySetInnerHTML` anywhere — post/comment bodies are untrusted
- * user input, so the only thing that can ever become markup here is a
- * same-shape `<a href="...">` this function builds itself, never a byte of
- * the original string.
+ * Turns a post/comment body's plain text into rendered content: http(s)://
+ * URLs become real links, `#hashtag` tokens become links to that hashtag's
+ * feed, and `@[Display Name](user-id)` mention markup (written by
+ * PostComposer's mention picker — see lib/postText.ts for the matching
+ * server-side extraction) becomes a link to that person's profile. Deliberately
+ * regex-based with no HTML parsing step and no `dangerouslySetInnerHTML`
+ * anywhere — post/comment bodies are untrusted user input, so the only
+ * thing that can ever become markup here is one of the fixed link shapes
+ * this function builds itself, never a byte of the original string.
  */
 export function linkifyText(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
-  const re = new RegExp(URL_RE);
+  const re = new RegExp(COMBINED_RE);
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
@@ -22,19 +31,50 @@ export function linkifyText(text: string): ReactNode[] {
     if (match.index > lastIndex) {
       nodes.push(<Fragment key={key++}>{text.slice(lastIndex, match.index)}</Fragment>);
     }
-    const url = match[0];
-    nodes.push(
-      <a
-        key={key++}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="break-all text-emerald-700 underline hover:text-emerald-800"
-      >
-        {url}
-      </a>
-    );
-    lastIndex = match.index + url.length;
+    const [whole, url, mention, hashtag] = match;
+
+    if (url) {
+      nodes.push(
+        <a
+          key={key++}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all text-emerald-700 underline hover:text-emerald-800"
+        >
+          {url}
+        </a>
+      );
+    } else if (mention) {
+      const parts = mention.match(MENTION_PART_RE);
+      if (parts) {
+        const [, name, userId] = parts;
+        nodes.push(
+          <Link
+            key={key++}
+            href={`/dashboard/profile/${userId}`}
+            className="font-semibold text-emerald-700 hover:underline"
+          >
+            @{name}
+          </Link>
+        );
+      } else {
+        nodes.push(<Fragment key={key++}>{mention}</Fragment>);
+      }
+    } else if (hashtag) {
+      const tag = hashtag.slice(1);
+      nodes.push(
+        <Link
+          key={key++}
+          href={{ pathname: "/dashboard/posts", query: { hashtag: tag.toLowerCase() } }}
+          className="font-medium text-emerald-700 hover:underline"
+        >
+          {hashtag}
+        </Link>
+      );
+    }
+
+    lastIndex = match.index + whole.length;
   }
   if (lastIndex < text.length) {
     nodes.push(<Fragment key={key++}>{text.slice(lastIndex)}</Fragment>);

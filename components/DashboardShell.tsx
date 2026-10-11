@@ -31,6 +31,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  IdCard,
 } from "lucide-react";
 
 /**
@@ -86,6 +87,10 @@ const navItems = [
   // this header, not a paid/Pro gate (the feature itself stays free).
   { key: "connections", href: "/dashboard/connections", icon: Network, highlight: true },
   { key: "posts", href: "/dashboard/posts", icon: Newspaper },
+  // Self-redirect route (app/[locale]/dashboard/profile/page.tsx) — this
+  // nav item never needs to know the viewer's own id ahead of time, it
+  // bounces straight to /dashboard/profile/[id].
+  { key: "profile", href: "/dashboard/profile", icon: IdCard },
   { key: "messages", href: "/dashboard/messages", icon: MessageSquare },
   { key: "resume", href: "/dashboard/resume", icon: FileText },
   { key: "jobs", href: "/dashboard/jobs", icon: Search },

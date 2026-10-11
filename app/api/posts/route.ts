@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
-import { deriveDisplayName } from "@/lib/displayName";
+import { shapePostRows } from "@/lib/server/postShaping";
+import { extractHashtags, extractMentionIds } from "@/lib/postText";
 
 export const runtime = "nodejs";
 
@@ -121,42 +122,36 @@ export async function POST(request: Request) {
     }
   }
 
+  // Hashtags/mentions: extracted server-side from the final saved body
+  // (not trusted from the client) — see lib/postText.ts. Both are
+  // non-fatal on failure for the same reason the media insert above is:
+  // the post itself already saved successfully.
+  const hashtags = extractHashtags(text);
+  if (hashtags.length > 0) {
+    const { error: hashtagError } = await supabase.from("post_hashtags").insert(hashtags.map((tag) => ({ post_id: post.id, tag })));
+    if (hashtagError) console.error("[posts] post_hashtags insert failed for post", post.id, hashtagError.message);
+  }
+  const mentionIds = extractMentionIds(text).filter((id) => id !== user.id);
+  if (mentionIds.length > 0) {
+    const { error: mentionError } = await supabase
+      .from("post_mentions")
+      .insert(mentionIds.map((mentionedUserId) => ({ post_id: post.id, mentioned_user_id: mentionedUserId })));
+    if (mentionError) console.error("[posts] post_mentions insert failed for post", post.id, mentionError.message);
+  }
+
   // The client feeds this response straight into the feed's PostCard list
   // (see PostComposer's onPosted callback) without a page reload, so it
   // must be a fully-shaped PostItem — the same shape GET /api/posts
   // returns — not the bare inserted row. Returning just the DB columns
   // here previously crashed PostCard on `post.author.id` (undefined),
   // which from the user's side looked exactly like "posting doesn't work"
-  // even though the row had actually saved.
-  const { data: authorProfile } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url, job_title, current_company, email")
-    .eq("id", user.id)
-    .maybeSingle();
+  // even though the row had actually saved. Now built via shapePostRows()
+  // (which involves a few extra, already-empty-for-a-brand-new-post
+  // queries like reactions/comments) rather than hand-assembled, so this
+  // response can never again drift from GET /api/posts's shape by a field.
+  const [shaped] = await shapePostRows(supabase, [{ id: post.id, author_id: user.id, body: post.body, created_at: post.created_at, edited_at: post.edited_at, repost_of_id: null }], user.id);
 
-  const postItem = {
-    id: post.id,
-    body: post.body,
-    createdAt: post.created_at,
-    editedAt: post.edited_at,
-    author: {
-      id: user.id,
-      fullName: deriveDisplayName(authorProfile?.full_name ?? null, authorProfile?.email ?? user.email ?? null),
-      avatarUrl: authorProfile?.avatar_url ?? null,
-      jobTitle: authorProfile?.job_title ?? null,
-      currentCompany: authorProfile?.current_company ?? null,
-      // Contact info is never surfaced on post authors, regardless of
-      // show_email/show_phone — the feed isn't a context that calls for it.
-      email: null,
-      phone: null,
-    },
-    media: media.map((m) => ({ mediaType: m.mediaType, storagePath: m.storagePath, orderIndex: m.orderIndex })),
-    reactionCount: 0,
-    viewerHasReacted: false,
-    commentCount: 0,
-  };
-
-  return NextResponse.json({ post: postItem }, { status: 201 });
+  return NextResponse.json({ post: shaped }, { status: 201 });
 }
 
 /**
@@ -180,14 +175,41 @@ export async function GET(request: Request) {
   const limitParam = Number(url.searchParams.get("limit"));
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : DEFAULT_LIMIT;
   const cursor = url.searchParams.get("cursor");
+  // #hashtag discovery (clicking a hashtag link — see lib/socialFormat.tsx)
+  // and "only what I've saved" (the Saved tab) both reuse this same feed
+  // query shape rather than being separate endpoints, since they're really
+  // just the normal feed with one extra filter.
+  const hashtag = (url.searchParams.get("hashtag") ?? "").trim().toLowerCase();
+  // "Posts" tab on a profile page (app/[locale]/dashboard/profile/[id]) —
+  // same feed shape, filtered to one author. Deliberately NOT restricted
+  // to reposts-excluded: a repost IS a `posts` row with this author_id, so
+  // it correctly shows up on the reposter's own profile feed, same as a
+  // plain post would.
+  const authorId = url.searchParams.get("authorId");
+
+  let postIdFilter: string[] | null = null;
+  if (hashtag) {
+    const { data: taggedRows } = await supabase.from("post_hashtags").select("post_id").eq("tag", hashtag);
+    postIdFilter = (taggedRows ?? []).map((r) => r.post_id as string);
+    if (postIdFilter.length === 0) {
+      return NextResponse.json({ items: [], nextCursor: null });
+    }
+  }
 
   let query = supabase
     .from("posts")
-    .select("id, author_id, body, created_at, edited_at, deleted_at")
+    .select("id, author_id, body, created_at, edited_at, deleted_at, repost_of_id")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit);
+
+  if (postIdFilter) {
+    query = query.in("id", postIdFilter);
+  }
+  if (authorId) {
+    query = query.eq("author_id", authorId);
+  }
 
   if (cursor) {
     const [cursorCreatedAt, cursorId] = cursor.split("_");
@@ -203,116 +225,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Could not load feed" }, { status: 500 });
   }
 
-  const postIds = (posts ?? []).map((p) => p.id as string);
-  const authorIds = Array.from(new Set((posts ?? []).map((p) => p.author_id as string)));
-
-  // The feed is visible to everyone now (see
-  // supabase/posts-open-feed-gated-comments.sql), but commenting still
-  // requires a direct (1st-degree, accepted) connection to the post's
-  // author — same computation as GET /api/people/search's
-  // statusByOtherId, scoped here to just this page's authors so
-  // PostCard/CommentThread can show a "connect to comment" prompt
-  // proactively instead of only reactively after a failed POST.
-  const connectionStatusByAuthor = new Map<string, "pending_sent" | "pending_received" | "connected">();
-  if (authorIds.length > 0) {
-    const { data: relevantConnections } = await supabase
-      .from("connections")
-      .select("requester_id, addressee_id, status")
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-      .in("status", ["pending", "accepted"]);
-    for (const row of relevantConnections ?? []) {
-      const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id;
-      if (!authorIds.includes(otherId)) continue;
-      if (row.status === "accepted") {
-        connectionStatusByAuthor.set(otherId, "connected");
-      } else if (row.status === "pending") {
-        connectionStatusByAuthor.set(otherId, row.requester_id === user.id ? "pending_sent" : "pending_received");
-      }
-    }
-  }
-
-  const [profilesRes, mediaRes, reactionsRes, myReactionsRes, commentsRes] = await Promise.all([
-    authorIds.length > 0
-      ? supabase.from("profiles").select("id, full_name, avatar_url, job_title, current_company, email").in("id", authorIds)
-      : Promise.resolve({ data: [] as never[] }),
-    postIds.length > 0
-      ? supabase.from("post_media").select("id, post_id, media_type, storage_path, order_index").in("post_id", postIds).order("order_index", { ascending: true })
-      : Promise.resolve({ data: [] as never[] }),
-    postIds.length > 0
-      ? supabase.from("post_reactions").select("post_id").in("post_id", postIds)
-      : Promise.resolve({ data: [] as never[] }),
-    postIds.length > 0
-      ? supabase.from("post_reactions").select("post_id").in("post_id", postIds).eq("user_id", user.id)
-      : Promise.resolve({ data: [] as never[] }),
-    postIds.length > 0
-      ? supabase.from("post_comments").select("post_id").in("post_id", postIds).is("deleted_at", null).is("parent_comment_id", null)
-      : Promise.resolve({ data: [] as never[] }),
-  ]);
-
-  const profilesById = new Map<string, Record<string, unknown>>();
-  for (const profile of profilesRes.data ?? []) {
-    profilesById.set((profile as Record<string, unknown>).id as string, profile as Record<string, unknown>);
-  }
-
-  const mediaByPost = new Map<string, Record<string, unknown>[]>();
-  for (const row of mediaRes.data ?? []) {
-    const postId = (row as Record<string, unknown>).post_id as string;
-    const list = mediaByPost.get(postId) ?? [];
-    list.push(row as Record<string, unknown>);
-    mediaByPost.set(postId, list);
-  }
-
-  const reactionCountByPost = new Map<string, number>();
-  for (const row of reactionsRes.data ?? []) {
-    const postId = (row as Record<string, unknown>).post_id as string;
-    reactionCountByPost.set(postId, (reactionCountByPost.get(postId) ?? 0) + 1);
-  }
-
-  const myReactedPosts = new Set((myReactionsRes.data ?? []).map((row) => (row as Record<string, unknown>).post_id as string));
-
-  const commentCountByPost = new Map<string, number>();
-  for (const row of commentsRes.data ?? []) {
-    const postId = (row as Record<string, unknown>).post_id as string;
-    commentCountByPost.set(postId, (commentCountByPost.get(postId) ?? 0) + 1);
-  }
-
-  const items = (posts ?? []).map((post) => {
-    const author = profilesById.get(post.author_id as string);
-    const media = (mediaByPost.get(post.id as string) ?? []).map((m) => ({
-      id: m.id,
-      mediaType: m.media_type,
-      storagePath: m.storage_path,
-      orderIndex: m.order_index,
-    }));
-    return {
-      id: post.id,
-      body: post.body,
-      createdAt: post.created_at,
-      editedAt: post.edited_at,
-      author: {
-        id: post.author_id,
-        fullName: deriveDisplayName(author?.full_name as string | null, author?.email as string | null),
-        avatarUrl: author?.avatar_url ?? null,
-        jobTitle: author?.job_title ?? null,
-        currentCompany: author?.current_company ?? null,
-        email: null,
-        phone: null,
-        // "connected" is the only value PostCard actually branches on
-        // (isAuthor already covers the viewer's own posts) — anything else
-        // just means "show the connect-to-comment prompt."
-        connectionStatus: connectionStatusByAuthor.get(post.author_id as string) ?? "none",
-      },
-      media,
-      reactionCount: reactionCountByPost.get(post.id as string) ?? 0,
-      // Field name must match lib/social-types.ts's PostItem.viewerHasReacted
-      // and what PostCard.tsx actually reads — this was previously named
-      // `hasReacted` here, a silent mismatch that made every post's like
-      // button reset to "not liked" on every feed load regardless of the
-      // viewer's real reaction.
-      viewerHasReacted: myReactedPosts.has(post.id as string),
-      commentCount: commentCountByPost.get(post.id as string) ?? 0,
-    };
-  });
+  const items = await shapePostRows(supabase, posts ?? [], user.id);
 
   const last = posts && posts.length > 0 ? posts[posts.length - 1] : null;
   const nextCursor = last && posts && posts.length === limit ? `${last.created_at}_${last.id}` : null;

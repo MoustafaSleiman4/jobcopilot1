@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Image as ImageIcon, Video, X, Send } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import MentionTextarea from "@/components/MentionTextarea";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import type { PostItem, PostMedia } from "@/lib/social-types";
@@ -158,9 +159,9 @@ export default function PostComposer({ onPosted }: { onPosted: (post: PostItem) 
 
   return (
     <Card>
-      <textarea
+      <MentionTextarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         placeholder={t("composerPlaceholder")}
         rows={3}
         className="w-full resize-y rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-start focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"

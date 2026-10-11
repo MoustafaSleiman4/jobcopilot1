@@ -18,6 +18,9 @@ const TYPE_KEY: Record<NotificationType, string> = {
   comment_reply: "typeCommentReply",
   message: "typeMessage",
   admin_broadcast: "typeAdminBroadcast",
+  skill_endorsement: "typeSkillEndorsement",
+  post_mention: "typePostMention",
+  post_repost: "typePostRepost",
 };
 
 export default function NotificationsPage() {
@@ -117,7 +120,9 @@ export default function NotificationsPage() {
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-foreground/90">{n.body ?? t(TYPE_KEY[n.type], { name: n.actor.fullName })}</span>
+                    <span className="block text-sm text-foreground/90">
+                      {n.body ?? t(TYPE_KEY[n.type], { name: n.actor.fullName, skill: n.skillName ?? "" })}
+                    </span>
                     <span className="mt-0.5 block text-xs text-foreground/40">{formatRelativeTime(n.createdAt, locale)}</span>
                   </span>
                 </>

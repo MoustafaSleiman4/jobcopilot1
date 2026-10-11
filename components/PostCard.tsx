@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Flag, Loader2 } from "lucide-react";
+import { MessageCircle, MoreHorizontal, Pencil, Trash2, Flag, Loader2, Bookmark, BarChart2 } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import DegreeBadge from "@/components/ui/DegreeBadge";
+import PostReactionButton from "@/components/PostReactionButton";
+import ReactionSummary from "@/components/ReactionSummary";
+import RepostMenu from "@/components/RepostMenu";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { linkifyText, formatRelativeTime } from "@/lib/socialFormat";
 import { postMediaPublicUrl } from "@/lib/postMedia";
-import type { PostItem } from "@/lib/social-types";
+import type { PostItem, ReactionType } from "@/lib/social-types";
 import CommentThread from "@/components/CommentThread";
 
 export default function PostCard({
@@ -48,9 +53,17 @@ export default function PostCard({
   const [deleting, setDeleting] = useState(false);
   const [reportState, setReportState] = useState<"idle" | "submitting" | "done">("idle");
 
-  const [liked, setLiked] = useState(post.viewerHasReacted);
+  const [reactionType, setReactionType] = useState<ReactionType | null>(post.viewerReactionType);
+  const [reactionBreakdown, setReactionBreakdown] = useState(post.reactionBreakdown);
   const [reactionCount, setReactionCount] = useState(post.reactionCount);
-  const [likeBusy, setLikeBusy] = useState(false);
+  const [reactBusy, setReactBusy] = useState(false);
+
+  const [repostBusy, setRepostBusy] = useState(false);
+  const [viewerHasReposted, setViewerHasReposted] = useState(post.viewerHasReposted);
+  const [repostCount, setRepostCount] = useState(post.repostCount);
+
+  const [saved, setSaved] = useState(post.viewerHasSaved);
+  const [saveBusy, setSaveBusy] = useState(false);
 
   const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen);
   const [commentCount, setCommentCount] = useState(post.commentCount);
@@ -60,22 +73,111 @@ export default function PostCard({
     () => post.media.map((m) => ({ ...m, url: postMediaPublicUrl(supabase.storage, m.storagePath) })),
     [post.media, supabase]
   );
+  const repostOfMediaUrls = useMemo(
+    () => (post.repostOf?.media ?? []).map((m) => ({ ...m, url: postMediaPublicUrl(supabase.storage, m.storagePath) })),
+    [post.repostOf, supabase]
+  );
 
-  async function toggleLike() {
-    if (likeBusy) return;
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setReactionCount((c) => c + (nextLiked ? 1 : -1));
-    setLikeBusy(true);
+  // Impression tracking: fires once per card per page load, the moment it's
+  // actually scrolled into view (not merely rendered — a long feed renders
+  // many cards below the fold at once) — see POST /api/posts/[id]/impression.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (reportedRef.current || !cardRef.current) return;
+    const el = cardRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !reportedRef.current) {
+          reportedRef.current = true;
+          fetch(`/api/posts/${post.id}/impression`, { method: "POST" }).catch(() => {});
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [post.id]);
+
+  async function applyReaction(type: ReactionType | null) {
+    if (reactBusy) return;
+    const prevType = reactionType;
+    const prevBreakdown = reactionBreakdown;
+    const prevCount = reactionCount;
+
+    // Optimistic update: remove the old type's tally (if any), add the new one.
+    const nextBreakdown = { ...prevBreakdown };
+    if (prevType) nextBreakdown[prevType] = Math.max(0, (nextBreakdown[prevType] ?? 1) - 1);
+    if (type) nextBreakdown[type] = (nextBreakdown[type] ?? 0) + 1;
+    setReactionType(type);
+    setReactionBreakdown(nextBreakdown);
+    setReactionCount(prevCount + (type ? 1 : 0) - (prevType ? 1 : 0));
+    setReactBusy(true);
     try {
-      const res = await fetch(`/api/posts/${post.id}/react`, { method: nextLiked ? "POST" : "DELETE" });
+      const res = type
+        ? await fetch(`/api/posts/${post.id}/react`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type }),
+          })
+        : await fetch(`/api/posts/${post.id}/react`, { method: "DELETE" });
       if (!res.ok) throw new Error("react failed");
     } catch {
-      // Roll back the optimistic update on failure.
-      setLiked(!nextLiked);
-      setReactionCount((c) => c + (nextLiked ? -1 : 1));
+      setReactionType(prevType);
+      setReactionBreakdown(prevBreakdown);
+      setReactionCount(prevCount);
     } finally {
-      setLikeBusy(false);
+      setReactBusy(false);
+    }
+  }
+
+  async function handleRepost(comment: string) {
+    if (repostBusy) return;
+    setRepostBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/repost`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment }),
+      });
+      if (!res.ok) throw new Error("repost failed");
+      setViewerHasReposted(true);
+      setRepostCount((c) => c + 1);
+    } catch (err) {
+      console.error("[posts] failed to repost:", err);
+    } finally {
+      setRepostBusy(false);
+    }
+  }
+
+  async function handleUndoRepost() {
+    if (repostBusy) return;
+    setRepostBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/repost`, { method: "DELETE" });
+      if (!res.ok) throw new Error("undo repost failed");
+      setViewerHasReposted(false);
+      setRepostCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error("[posts] failed to undo repost:", err);
+    } finally {
+      setRepostBusy(false);
+    }
+  }
+
+  async function toggleSave() {
+    if (saveBusy) return;
+    const next = !saved;
+    setSaved(next);
+    setSaveBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/save`, { method: next ? "POST" : "DELETE" });
+      if (!res.ok) throw new Error("save failed");
+    } catch {
+      setSaved(!next);
+    } finally {
+      setSaveBusy(false);
     }
   }
 
@@ -129,29 +231,50 @@ export default function PostCard({
 
   const headline = [post.author.jobTitle, post.author.currentCompany].filter(Boolean).join(" @ ");
 
+  function renderAuthorRow(author: PostItem["author"], createdAt: string, compact = false) {
+    return (
+      <div className="flex min-w-0 items-center gap-3">
+        {author.avatarUrl ? (
+          <img src={author.avatarUrl} alt="" className={`${compact ? "h-9 w-9" : "h-11 w-11"} flex-none rounded-full object-cover`} />
+        ) : (
+          <span
+            className={`flex ${compact ? "h-9 w-9" : "h-11 w-11"} flex-none items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700`}
+          >
+            {(author.fullName || "?").charAt(0).toUpperCase()}
+          </span>
+        )}
+        <div className="min-w-0 text-start">
+          <Link
+            href={`/dashboard/profile/${author.id}`}
+            className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground hover:underline"
+          >
+            <span className="truncate">{author.fullName}</span>
+            <DegreeBadge degree={author.connectionDegree} />
+          </Link>
+          {headline && !compact && <p className="truncate text-xs text-foreground/50">{headline}</p>}
+          <p className="text-xs text-foreground/40">
+            {formatRelativeTime(createdAt, locale)}
+            {post.editedAt && !compact && ` · ${t("edited")}`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card
       id={`post-${post.id}`}
+      ref={cardRef}
       className={highlighted ? "ring-2 ring-emerald-400 ring-offset-2 ring-offset-sand-100" : undefined}
     >
+      {post.repostOf && (
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-foreground/50">
+          {t("repostedLabel", { name: post.author.fullName })}
+        </p>
+      )}
+
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {post.author.avatarUrl ? (
-            <img src={post.author.avatarUrl} alt="" className="h-11 w-11 flex-none rounded-full object-cover" />
-          ) : (
-            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
-              {(post.author.fullName || "?").charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div className="min-w-0 text-start">
-            <p className="truncate text-sm font-semibold text-foreground">{post.author.fullName}</p>
-            {headline && <p className="truncate text-xs text-foreground/50">{headline}</p>}
-            <p className="text-xs text-foreground/40">
-              {formatRelativeTime(post.createdAt, locale)}
-              {post.editedAt && ` · ${t("edited")}`}
-            </p>
-          </div>
-        </div>
+        {renderAuthorRow(post.author, post.createdAt)}
 
         <div className="relative flex-none">
           <button
@@ -165,7 +288,28 @@ export default function PostCard({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute end-0 z-20 mt-2 w-44 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+              <div className="absolute end-0 z-20 mt-2 w-48 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleSave();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                >
+                  <Bookmark size={14} className={saved ? "fill-emerald-600 text-emerald-600" : undefined} />
+                  {saved ? t("unsave") : t("save")}
+                </button>
+                {isAuthor && (
+                  <Link
+                    href={{ pathname: "/dashboard/profile", query: { tab: "analytics" } }}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground/80 hover:bg-sand-100"
+                  >
+                    <BarChart2 size={14} />
+                    {t("viewAnalytics")}
+                  </Link>
+                )}
                 {isAuthor && (
                   <button
                     type="button"
@@ -231,7 +375,7 @@ export default function PostCard({
           </div>
         </div>
       ) : (
-        <p className="mt-3 whitespace-pre-wrap text-start text-sm text-foreground/90">{linkifyText(post.body)}</p>
+        post.body && <p className="mt-3 whitespace-pre-wrap text-start text-sm text-foreground/90">{linkifyText(post.body)}</p>
       )}
 
       {mediaUrls.length > 0 && (
@@ -251,18 +395,38 @@ export default function PostCard({
         </div>
       )}
 
-      <div className="mt-4 flex items-center gap-4 border-t border-border pt-3">
-        <button
-          type="button"
-          onClick={toggleLike}
-          className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
-            liked ? "text-emerald-700" : "text-foreground/60 hover:text-foreground"
-          }`}
-        >
-          <Heart size={16} className={liked ? "fill-emerald-600 text-emerald-600" : undefined} />
-          {t("like")}
-          {reactionCount > 0 && <span className="text-xs text-foreground/40">{reactionCount}</span>}
-        </button>
+      {post.repostOf && (
+        <div className="mt-3 rounded-xl border border-border p-3">
+          {post.repostOf.deleted ? (
+            <p className="text-sm text-foreground/50">{t("originalUnavailable")}</p>
+          ) : (
+            <>
+              {renderAuthorRow(post.repostOf.author, post.repostOf.createdAt, true)}
+              {post.repostOf.body && <p className="mt-2 whitespace-pre-wrap text-start text-sm text-foreground/80">{linkifyText(post.repostOf.body)}</p>}
+              {repostOfMediaUrls.length > 0 && (
+                <div className={`mt-2 overflow-hidden rounded-lg ${repostOfMediaUrls.length > 1 ? "grid grid-cols-2 gap-1" : ""}`}>
+                  {repostOfMediaUrls.map((m) =>
+                    m.mediaType === "video" ? (
+                      <video key={m.storagePath} src={m.url} controls className="max-h-64 w-full bg-black" />
+                    ) : (
+                      <img key={m.storagePath} src={m.url} alt="" className={`w-full object-cover ${repostOfMediaUrls.length === 1 ? "max-h-64" : "aspect-square"}`} />
+                    )
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {reactionCount > 0 && (
+        <div className="mt-3 flex justify-end">
+          <ReactionSummary breakdown={reactionBreakdown} total={reactionCount} />
+        </div>
+      )}
+
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-3">
+        <PostReactionButton current={reactionType} onPick={applyReaction} onClear={() => applyReaction(null)} />
         <button
           type="button"
           onClick={() => setCommentsOpen((v) => !v)}
@@ -272,6 +436,7 @@ export default function PostCard({
           {t("comment")}
           {commentCount > 0 && <span className="text-xs text-foreground/40">{commentCount}</span>}
         </button>
+        <RepostMenu repostCount={repostCount} viewerHasReposted={viewerHasReposted} busy={repostBusy} onRepost={handleRepost} onUndoRepost={handleUndoRepost} />
       </div>
 
       {commentsOpen && (
