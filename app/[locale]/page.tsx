@@ -12,6 +12,8 @@ import SocialActivityStrip from "@/components/SocialActivityStrip";
 import { SOCIAL_LINKS } from "@/components/SocialLinks";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import StatCounters, { type Stat } from "@/components/StatCounters";
+import { getHomeStats } from "@/lib/homeStats";
 import {
   FileText,
   Search,
@@ -124,6 +126,37 @@ export default async function HomePage({
   const regions = t.raw("regions") as string[];
   const testimonials = t.raw("testimonials.items") as { quote: string; role: string; location: string }[];
 
+  // Real counts (public.retrieved_jobs / applications / profiles) for the
+  // hero's "count up on scroll" stats below — null whenever that query
+  // isn't possible in this environment (see lib/homeStats.ts), in which
+  // case StatCounters falls back to the labeled approximate copy instead of
+  // an animated number. Only plain, serializable values (strings/numbers)
+  // go into `heroStats` — it crosses the Server->Client boundary into
+  // StatCounters, which resolves each stat's icon itself by `key`.
+  const homeStats = await getHomeStats();
+  const heroStats: Stat[] = [
+    {
+      key: "jobsTracked",
+      value: homeStats?.jobsTracked ?? 0,
+      approxText: t("stats.jobsTrackedApprox"),
+    },
+    {
+      key: "applicationsSent",
+      value: homeStats?.applicationsSent ?? 0,
+      approxText: t("stats.applicationsSentApprox"),
+    },
+    {
+      key: "members",
+      value: homeStats?.members ?? 0,
+      approxText: t("stats.membersApprox"),
+    },
+  ];
+  const statLabels = {
+    jobsTracked: t("stats.jobsTracked"),
+    applicationsSent: t("stats.applicationsSent"),
+    members: t("stats.members"),
+  };
+
   // Organization + SoftwareApplication structured data so search engines can
   // show a richer result (name, description, pricing) instead of just a
   // plain blue link — see https://developers.google.com/search/docs/appearance/structured-data.
@@ -173,7 +206,27 @@ export default async function HomePage({
             Placed as the very first thing on the page — above the hero's
             headline — so it's the first thing a visitor sees, not something
             that requires scrolling past the hero to find. */}
-        <section className="bg-background py-6 sm:py-8">
+        <section className="relative overflow-hidden bg-background py-6 sm:py-8">
+          {/* Subtle animated gradient mesh behind the live job feed strip —
+              three large, blurred, slow-drifting color blobs (pure CSS
+              keyframes, see .jobfeed-mesh-orb in app/globals.css; no new
+              dependency). `-z-10` keeps it strictly behind the heading and
+              the 3D job cards; `overflow-hidden` on the section clips it so
+              it never pushes the page wider on small screens. */}
+          <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+            <div
+              className="orb jobfeed-mesh-orb absolute -left-16 top-0 h-56 w-56 sm:h-72 sm:w-72"
+              style={{ background: "var(--emerald-400)", opacity: 0.16 }}
+            />
+            <div
+              className="orb jobfeed-mesh-orb absolute right-0 top-1/3 h-48 w-48 sm:h-64 sm:w-64"
+              style={{ background: "var(--gold-400)", opacity: 0.14, animationDirection: "reverse" }}
+            />
+            <div
+              className="orb jobfeed-mesh-orb absolute bottom-0 left-1/3 h-40 w-40 sm:h-56 sm:w-56"
+              style={{ background: "var(--emerald-500)", opacity: 0.1 }}
+            />
+          </div>
           <div className="mx-auto max-w-6xl px-6">
             <ScrollReveal>
               <p className="text-center text-xs font-bold uppercase tracking-wide text-gold-600 sm:text-sm">
@@ -192,7 +245,7 @@ export default async function HomePage({
               animation itself doesn't) — the cards should visibly travel
               edge-to-edge, not be boxed into the same reading column as the
               text. */}
-          <ScrollReveal delay={150} className="mt-3">
+          <ScrollReveal delay={150} className="relative mt-3">
             <JobsShowcase />
           </ScrollReveal>
         </section>
@@ -236,6 +289,14 @@ export default async function HomePage({
             </ScrollReveal>
             <ScrollReveal delay={600}>
               <p className="mt-4 text-xs text-foreground/50 sm:text-sm">{t("trustedBy")}</p>
+            </ScrollReveal>
+
+            {/* Stat counters — count up on scroll into view (see
+                components/StatCounters.tsx), backed by real counts from
+                public.retrieved_jobs / applications / profiles computed
+                server-side in lib/homeStats.ts. */}
+            <ScrollReveal delay={680}>
+              <StatCounters stats={heroStats} labels={statLabels} />
             </ScrollReveal>
 
             <ScrollReveal delay={750}>

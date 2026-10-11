@@ -1,13 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import { LayoutDashboard, LogOut, Menu, X, Tag, Briefcase } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, Tag, Briefcase, Sun, Moon } from "lucide-react";
 import Logo from "./Logo";
 import LocaleSwitcher from "./LocaleSwitcher";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Light/dark toggle — flips `document.documentElement.dataset.theme` (which
+ * app/globals.css's `:root[data-theme="dark"]` block reads) and remembers
+ * the choice in localStorage. `isDark` always starts `false` on both the
+ * server and the client's first render (same SSR-safety discipline as
+ * components/ScrollReveal.tsx) so there's nothing for React's hydration
+ * check to disagree with; the mount effect below then reads the *actual*
+ * theme the blocking script in app/[locale]/layout.tsx already applied
+ * before paint (localStorage choice, else OS preference) and syncs this
+ * button's icon to it. Lives inline in Navbar rather than its own file
+ * since it's a few lines and only ever rendered here, twice (desktop +
+ * mobile panel), sharing this one bit of state.
+ */
+function ThemeToggle({ className = "" }: { className?: string }) {
+  const t = useTranslations("nav");
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Mount effect syncing from an external system (the `data-theme`
+    // attribute the blocking script in app/[locale]/layout.tsx already set
+    // on <html> before paint) — same deliberate one-time synchronous
+    // setState as components/ScrollReveal.tsx's matchMedia check, and the
+    // same reason it's safe here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDark(document.documentElement.getAttribute("data-theme") === "dark");
+  }, []);
+
+  function toggle() {
+    const next = isDark ? "light" : "dark";
+    setIsDark(!isDark);
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Private browsing / storage disabled — the toggle still works for
+      // this page view, it just won't be remembered next visit.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isDark ? t("switchToLight") : t("switchToDark")}
+      title={isDark ? t("switchToLight") : t("switchToDark")}
+      className={`flex h-10 w-10 flex-none items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:border-emerald-300 hover:text-emerald-700 ${className}`}
+    >
+      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+    </button>
+  );
+}
 
 export default function Navbar() {
   const t = useTranslations("nav");
@@ -76,6 +128,7 @@ export default function Navbar() {
           >
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
+          <ThemeToggle />
           <LocaleSwitcher />
 
           {/* While the session check is in flight, default to the logged-out

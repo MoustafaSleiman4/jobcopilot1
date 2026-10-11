@@ -2,6 +2,8 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPlanStatus, type PlanBillingRow } from "@/lib/planStatus";
+import ProfileCompletenessMeter, { type ChecklistItem } from "@/components/ProfileCompletenessMeter";
+import type { StructuredResume } from "@/lib/resume-types";
 import { FileText, Send, CalendarCheck, Users, ArrowUpRight } from "lucide-react";
 
 type RecentApplication = {
@@ -9,6 +11,19 @@ type RecentApplication = {
   title: string;
   company: string;
   status: string;
+};
+
+// What the profile-completeness meter checks — every flag is read straight
+// off a real column (see loadDashboardData() below), never guessed or
+// randomized. Kept as its own type so the "5 items = 20% each" math in
+// ProfileCompletenessMeter and the actual fields read here can't silently
+// drift apart.
+type ProfileCompleteness = {
+  hasFullName: boolean;
+  hasTargetRoles: boolean;
+  hasResume: boolean;
+  hasSkills: boolean;
+  hasPhoto: boolean;
 };
 
 async function loadDashboardData() {
@@ -20,6 +35,14 @@ async function loadDashboardData() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    const EMPTY_COMPLETENESS: ProfileCompleteness = {
+      hasFullName: false,
+      hasTargetRoles: false,
+      hasResume: false,
+      hasSkills: false,
+      hasPhoto: false,
+    };
+
     if (!user) {
       return {
         configured: true as const,
@@ -30,6 +53,7 @@ async function loadDashboardData() {
         interviews: 0,
         connections: 0,
         recent: [] as RecentApplication[],
+        completeness: EMPTY_COMPLETENESS,
       };
     }
 
@@ -41,8 +65,9 @@ async function loadDashboardData() {
       { data: connectionsCount },
       { data: recentRows },
       { data: subscription },
+      { data: primaryResume },
     ] = await Promise.all([
-      supabase.from("profiles").select("plan, full_name").eq("id", user.id).single(),
+      supabase.from("profiles").select("plan, full_name, target_roles, avatar_url").eq("id", user.id).single(),
       supabase.from("resumes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("applications").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase
@@ -66,7 +91,31 @@ async function loadDashboardData() {
       // below — see lib/planStatus.ts for what turns this raw row into a
       // user-facing message.
       supabase.from("subscriptions").select("provider, status, renews_at").eq("user_id", user.id).maybeSingle(),
+      // The user's primary (or most recently updated) resume, read only for
+      // its `content.structured.skills` — same "primary first, else latest"
+      // ordering lib/autoApplyRun.ts's scoreJob() matching uses, so "has a
+      // usable resume" means the same thing here as it does there. Powers
+      // the profile-completeness meter's "resume uploaded" / "skills
+      // listed" checklist items below — see ProfileCompleteness.
+      supabase
+        .from("resumes")
+        .select("content")
+        .eq("user_id", user.id)
+        .order("is_primary", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
+
+    const structured = (primaryResume?.content as { structured?: StructuredResume } | null)?.structured;
+
+    const completeness: ProfileCompleteness = {
+      hasFullName: !!profile?.full_name?.trim(),
+      hasTargetRoles: !!(profile?.target_roles && (profile.target_roles as string[]).length > 0),
+      hasResume: (resumeCount ?? 0) > 0,
+      hasSkills: !!(structured?.skills && structured.skills.length > 0),
+      hasPhoto: !!profile?.avatar_url,
+    };
 
     return {
       configured: true as const,
@@ -80,6 +129,7 @@ async function loadDashboardData() {
       interviews: interviewCount ?? 0,
       connections: (connectionsCount as number | null) ?? 0,
       recent: (recentRows ?? []) as RecentApplication[],
+      completeness,
     };
   } catch {
     // Supabase isn't configured in this environment — demo mode.
@@ -92,6 +142,13 @@ async function loadDashboardData() {
       interviews: 0,
       connections: 0,
       recent: [] as RecentApplication[],
+      completeness: {
+        hasFullName: false,
+        hasTargetRoles: false,
+        hasResume: false,
+        hasSkills: false,
+        hasPhoto: false,
+      } as ProfileCompleteness,
     };
   }
 }
@@ -115,6 +172,20 @@ export default async function DashboardOverviewPage({
     { key: "statInterviews", value: data.interviews, icon: CalendarCheck },
     { key: "statConnections", value: data.connections, icon: Users },
   ] as const;
+
+  // Profile-completeness checklist — every `done` flag is a real field read
+  // in loadDashboardData() above (profiles.full_name / target_roles /
+  // avatar_url, plus the primary resume's structured skills), never
+  // randomized. Hidden entirely in demo mode (data.configured === false),
+  // same as the rest of this page's real-data sections — there's no actual
+  // profile to measure without Supabase configured.
+  const completenessItems: ChecklistItem[] = [
+    { key: "name", label: t("profileStrength.items.name"), done: data.completeness.hasFullName },
+    { key: "targetRoles", label: t("profileStrength.items.targetRoles"), done: data.completeness.hasTargetRoles },
+    { key: "resume", label: t("profileStrength.items.resume"), done: data.completeness.hasResume },
+    { key: "skills", label: t("profileStrength.items.skills"), done: data.completeness.hasSkills },
+    { key: "photo", label: t("profileStrength.items.photo"), done: data.completeness.hasPhoto },
+  ];
 
   return (
     <div>
@@ -191,6 +262,19 @@ export default async function DashboardOverviewPage({
           </div>
         ))}
       </div>
+
+      {/* Hidden in demo mode — there's no real profile to measure
+          completeness of without Supabase configured (see
+          loadDashboardData()'s EMPTY_COMPLETENESS fallback). */}
+      {data.configured && (
+        <div className="mt-8">
+          <ProfileCompletenessMeter
+            title={t("profileStrength.title")}
+            subtitle={t("profileStrength.subtitle")}
+            items={completenessItems}
+          />
+        </div>
+      )}
 
       <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-center justify-between">

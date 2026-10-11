@@ -116,7 +116,7 @@ export default function PricingCards() {
             the Free card's button sat right under its short list, leaving a
             large dead gap below it down to the card's (grid-stretched)
             full height, which read as unfinished/unbalanced next to Pro. */}
-        <div className="flex h-full flex-col rounded-2xl border border-border bg-surface p-8">
+        <div className="hover-lift flex h-full flex-col rounded-2xl border border-border bg-surface p-8">
           <h3 className="text-xl font-bold text-foreground">{t("free.name")}</h3>
           <p className="mt-1 text-sm text-foreground/60">{t("free.desc")}</p>
           <p className="mt-6 text-4xl font-extrabold text-foreground">
@@ -143,7 +143,7 @@ export default function PricingCards() {
         </div>
 
         {/* Pro plan */}
-        <div className="relative flex h-full flex-col rounded-2xl border-2 border-gold-400 bg-surface p-8 shadow-lg shadow-gold-400/10">
+        <div className="hover-lift relative flex h-full flex-col rounded-2xl border-2 border-gold-400 bg-surface p-8 shadow-lg shadow-gold-400/10">
           <span className="absolute -top-3 left-8 rounded-full bg-gold-400 px-3 py-1 text-xs font-bold text-emerald-900">
             {t("pro.badge")}
           </span>

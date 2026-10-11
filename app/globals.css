@@ -57,6 +57,102 @@ html[lang="ar"] {
   --font-sans: var(--font-arabic);
 }
 
+/* ---------------------------------------------------------------------
+ * Dark theme
+ * -------------------------------------------------------------------*/
+/* Explicit dark theme — set via document.documentElement.dataset.theme by
+   the toggle in components/Navbar.tsx (see that file's useEffect) and by the
+   tiny blocking script in app/[locale]/layout.tsx that reads the saved
+   choice before first paint (avoids a flash of the light theme). Same
+   token names as the light `:root` block above, so every existing
+   `bg-background` / `text-foreground` / `border-border` / `bg-emerald-*` /
+   `bg-gold-*` utility class everywhere in the app picks this up automatically
+   — no component changes needed beyond the toggle itself. Emerald stays the
+   one functional accent color in both themes (same brand, just recolored
+   for contrast against a dark surface); gold keeps its "rare highlight"
+   role rather than becoming a second competing accent. */
+:root[data-theme="dark"] {
+  --background: #0e1310;
+  --foreground: #edf1ea;
+  --surface: #161d19;
+  --border: #283229;
+
+  --gold-50: #241f10;
+  --gold-100: #332a14;
+  --gold-200: #4a3c19;
+  --gold-400: #e6ba54;
+  --gold-500: #d9ad3f;
+  --gold-600: #ecc973;
+
+  --emerald-50: #102a1f;
+  --emerald-100: #153b2b;
+  --emerald-400: #2bc895;
+  --emerald-500: #22a874;
+  --emerald-600: #1f9465;
+  --emerald-700: #3fe0a5;
+
+  --sand-100: #1a221c;
+  --sand-200: #222c24;
+}
+
+/* Users who never touched the toggle (no `data-theme` set yet — e.g. the
+   blocking script couldn't run, or localStorage is unavailable) still get a
+   dark theme automatically when their OS is set to dark. Once the toggle has
+   run once, `data-theme` is always explicitly "light" or "dark" and this
+   media query becomes a no-op either way (the attribute selector above wins
+   for "dark", and plain `:root` already is the light palette for "light"). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --background: #0e1310;
+    --foreground: #edf1ea;
+    --surface: #161d19;
+    --border: #283229;
+
+    --gold-50: #241f10;
+    --gold-100: #332a14;
+    --gold-200: #4a3c19;
+    --gold-400: #e6ba54;
+    --gold-500: #d9ad3f;
+    --gold-600: #ecc973;
+
+    --emerald-50: #102a1f;
+    --emerald-100: #153b2b;
+    --emerald-400: #2bc895;
+    --emerald-500: #22a874;
+    --emerald-600: #1f9465;
+    --emerald-700: #3fe0a5;
+
+    --sand-100: #1a221c;
+    --sand-200: #222c24;
+  }
+}
+
+/* Dashboard dark variant — mirrors the relationship the light
+   `.dashboard-scope` block above already has with the light marketing
+   `:root` (a cooler, more neutral "structured tool" background instead of
+   the warm marketing one), just translated to dark. Emerald/gold are left
+   alone here for the same reason the light `.dashboard-scope` block leaves
+   them alone (see its comment). */
+:root[data-theme="dark"] .dashboard-scope {
+  --background: #10151a;
+  --foreground: #e9edf1;
+  --surface: #171d23;
+  --border: #2a3139;
+  --sand-100: #1a2027;
+  --sand-200: #232a32;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .dashboard-scope {
+    --background: #10151a;
+    --foreground: #e9edf1;
+    --surface: #171d23;
+    --border: #2a3139;
+    --sand-100: #1a2027;
+    --sand-200: #232a32;
+  }
+}
+
 /* Dashboard scope — the authenticated /dashboard app reads as a structured
    business tool, not the warm/decorative marketing site. This overrides the
    same background/surface/border/foreground tokens every dashboard page
@@ -431,6 +527,57 @@ html[dir="rtl"] .rtl-flip {
 
 .icon-ring-pulse {
   animation: icon-ring-pulse 2.6s ease-in-out infinite;
+}
+
+/* Shared hover-lift micro-interaction — centralized here (rather than
+   per-page) so components/ui/Card.tsx and components/PricingCards.tsx's two
+   plan cards get the exact same translateY + shadow treatment, and any
+   future card surface gets it for free just by adding this one class. */
+.hover-lift {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 16px 28px -12px rgba(6, 30, 20, 0.18),
+    0 6px 10px -6px rgba(6, 30, 20, 0.12);
+}
+
+:root[data-theme="dark"] .hover-lift:hover {
+  box-shadow:
+    0 16px 28px -12px rgba(0, 0, 0, 0.55),
+    0 6px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* Slow-drifting blurred gradient blobs behind the homepage's live job feed
+   strip (components/JobsShowcase.tsx) — reuses the same .orb shape/blur
+   already defined above, just with its own gentle drift so it doesn't read
+   as a copy of the hero's old orb treatment. Pure CSS, no new dependency. */
+@keyframes jobfeed-mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -4%, 0) scale(1.08);
+  }
+}
+
+.jobfeed-mesh-orb {
+  animation: jobfeed-mesh-drift 10s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift,
+  .hover-lift:hover {
+    transition: none;
+    transform: none;
+  }
+
+  .jobfeed-mesh-orb {
+    animation: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

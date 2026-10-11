@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { downloadResumePdf } from "@/lib/resume-pdf";
 import type { StructuredResume } from "@/lib/resume-types";
+import MatchScoreBadge from "@/components/ui/MatchScoreBadge";
 import {
   Search,
   MapPin,
@@ -30,7 +31,6 @@ import {
   AlertTriangle,
   Zap,
   ChevronRight,
-  Target,
   Flag,
   Plus,
 } from "lucide-react";
@@ -1153,10 +1153,9 @@ export default function JobSearchPage() {
                     {t(`workTypes.${job.workType}`)}
                   </span>
                   {typeof job.matchScore === "number" && (
-                    <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                      <Target size={12} />
+                    <MatchScoreBadge score={job.matchScore}>
                       {t("matchScore", { score: job.matchScore })}
-                    </span>
+                    </MatchScoreBadge>
                   )}
                 </div>
 

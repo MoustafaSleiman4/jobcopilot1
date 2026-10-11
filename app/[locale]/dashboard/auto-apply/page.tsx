@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOCATIONS } from "@/lib/jobSources";
 import { type AtsPlatform, ATS_PLATFORM_LABELS } from "@/lib/atsPlatform";
+import MatchScoreBadge from "@/components/ui/MatchScoreBadge";
 import {
   Lock,
   Zap,
@@ -15,7 +16,6 @@ import {
   ExternalLink,
   X,
   AlertTriangle,
-  Sparkles,
   Info,
   Play,
   Clock,
@@ -937,10 +937,9 @@ export default function AutoApplyPage() {
                       </p>
                     </div>
                     <div className="flex flex-none flex-wrap items-center justify-end gap-1.5">
-                      <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        <Sparkles size={12} />
+                      <MatchScoreBadge score={item.match_score}>
                         {t("queue.matchScore", { score: item.match_score })}
-                      </span>
+                      </MatchScoreBadge>
                       {item.ats_platform && (
                         <span className="flex items-center gap-1 rounded-full bg-sand-100 px-2.5 py-1 text-xs font-medium text-foreground/60">
                           <Building2 size={12} />

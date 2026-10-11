@@ -8,7 +8,9 @@
     "signOut": "Sign out",
     "forEmployers": "For employers",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
   },
   "seo": {
     "pricing": {
@@ -62,6 +64,14 @@
       "Egypt",
       "Jordan"
     ],
+    "stats": {
+      "jobsTracked": "Jobs tracked",
+      "jobsTrackedApprox": "10,000+",
+      "applicationsSent": "Applications sent",
+      "applicationsSentApprox": "5,000+",
+      "members": "Job seekers joined",
+      "membersApprox": "2,000+"
+    },
     "jobsShowcase": {
       "eyebrow": "Live job feed",
       "title": "Thousands of real jobs, updating every day",
@@ -381,7 +391,18 @@
       "viewAll": "View all",
       "noActivity": "Nothing tracked yet. Save or apply to a job to see it here.",
       "upgradedSuccess": "You're on Pro now — unlimited applications, AI enhancement, and one-click apply are all unlocked.",
-      "upgradedPending": "Payment received — we're finishing setting up your Pro plan. This is usually instant; refresh in a minute if it's still showing here."
+      "upgradedPending": "Payment received — we're finishing setting up your Pro plan. This is usually instant; refresh in a minute if it's still showing here.",
+      "profileStrength": {
+        "title": "Profile strength",
+        "subtitle": "A complete profile gets better job matches and a stronger application.",
+        "items": {
+          "name": "Add your full name",
+          "targetRoles": "Set your target roles",
+          "resume": "Upload or build a resume",
+          "skills": "List your skills on your resume",
+          "photo": "Add a profile photo"
+        }
+      }
     },
     "resume": {
       "title": "Resume & Profile Builder",

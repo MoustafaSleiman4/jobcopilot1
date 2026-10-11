@@ -119,6 +119,22 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={dir}>
+      <head>
+        {/* Sets `data-theme` on <html> synchronously, before first paint —
+            same light/dark palette switch the toggle in components/
+            Navbar.tsx writes to localStorage, just applied immediately here
+            so a returning dark-mode visitor (or anyone with a dark OS
+            preference and no saved choice) never sees a flash of the light
+            theme before React hydrates. This script never reads anything
+            from the page itself and writes only a single DOM attribute, so
+            there's nothing for React's hydration diff to disagree with. */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('theme');var t=s==='light'||s==='dark'?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
